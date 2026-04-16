@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: exam-system-server
+  profiles:
+    active: dev,local
+  mvc:
+    dispatch-options-request: true
+  servlet:
+    multipart:
+      max-file-size: 10MB # 限制文件上传大小
+      max-request-size: 10MB
+  main:
+    lazy-initialization: true       # 最强启动优化：懒加载Bean
+    allow-circular-references: true
+    banner-mode: off # 关闭启动banner
+  jmx:
+    enabled: false              # 关闭JMX
+  data:
+    redis:
+      host: ${exam.redis.host}
+      port: ${exam.redis.port}
+      database: ${exam.redis.database}
+      connect-timeout: 2s
+      timeout: 2s
+  datasource:
+    driver-class-name: ${exam.datasource.driver-class-name}
+    url: jdbc:mysql://${exam.datasource.host}:${exam.datasource.port}/${exam.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${exam.datasource.username}
+    password: ${exam.datasource.password}
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 4
+      initialization-fail-timeout: 0
+  ai:
+    dashscope:
+      api-key: ${exam.ai.api-key}
+      chat:
+        options:
+          model: qwen3.5-flash   # 推荐模型：qwen-max（最强）、qwen-plus、qwen-turbo（性价比高）
+          temperature: 0.7
+          multi-model: true   # 🔑 添加这个配置
+#          max-tokens: 8192   # 根据题目数量适当调大
+jimmer:
+  language: kotlin
+  dialect: org.babyfish.jimmer.sql.dialect.MySqlDialect
+  show-sql: true
+  pretty-sql: true
+  database-validation-mode: ERROR
+  client:
+    ts:
+      path: /ts.zip
+server:
+  port: 8101
+
+sa-token:
+  # token 名称（同时也是 cookie 名称）
+  token-name: exam-system-token
+  # token 有效期（单位：秒） 默认30天，-1 代表永久有效
+  timeout: ${exam.jwt.ttl}
+  # token 最低活跃频率（单位：秒），如果 token 超过此时间没有访问系统就会被冻结，默认-1 代表不限制，永不冻结
+  active-timeout: -1
+  # 是否允许同一账号多地同时登录 （为 true 时允许一起登录, 为 false 时新登录挤掉旧登录）
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
+  is-share: false
+  # token 风格（默认可取值：uuid、simple-uuid、random-32、random-64、random-128、tik）
+  token-style: uuid
+  # 是否输出操作日志
+  is-log: true
+  # jwt 密钥
+  jwt-secret-key: ${exam.jwt.secret-key}
+
+minio:
+  endpoint: ${exam.minio.endpoint}
+  access-key: ${exam.minio.access-key}
+  secret-key: ${exam.minio.secret-key}
+  bucket:
+    file: ${exam.minio.bucket.file}
+
+logging:
+  level:
+    root: info
+    com.example.service: info
+    com.example.config.MinioConfig: debug  # 这里的配置正是基于你传递的 Class
+
+springdoc:
+  # 默认是false，需要设置为true
+  default-flat-param-object: true

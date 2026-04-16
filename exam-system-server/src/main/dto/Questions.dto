@@ -1,0 +1,102 @@
+export com.yyjy.models.entity.Questions
+ -> package com.yyjy.models.entity.dto
+
+QuestionsPageView {
+    id
+    title
+    type
+    multi
+    categoryId
+    difficulty
+    score
+    analysis
+    questionChoices as choices  {
+        id
+        questionId
+        content
+        correct
+        sort
+    }
+    questionAnswers as answers  {
+        id
+        questionId
+        answer
+    }
+    createTime
+    updateTime
+}
+
+
+input QuestionSaveInput {
+    title
+    type
+    multi
+    categoryId
+    difficulty
+    score
+    analysis
+    questionChoices? as choices  {
+        content
+        correct
+        sort
+    }
+    questionAnswers as answers  {
+        answer
+    }
+}
+
+input QuestionUpdateInput {
+    id!
+    title
+    categoryId
+    difficulty
+    score
+    analysis
+    questionChoices? as choices  {
+        content
+        correct
+        sort
+    }
+    questionAnswers as answers  {
+        id
+        answer
+    }
+}
+
+QuestionImportView {
+    title
+    type
+    multi
+    categoryId
+    difficulty
+    score
+    analysis
+    questionChoices? as choices  {
+        content
+        correct
+        sort
+    }
+    flat(questionAnswers) {
+        answer
+        keywords
+    }
+}
+
+input QuestionImportInput {
+    title
+    type
+    multi
+    categoryId
+    difficulty
+    score
+    analysis
+    questionChoices? as choices  {
+        content
+        correct
+        sort
+    }
+    flat(questionAnswers) {
+        answer
+        keywords
+    }
+}

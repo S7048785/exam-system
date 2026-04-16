@@ -1,0 +1,37 @@
+exam:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: HOST
+    port: PROT
+    database: DATABASE
+    username: USERNAME
+    password: PASSWORD
+  jwt:
+    # jwt签名加密时使用的密钥
+    secret-key: SECRET_KEY
+    # jwt过期时间 2小时 (=2 * 60 * 60 * 1000)
+    ttl: 7200000
+  front:
+    ip:
+      - http://localhost:3000
+      - http://localhost:5173
+  exclude:
+    path:
+      - /users/login
+      - /users/register
+      - /articles/user
+      - /articles/detail
+      - /comments
+      - /tags
+  minio:
+    endpoint: http://localhost:9000
+    access-key: ACCESS_KEY
+    secret-key: SECRET_KEY
+    bucket:
+      file: BUCKET_NAME
+  redis:
+    host: HOST
+    port: PORT
+    database: DATABASE
+  ai:
+    api-key: API_KEY_DASHSCOPE

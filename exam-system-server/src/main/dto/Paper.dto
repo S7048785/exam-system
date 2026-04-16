@@ -1,0 +1,36 @@
+export com.yyjy.models.entity.Paper
+ -> package com.yyjy.models.entity.dto
+
+PaperDetail {
+    id
+    name
+    description
+    status
+    totalScore
+    questionCount
+    duration
+
+    paperQuestions as questions {
+        flat(question) {
+            id
+            title
+            type
+            questionChoices as choices {
+                content
+                correct
+            }
+            flat(questionAnswers) {
+                answer
+            }
+        }
+        score
+    }
+    createTime
+}
+
+input PaperSaveInput {
+    name
+    description
+    duration
+    questions: Map<String, Int>
+}

@@ -1,0 +1,25 @@
+export com.yyjy.models.entity.Categories
+ -> package com.yyjy.models.entity.dto
+
+CategoriesTree {
+    id
+    name
+    parentId
+    sort
+    children*
+    questionCount
+}
+
+
+input CategorySaveInput {
+    name
+    parentId
+    sort
+}
+
+input CategoryUpdateInput {
+    id
+    name
+    parentId
+    sort
+}

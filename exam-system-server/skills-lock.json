@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "jimmer-orm": {
+      "source": "coooolfan/unirhy",
+      "sourceType": "github",
+      "computedHash": "b3929874e115cf1f8f4947c03c4fd36ffe667038bc224592eb51af79956d50ac"
+    }
+  }
+}
