@@ -1,6 +1,7 @@
 package com.yyjy.controller
 
 import com.yyjy.common.R
+import com.yyjy.models.dto.PaperAiSaveDto
 import com.yyjy.models.entity.*
 import com.yyjy.models.entity.dto.PaperDetail
 import com.yyjy.models.entity.dto.PaperSaveInput
@@ -49,6 +50,11 @@ class PaperController(
     @GetMapping("/list")
     fun listPapers(name: String?, status: String?): R<List<@FetchBy("PAPER_ITEM") Paper>> {
         return R.ok(paperService.listPapersByNameAndStatus(name, status, PAPER_ITEM))
+    }
+    @Operation(summary = "AI智能组卷", description = "根据用户输入的规则，智能生成试卷，包括选择题、判断题、简答题等多种题型。")
+    @GetMapping("/ai")
+    fun aiPaper(@RequestBody paperAiSaveDto: PaperAiSaveDto): R<Paper> {
+        return R.ok(paperService.aiCreatePaper(paperAiSaveDto))
     }
 
     companion object {

@@ -6,6 +6,8 @@ package com.yyjy.constants
  * description: TODO
  */
 object MessageConstant {
+    const val PAPER_RULE_EMPTY: String = "paper: 试卷规则不能为空"
+    const val PAPER_QUESTION_EMPTY: String = "paper: 试卷题目不能为空"
     const val PAPER_NOT_FOUND: String = "paper: 试卷不存在"
     const val MINIO_UPLOAD_ERROR: String = "minio: 上传文件失败"
     const val FILE_NOT_EXIST: String = "minio: 文件不存在"

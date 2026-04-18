@@ -7,8 +7,6 @@ import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.converter.BeanOutputConverter
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Service
-
-
 /**
  * @author Nyxcirea
  * @date 2026/4/12
@@ -21,6 +19,7 @@ class QuestionGenerateService(
     companion object {
         private val log = LoggerFactory.getLogger(QuestionGenerateService::class.java)
     }
+
     fun generateQuestions(
         category: String,
         count: Int,
@@ -59,7 +58,7 @@ class QuestionGenerateService(
             1. 难度：{difficulty}
             2. 类型：{type}
             3. 特殊要求：{extraReq}
-            4. **输出格式：必须返回标准的 JSON 数组，不要有任何额外文字或解释**
+            4. 输出格式：必须返回标准的 JSON 数组，不要有任何非法转义字符，确保 JSON 字符串可以被标准解析器解析
             5. 每道题都不能重复，不能有重复的题目或选项
             
             JSON 数组中的每个对象必须包含完整字段，如特殊要求中定义的格式。
@@ -99,9 +98,9 @@ class QuestionGenerateService(
         }
     }
 
-        private fun generateExtraRequirements(type: String): String {
-            if (type == "CHOICE") {
-                return """
+    private fun generateExtraRequirements(type: String): String {
+        if (type == "CHOICE") {
+            return """
                 **选择题特别要求**:
                 1. 每个选项的权重相同，不能有空选项。
                 2. 选择题包含单选和多选。
@@ -128,9 +127,9 @@ class QuestionGenerateService(
                     "answer": "A,B"
                 }
             """.trimIndent()
-            }
-            if (type == "JUDGE") {
-                return """
+        }
+        if (type == "JUDGE") {
+            return """
                 **判断题特别要求**:
                 1. 确保生成的判断题中，正确答案(true)和错误答案(false)的数量大致平衡，不能全部是true或false。
                 2. 错误的陈述应该是常见的误解或容易混淆的概念。
@@ -151,9 +150,9 @@ class QuestionGenerateService(
                     "answer": "false"
                 }
             """.trimIndent()
-            }
-            if (type == "TEXT") {
-                return """
+        }
+        if (type == "TEXT") {
+            return """
                 **简答题特别要求**:
                 1. 简答题的答案必须是详细的，不能是简单的。
                 2. 简答题的答案必须是实际的，贴近实际应用场景
@@ -184,7 +183,7 @@ class QuestionGenerateService(
                     "
                 }
             """.trimIndent()
-            }
-            throw BusinessException("题目类型错误")
         }
+        throw BusinessException("题目类型错误")
     }
+}

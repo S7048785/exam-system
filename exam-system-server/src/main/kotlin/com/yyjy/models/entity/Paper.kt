@@ -19,6 +19,9 @@ interface Paper {
 
     val description: String?
 
+    /**
+     * 试卷状态: DRAFT（草稿）/PUBLISHED（已发布）/STOPPED（已停用）
+     */
     val status: String?
 
     /**

@@ -2,19 +2,28 @@ package com.yyjy.service
 
 import com.yyjy.common.BusinessException
 import com.yyjy.constants.MessageConstant
+import com.yyjy.constants.PaperConstant
+import com.yyjy.models.dto.PaperAiSaveDto
 import com.yyjy.models.entity.*
 import com.yyjy.models.entity.dto.PaperDetail
 import com.yyjy.models.entity.dto.PaperSaveInput
 import com.yyjy.repository.PaperRepository
+import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.fetcher.Fetcher
 import org.babyfish.jimmer.sql.kt.ast.expression.`eq?`
+import org.babyfish.jimmer.sql.kt.ast.expression.`valueIn?`
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PaperService(
     private val paperRepository: PaperRepository
 ) {
+    companion object {
+        private val log = LoggerFactory.getLogger(PaperService::class.java)
+    }
     fun listPapersByNameAndStatus(name: String?, status: String?, paperItem: Fetcher<Paper>): List<Paper> {
         return paperRepository.sql.createQuery(Paper::class) {
             where(table.name `eq?` name)
@@ -43,7 +52,11 @@ class PaperService(
         return paper
     }
 
+    @Transactional
     fun addPaper(paperInput: PaperSaveInput){
+        if (paperInput.questions.isEmpty()){
+            throw BusinessException(MessageConstant.PAPER_QUESTION_EMPTY)
+        }
 
         val paperQuestion = paperInput.questions.map {
             PaperQuestion {
@@ -51,12 +64,67 @@ class PaperService(
                 score = it.value.toDouble()
             }
         }
+        val totalScore = paperQuestion.sumOf { it.score }
         val paper = Paper {
             name = paperInput.name
             description = paperInput.description
             duration = paperInput.duration
             paperQuestions = paperQuestion
+            status = PaperConstant.STATUS.DRAFT
+            questionCount = paperQuestion.size
+            this.totalScore = totalScore
         }
-        paperRepository.save(paper, SaveMode.INSERT_ONLY)
+        paperRepository.save(paper, SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND)
+    }
+
+    @Transactional
+    fun aiCreatePaper(paperAiSaveDto: PaperAiSaveDto): Paper {
+        if (paperAiSaveDto.rules.isEmpty()){
+            throw BusinessException(MessageConstant.PAPER_RULE_EMPTY)
+        }
+        val paperQuestionList = mutableListOf<PaperQuestion>()
+        var questionCount = 0
+        var totalScore = 0.0
+        for (rule in paperAiSaveDto.rules) {
+            if (rule.count == 0) {
+                log.warn("Paper rule type ${rule.type} not found")
+                continue
+            }
+            val allQuestions = paperRepository.sql.createQuery(Questions::class) {
+                where(table.type `eq?` rule.type)
+                where(table.categoryId `valueIn?` rule.categoryIds)
+                select(table.id)
+            }.execute()
+
+            if (allQuestions.isEmpty()) {
+                log.warn("Paper rule category ${rule.categoryIds} not found")
+                continue
+            }
+            // 计算实际需要的题目数量
+            val realNumbers = rule.count.coerceAtMost(allQuestions.size)
+            questionCount += realNumbers
+            totalScore += realNumbers.toDouble() * rule.score
+
+            // 打乱题目顺序
+            val questionsShuffled = allQuestions.shuffled().take(realNumbers)
+            paperQuestionList.addAll(
+                questionsShuffled.map {
+                    PaperQuestion {
+                        questionId = it
+                        score = rule.score.toDouble()
+                    }
+                }
+            )
+
+        }
+        return paperRepository.save(Paper {
+            name = paperAiSaveDto.name
+            description = paperAiSaveDto.description
+            duration = paperAiSaveDto.duration
+            paperQuestions = paperQuestionList
+            status = PaperConstant.STATUS.DRAFT
+            this.questionCount = questionCount
+            this.totalScore = totalScore
+        }, SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND)
     }
 }

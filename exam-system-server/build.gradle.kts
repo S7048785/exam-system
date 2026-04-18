@@ -54,7 +54,7 @@ dependencies {
 	implementation("io.github.oshai:kotlin-logging-jvm:6.0.3")
 	// jimmer
 	implementation("org.babyfish.jimmer:jimmer-spring-boot-starter:${jimmerVersion}")
-//	"developmentOnly"("org.springframework.boot:spring-boot-devtools")
+	"developmentOnly"("org.springframework.boot:spring-boot-devtools")
 	ksp("org.babyfish.jimmer:jimmer-ksp:${jimmerVersion}")
 	// knife4j
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
