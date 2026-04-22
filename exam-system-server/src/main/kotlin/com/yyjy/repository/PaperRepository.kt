@@ -9,4 +9,5 @@ import org.babyfish.jimmer.spring.repository.KRepository
  * description: TODO
  */
 interface PaperRepository : KRepository<Paper, Int> {
+    fun existsByName(name: String): Boolean
 }

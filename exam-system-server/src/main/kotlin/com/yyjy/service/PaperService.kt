@@ -7,23 +7,29 @@ import com.yyjy.models.dto.PaperAiSaveDto
 import com.yyjy.models.entity.*
 import com.yyjy.models.entity.dto.PaperDetail
 import com.yyjy.models.entity.dto.PaperSaveInput
+import com.yyjy.models.entity.dto.PaperUpdateInput
+import com.yyjy.repository.PaperQuestionRepository
 import com.yyjy.repository.PaperRepository
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode
 import org.babyfish.jimmer.sql.fetcher.Fetcher
+import org.babyfish.jimmer.sql.kt.ast.expression.eq
 import org.babyfish.jimmer.sql.kt.ast.expression.`eq?`
 import org.babyfish.jimmer.sql.kt.ast.expression.`valueIn?`
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import kotlin.jvm.optionals.getOrNull
 
 @Service
 class PaperService(
-    private val paperRepository: PaperRepository
+    private val paperRepository: PaperRepository,
+    private val paperQuestionRepo: PaperQuestionRepository,
 ) {
     companion object {
         private val log = LoggerFactory.getLogger(PaperService::class.java)
     }
+
     fun listPapersByNameAndStatus(name: String?, status: String?, paperItem: Fetcher<Paper>): List<Paper> {
         return paperRepository.sql.createQuery(Paper::class) {
             where(table.name `eq?` name)
@@ -53,8 +59,8 @@ class PaperService(
     }
 
     @Transactional
-    fun addPaper(paperInput: PaperSaveInput){
-        if (paperInput.questions.isEmpty()){
+    fun addPaper(paperInput: PaperSaveInput) {
+        if (paperInput.questions.isEmpty()) {
             throw BusinessException(MessageConstant.PAPER_QUESTION_EMPTY)
         }
 
@@ -79,7 +85,7 @@ class PaperService(
 
     @Transactional
     fun aiCreatePaper(paperAiSaveDto: PaperAiSaveDto): Paper {
-        if (paperAiSaveDto.rules.isEmpty()){
+        if (paperAiSaveDto.rules.isEmpty()) {
             throw BusinessException(MessageConstant.PAPER_RULE_EMPTY)
         }
         val paperQuestionList = mutableListOf<PaperQuestion>()
@@ -126,5 +132,47 @@ class PaperService(
             this.questionCount = questionCount
             this.totalScore = totalScore
         }, SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND)
+    }
+
+    @Transactional
+    fun updatePaper(paperInput: PaperUpdateInput) {
+        if (paperRepository.existsByName(paperInput.name)) throw BusinessException(MessageConstant.PAPER_NAME_EXIST)
+        // 删除所有paperQuestion
+        paperQuestionRepo.sql.createDelete(PaperQuestion::class) {
+            where(table.paperId eq paperInput.id)
+        }.execute()
+        // 保存新的paperQuestion
+        val paperQuestion = paperInput.questions.map {
+            PaperQuestion {
+                questionId = it.key.toLong()
+                score = it.value.toDouble()
+            }
+        }
+        paperInput.toEntity {
+            this.paperQuestions = paperQuestion
+        }
+        paperRepository.save(paperInput.toEntity {
+            this.paperQuestions = paperQuestion
+        }, SaveMode.UPDATE_ONLY, AssociatedSaveMode.APPEND)
+    }
+
+    fun removePaper(id: Int) {
+        val paperDb = paperRepository.findById(id).getOrNull() ?: throw BusinessException(MessageConstant.PAPER_NOT_FOUND)
+        if (paperDb.status != PaperConstant.STATUS.DRAFT) {
+            throw BusinessException(MessageConstant.PAPER_NOT_DRAFT_STATUS)
+        }
+        // TODO: 删除试卷时，需要检查试卷题目关联表是否有使用该试卷的考试
+        paperRepository.deleteById(id)
+    }
+
+    fun updateStatus(id: Int, status: String) {
+        if (status != PaperConstant.STATUS.STOPPED && status != PaperConstant.STATUS.PUBLISHED) {
+            throw BusinessException(MessageConstant.PAPER_STATUS_INVALID)
+        }
+        paperRepository.save(Paper {
+            this.id = id
+            this.status = status
+        }, SaveMode.UPDATE_ONLY)
+
     }
 }

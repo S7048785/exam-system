@@ -19,6 +19,7 @@ interface PaperQuestion {
     val paper: Paper
 
     @ManyToOne
+    @OnDissociate(DissociateAction.DELETE)
     val question: Questions
 
     val score: Double

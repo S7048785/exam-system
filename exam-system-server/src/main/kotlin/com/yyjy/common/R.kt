@@ -18,7 +18,6 @@ data class R<T>(
         fun <T> ok(data: T): R<T> = R(code = 200, msg = "ok", data = data)
 
         fun <T> fail(msg: String): R<T> = R(code = 500, msg = msg, data = null)
-
     }
 }
 

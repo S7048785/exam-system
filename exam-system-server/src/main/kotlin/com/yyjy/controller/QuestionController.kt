@@ -24,7 +24,6 @@ import org.springframework.web.multipart.MultipartFile
 @RestController
 class QuestionController(
     private val questionService: QuestionService,
-    private val questionRepository: QuestionsRepository
 ) {
 
     @Api

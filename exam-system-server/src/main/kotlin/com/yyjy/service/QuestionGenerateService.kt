@@ -4,6 +4,7 @@ import com.yyjy.common.BusinessException
 import com.yyjy.models.dto.QuestionGenerateDto
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.converter.BeanOutputConverter
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Service
@@ -77,24 +78,18 @@ class QuestionGenerateService(
                     .param("extraReq", extraReq)
             }
             .call()
-            .chatResponse() // 返回 ChatResponse 对象
+            .chatResponse() ?: throw BusinessException("AI 响应为空") // 返回 ChatResponse 对象
         val endTime = System.currentTimeMillis()
 
-
-        // 4. 提取输出文本（用于日志记录）
-        val outputText = chatResponse?.result?.output?.text
-        log.info("AI 原始响应: $outputText") // 查看模型实际返回的 JSON 字符串
-        // 5. 提取 Token 用量信息
-        val usage = chatResponse?.metadata?.usage
-
-        log.info("Token 输入消耗: ${usage?.promptTokens} - 输出消耗: ${usage?.completionTokens} - 总消耗: ${usage?.totalTokens}")
-        log.info("调用模型: ${chatResponse?.metadata?.model}")
-        log.info("调用大模型耗时: ${endTime - startTime}ms")
-        // 6. 将响应内容转换为目标实体类
-        return chatResponse?.let {
-            // 从响应中提取文本并手动反序列化，或者使用框架提供的转换方法
+        // 提取输出文本（用于日志记录）
+        logAiMetrics(chatResponse, endTime - startTime)
+        // 结构化解析
+        return try {
             val converter = BeanOutputConverter(object : ParameterizedTypeReference<List<QuestionGenerateDto>>() {})
-            outputText?.let { converter.convert(it) }
+            chatResponse.result.output.text?.let { converter.convert(it) }
+        } catch (e: Exception) {
+            log.error("JSON 解析失败，原始文本: ${chatResponse.result.output.text}", e)
+            throw BusinessException("生成题目解析失败")
         }
     }
 
@@ -185,5 +180,17 @@ class QuestionGenerateService(
             """.trimIndent()
         }
         throw BusinessException("题目类型错误")
+    }
+
+    private fun logAiMetrics(response: ChatResponse, duration: Long) {
+        val usage = response.metadata.usage
+        log.info("""
+            --- AI 调用报告 ---
+            响应内容摘要: ${response.result.output.text}
+            模型: ${response.metadata.model}
+            耗时: ${duration}ms
+            Token: 输入 ${usage.promptTokens} / 输出 ${usage.completionTokens} / 总计 ${usage.totalTokens}
+            ------------------
+        """.trimIndent())
     }
 }

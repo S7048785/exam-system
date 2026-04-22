@@ -87,6 +87,16 @@ kotlin {
 		)
 	}
 }
+tasks.bootRun {
+		jvmArgs(
+			"-Xms1g",
+			"-Xmx1g",
+			"-XX:+UseParallelGC",
+			"-XX:TieredStopAtLevel=1", // 只使用 C1 编译器，跳过 C2 优化
+			"-Dspring.backgroundpreinitializer.ignore=true", // 减少后台预初始化线程，避免不必要的资源争用。
+			"-Dspring.lazy-initialization=true" // 懒加载 Bean
+		)
+}
 tasks.withType<Test> {
 	useJUnitPlatform()
 }

@@ -9,7 +9,6 @@ PaperDetail {
     totalScore
     questionCount
     duration
-
     paperQuestions as questions {
         flat(question) {
             id
@@ -31,6 +30,15 @@ PaperDetail {
 input PaperSaveInput {
     name
     description
+    duration
+    questions: Map<String, Int>
+}
+
+input PaperUpdateInput {
+    id
+    name
+    description
+    status
     duration
     questions: Map<String, Int>
 }

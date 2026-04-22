@@ -6,6 +6,9 @@ package com.yyjy.constants
  * description: TODO
  */
 object MessageConstant {
+    const val PAPER_STATUS_INVALID: String = "paper: 试卷状态无效"
+    const val PAPER_NOT_DRAFT_STATUS: String = "paper: 试卷不是草稿状态"
+    const val PAPER_NAME_EXIST: String = "paper: 试卷名称已存在"
     const val PAPER_RULE_EMPTY: String = "paper: 试卷规则不能为空"
     const val PAPER_QUESTION_EMPTY: String = "paper: 试卷题目不能为空"
     const val PAPER_NOT_FOUND: String = "paper: 试卷不存在"

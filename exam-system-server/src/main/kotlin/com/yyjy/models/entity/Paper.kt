@@ -22,7 +22,7 @@ interface Paper {
     /**
      * 试卷状态: DRAFT（草稿）/PUBLISHED（已发布）/STOPPED（已停用）
      */
-    val status: String?
+    val status: String
 
     /**
      * 总分
