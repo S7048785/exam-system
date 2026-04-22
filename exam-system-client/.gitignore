@@ -13,3 +13,4 @@ __unconfig*
 todos.json
 .idea
 *__generated*
+routeTree.gen.ts

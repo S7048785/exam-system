@@ -4,7 +4,6 @@ import {categoryTreeQueryOptions, questionsQueryOptions} from "#/features/admin/
 
 export const Route = createFileRoute('/admin/questions')({
   component: QuestionsPage,
-
   loader: async ({ context}) => {
     // 提前预取分类（静态，几乎不影响性能）
     await context.queryClient.ensureQueryData(categoryTreeQueryOptions)
@@ -15,8 +14,7 @@ export const Route = createFileRoute('/admin/questions')({
       size: 10
     }))
   },
-
-  pendingMs: 0,
-  pendingMinMs: 0,
-  pendingComponent: () => <div className="p-8 text-center">加载题目列表中...</div>, // 可替换成你的骨架屏
+  // pendingMs: 0, 设置为0, 只要路由跳转，立刻显示 pendingComponent
+  // pendingMinMs: 0, pendingComponent最小显示时间
+  // pendingComponent: () => <div className="p-8 text-center">加载题目列表中...</div>, // 可替换成骨架屏
 })
