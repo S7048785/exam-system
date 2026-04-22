@@ -1,7 +1,7 @@
-import type { QuestionGenerateDto } from '#/__generated/model/static'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
-import { DialogFooter } from '#/components/ui/dialog'
+import type {QuestionGenerateDto} from '#/__generated/model/static'
+import {Badge} from '#/components/ui/badge'
+import {Button} from '#/components/ui/button'
+import {DialogFooter} from '#/components/ui/dialog'
 
 interface Step3PreviewProps {
   data: readonly QuestionGenerateDto[]
@@ -32,7 +32,7 @@ export default function Step3Preview({ data, isImporting, onBack, onImport }: St
           <span className="text-sm text-muted-foreground">共 {data.length} 道题目</span>
         </div>
 
-        <div className="h-[400px] overflow-y-auto pr-4 space-y-4">
+				<div className=" pr-4 space-y-4">
           {data.map((question, index) => {
             const typeInfo = TYPE_MAP[question.type] ?? { label: question.type, variant: 'secondary' as const }
             const difficultyInfo = DIFFICULTY_MAP[question.difficulty] ?? { label: question.difficulty, className: '' }

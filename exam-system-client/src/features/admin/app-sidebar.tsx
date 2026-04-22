@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { NavUser } from '#/components/nav-user'
+import {NavUser} from '#/components/nav-user'
 import {
   Sidebar,
   SidebarContent,
@@ -15,11 +15,12 @@ import {
   ChartHistogramIcon,
   DashboardSquare01Icon,
   File01Icon,
+  FileEditIcon,
   Folder01Icon,
   Menu01Icon,
   UserGroupIcon,
 } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import {HugeiconsIcon} from '@hugeicons/react'
 import {NavMain} from "#/features/admin/nav-main.tsx";
 import {Link} from "@tanstack/react-router";
 
@@ -44,6 +45,15 @@ const data = {
       title: 'Question',
       url: '/admin/questions',
       icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
+    },
+    {
+      title: 'Paper',
+      url: '/admin/papers',
+      icon: <HugeiconsIcon icon={FileEditIcon} strokeWidth={2}/>,
+      submenu: [
+        {title: '试卷列表', url: '/admin/papers/list'},
+        {title: '创建试卷', url: '/admin/papers/create'},
+      ],
     },
     {
       title: 'Categories',

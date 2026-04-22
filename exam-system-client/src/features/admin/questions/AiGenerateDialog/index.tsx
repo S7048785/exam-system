@@ -1,13 +1,7 @@
 import {useCallback, useState} from 'react'
 import {useMutation, useQueryClient, useSuspenseQuery} from '@tanstack/react-query'
 
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-} from '#/components/ui/dialog'
+import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,} from '#/components/ui/dialog'
 import {api} from '#/ApiInstance.ts'
 import type {QuestionGenerateDto, QuestionGenerateReq, QuestionImportInput} from '#/__generated/model/static'
 import {toast} from 'sonner'
@@ -117,13 +111,13 @@ export default function AiGenerateDialog({
 
 		setCategoryIdForImport(values.categoryId)
 		setStep(2)
-		// generateMutation.mutate({
-		//   count: values.count,
-		//   types: values.type,
-		//   difficulty: values.difficulty,
-		//   categoryId: values.categoryId,
-		//   includeMultiple: values.includeMultiple,
-		// })
+		generateMutation.mutate({
+			count: values.count,
+			types: values.type,
+			difficulty: values.difficulty,
+			categoryId: values.categoryId,
+			includeMultiple: values.includeMultiple,
+		})
 	}, [generateMutation])
 
 	// 确认导入
