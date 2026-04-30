@@ -28,7 +28,7 @@ class RsaUtil(
     fun decrypt(encrypted: String): String {
         require(encrypted.isNotBlank()) { "Encrypted data cannot be blank" }
 
-        val rsa = RSA("RSA/ECB/OAEPWithSHA-256AndMGF1Padding", examProperties.rsa.privateKey, null);
+        val rsa = RSA("RSA/ECB/OAEPWithSHA-256AndMGF1Padding", examProperties.rsa.privateKey, null)
 
         // 关键修改：将 HexUtil 改为 Base64 解码
         val aByte = Base64.getDecoder().decode(encrypted)

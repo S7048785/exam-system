@@ -1,6 +1,5 @@
 package com.yyjy.controller
 
-import com.yyjy.common.BusinessException
 import com.yyjy.common.R
 import com.yyjy.models.entity.Users
 import com.yyjy.models.entity.dto.UserLoginInput
