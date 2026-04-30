@@ -1,7 +1,7 @@
 package com.yyjy.config
 
-import cn.dev33.satoken.interceptor.SaInterceptor
 import com.yyjy.common.ExamProperties
+import com.yyjy.interceptor.TokenInterceptor
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
@@ -12,13 +12,14 @@ import java.io.File
 @Configuration
 class WebMvcConfig(
     private val examProperties: ExamProperties,
+    private val tokenInterceptor: TokenInterceptor
 ) : WebMvcConfigurer {
 
     /**
      * 配置拦截器
      */
     override fun addInterceptors(registry: InterceptorRegistry) {
-        registry.addInterceptor(SaInterceptor()) // 拦截所有路径
+        registry.addInterceptor(tokenInterceptor) // 拦截所有路径
             .addPathPatterns("/**")
             .excludePathPatterns(
                 examProperties.exclude.path

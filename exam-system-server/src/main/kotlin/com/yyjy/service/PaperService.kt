@@ -3,6 +3,7 @@ package com.yyjy.service
 import com.yyjy.common.BusinessException
 import com.yyjy.constants.MessageConstant
 import com.yyjy.constants.PaperConstant
+import com.yyjy.constants.PaperStatus
 import com.yyjy.models.dto.PaperAiSaveDto
 import com.yyjy.models.entity.*
 import com.yyjy.models.entity.dto.PaperDetail
@@ -30,10 +31,10 @@ class PaperService(
         private val log = LoggerFactory.getLogger(PaperService::class.java)
     }
 
-    fun listPapersByNameAndStatus(name: String?, status: String?, paperItem: Fetcher<Paper>): List<Paper> {
+    fun listPapersByNameAndStatus(name: String?, status: PaperStatus?, paperItem: Fetcher<Paper>): List<Paper> {
         return paperRepository.sql.createQuery(Paper::class) {
             where(table.name `eq?` name)
-            where(table.status `eq?` status)
+            where(table.status `eq?` status?.value)
             select(table.fetch(paperItem))
         }.execute()
     }

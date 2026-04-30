@@ -1,6 +1,7 @@
 package com.yyjy.controller
 
 import com.yyjy.common.R
+import com.yyjy.constants.PaperStatus
 import com.yyjy.models.dto.PaperAiSaveDto
 import com.yyjy.models.entity.*
 import com.yyjy.models.entity.dto.PaperDetail
@@ -50,7 +51,7 @@ class PaperController(
     }
 
     @Api
-    @Operation(summary = "获取试卷")
+    @Operation(summary = "获取试卷详情")
     @GetMapping("/{id}")
     fun getPaper(@PathVariable id: Int): R<PaperDetail> {
         return R.ok(paperService.getPaper(id))
@@ -61,14 +62,14 @@ class PaperController(
     @GetMapping("/list")
     fun listPapers(
         @RequestParam(name = "name", required = false) name: String?, // 明确可选
-        @RequestParam(name = "status", required = false) status: String?
+        @RequestParam(name = "status", required = false) status: PaperStatus?
     ): R<List<@FetchBy("PAPER_ITEM") Paper>> {
         return R.ok(paperService.listPapersByNameAndStatus(name, status, PAPER_ITEM))
     }
 
     @Api
     @Operation(summary = "AI智能组卷", description = "根据用户输入的规则，智能生成试卷，包括选择题、判断题、简答题等多种题型。")
-    @GetMapping("/ai")
+    @PostMapping("/ai")
     fun aiPaper(@RequestBody paperAiSaveDto: PaperAiSaveDto): R<Paper> {
         return R.ok(paperService.aiCreatePaper(paperAiSaveDto))
     }
@@ -83,6 +84,7 @@ class PaperController(
         paperService.updateStatus(id, status)
         return R.ok()
     }
+
 
     companion object {
         val PAPER_ITEM = newFetcher(Paper::class).by {

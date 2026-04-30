@@ -39,12 +39,12 @@ spring:
           model: qwen3.5-flash   # 推荐模型：qwen-max（最强）、qwen-plus、qwen-turbo（性价比高）
           temperature: 0.7
           multi-model: true   # 🔑 添加这个配置
-#          max-tokens: 8192   # 根据题目数量适当调大
+          max-tokens: 8192   # 根据题目数量适当调大
 jimmer:
   language: kotlin
   dialect: org.babyfish.jimmer.sql.dialect.MySqlDialect
-  show-sql: true
-  pretty-sql: true
+  show-sql: false
+  pretty-sql: false
   database-validation-mode: ERROR
   client:
     ts:
@@ -86,3 +86,7 @@ logging:
 springdoc:
   # 默认是false，需要设置为true
   default-flat-param-object: true
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

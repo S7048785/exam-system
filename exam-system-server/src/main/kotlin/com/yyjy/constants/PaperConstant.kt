@@ -12,3 +12,8 @@ object PaperConstant {
         const val STOPPED = "STOPPED"
     }
 }
+enum class PaperStatus(val value: String) {
+    DRAFT("DRAFT"),
+    PUBLISHED("PUBLISHED"),
+    STOPPED("STOPPED")
+}

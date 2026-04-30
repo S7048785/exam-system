@@ -38,7 +38,6 @@ input PaperUpdateInput {
     id
     name
     description
-    status
     duration
     questions: Map<String, Int>
 }

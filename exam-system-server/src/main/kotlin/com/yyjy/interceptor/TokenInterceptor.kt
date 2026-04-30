@@ -5,6 +5,7 @@ import com.yyjy.utils.JwtUtil
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
 
 /**
@@ -12,7 +13,8 @@ import org.springframework.web.servlet.HandlerInterceptor
  * @date 2026/2/14
  * @description: 拦截器，用于校验token
  */
-class TokenInterceptor : HandlerInterceptor {
+@Component
+class TokenInterceptor(private val jwtUtil: JwtUtil) : HandlerInterceptor {
 
     private val logger = KotlinLogging.logger {}
     override fun afterCompletion(
@@ -43,7 +45,7 @@ class TokenInterceptor : HandlerInterceptor {
 //            throw BusinessException("用户未登录")
         }
         try {
-            val userId = JwtUtil.parseJwt(token)
+            val userId = jwtUtil.parseJwt(token)
             // 存入ThreadLocal
             BaseContext.setCurrentId(userId.toLong())
         } catch (e: Exception) {
