@@ -4,100 +4,10 @@
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/geist';
 
-@custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";
 
 @theme {
   --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-}
-
-:root {
-  --sea-ink: #173a40;
-  --sea-ink-soft: #416166;
-  --lagoon: #4fb8b2;
-  --lagoon-deep: #328f97;
-  --palm: #2f6a4a;
-  --sand: #e7f0e8;
-  --foam: #f3faf5;
-  --surface: rgba(255, 255, 255, 0.74);
-  --surface-strong: rgba(255, 255, 255, 0.9);
-  --line: rgba(23, 58, 64, 0.14);
-  --inset-glint: rgba(255, 255, 255, 0.82);
-  --kicker: rgba(47, 106, 74, 0.9);
-  --bg-base: #e7f3ec;
-  --header-bg: rgba(251, 255, 248, 0.84);
-  --chip-bg: rgba(255, 255, 255, 0.8);
-  --chip-line: rgba(47, 106, 74, 0.18);
-  --link-bg-hover: rgba(255, 255, 255, 0.9);
-  --hero-a: rgba(79, 184, 178, 0.36);
-  --hero-b: rgba(47, 106, 74, 0.2);
-  --background: oklch(0.985 0.004 236.493);
-  --foreground: oklch(0.158 0.018 236.648);
-  --card: oklch(0.985 0.004 236.493);
-  --card-foreground: oklch(0.158 0.018 236.648);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.477 0.048 238.25);
-  --primary-foreground: oklch(1 0 180);
-  --secondary: oklch(0.482 0.05 54.902);
-  --secondary-foreground: oklch(0.97 0.005 56.369);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.477 0.048 238.25);
-  --chart-2: oklch(0.482 0.05 54.902);
-  --chart-3: oklch(0.482 0.05 54.902);
-  --chart-4: oklch(0.51 0.053 54.883);
-  --chart-5: oklch(0.477 0.052 238.51);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.546 0.245 262.881);
-  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-:root[data-theme='dark'] {
-  /* 文字与前景 - 冰蓝色系 */
-  --sea-ink: #e0e9f5; /* 主要文字：极浅的冷蓝白 */
-  --sea-ink-soft: #b0c4de; /* 次要文字：淡钢蓝 */
-
-  /* 品牌核心色 - 宝石蓝/天蓝 */
-  --lagoon: #3b82f6; /* 主题色：明亮的纯蓝 (类似 Blue 500) */
-  --lagoon-deep: #60a5fa; /* 悬浮/高亮色：稍浅的蓝色 */
-  --palm: #38bdf8; /* 辅助色：青蓝色 */
-
-  /* 背景色体系 - 深夜蓝 */
-  --sand: #0b1120; /* 最底层背景：极深蓝 */
-  --foam: #0f172a; /* 次层背景：经典深蓝 */
-  --bg-base: #020617; /* 页面基础背景 */
-
-  /* 容器与表面 */
-  --surface: rgba(15, 23, 42, 0.8); /* 半透明表面 */
-  --surface-strong: rgba(30, 41, 59, 0.92); /* 强对比表面 */
-
-  /* 边框与光效 */
-  --line: rgba(59, 130, 246, 0.2); /* 线条：浅蓝色描边 */
-  --inset-glint: rgba(186, 230, 253, 0.1); /* 内发光：微弱的冰蓝光 */
-
-  /* 交互与组件 */
-  --kicker: #93c5fd; /* 强调标签文字 */
-  --header-bg: rgba(2, 6, 23, 0.8);
-  --chip-bg: rgba(30, 41, 59, 0.9);
-  --chip-line: rgba(59, 130, 246, 0.3);
-  --link-bg-hover: rgba(51, 65, 85, 0.8);
-
-  /* 渐变装饰 */
-  --hero-a: rgba(37, 99, 235, 0.15); /* 英雄区渐变 A */
-  --hero-b: rgba(56, 189, 248, 0.1); /* 英雄区渐变 B */
 }
 
 * {
@@ -322,6 +232,35 @@ a {
   will-change: transform, opacity;
 }
 
+cap-widget {
+  --cap-background: var(--sand);
+  --cap-border-color: var(--border);
+  --cap-border-radius: 26px;
+  --cap-widget-height: 30px;
+  --cap-widget-width: 200px;
+  --cap-widget-padding: 24px;
+  --cap-gap: 15px;
+  --cap-color: var(--sea-ink-soft);
+  --cap-checkbox-size: 20px;
+  --cap-checkbox-border: 1px solid var(--border);
+  --cap-checkbox-border-radius: 6px;
+  --cap-checkbox-background: var(--foam);
+  --cap-checkbox-margin: 2px;
+  --cap-font: 'Geist Variable', sans-serif, serif;
+  --cap-spinner-color: var(--line);
+  --cap-spinner-background-color: #eee;
+  --cap-spinner-thickness: 5px;
+}
+cap-widget::part(label) {
+  font-size: 14px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+}
+cap-widget::part(attribution) {
+  color: transparent !important;
+  text-indent: -9999px !important; /* 把文字抽离出视口 */
+}
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
@@ -363,6 +302,57 @@ a {
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --sea-ink: #173a40;
+  --sea-ink-soft: #416166;
+  --lagoon: #4fb8b2;
+  --lagoon-deep: #328f97;
+  --palm: #2f6a4a;
+  --sand: #e7f0e8;
+  --foam: #f3faf5;
+  --surface: rgba(255, 255, 255, 0.74);
+  --surface-strong: rgba(255, 255, 255, 0.9);
+  --line: rgba(23, 58, 64, 0.14);
+  --inset-glint: rgba(255, 255, 255, 0.82);
+  --kicker: rgba(47, 106, 74, 0.9);
+  --bg-base: #e7f3ec;
+  --header-bg: rgba(251, 255, 248, 0.84);
+  --chip-bg: rgba(255, 255, 255, 0.8);
+  --chip-line: rgba(47, 106, 74, 0.18);
+  --link-bg-hover: rgba(255, 255, 255, 0.9);
+  --hero-a: rgba(79, 184, 178, 0.36);
+  --hero-b: rgba(47, 106, 74, 0.2);
+  --background: oklch(0.985 0.004 236.493);
+  --foreground: oklch(0.158 0.018 236.648);
+  --card: oklch(0.985 0.004 236.493);
+  --card-foreground: oklch(0.158 0.018 236.648);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.477 0.048 238.25);
+  --primary-foreground: oklch(1 0 180);
+  --secondary: oklch(0.482 0.05 54.902);
+  --secondary-foreground: oklch(0.97 0.005 56.369);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.97 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.477 0.048 238.25);
+  --chart-2: oklch(0.482 0.05 54.902);
+  --chart-3: oklch(0.482 0.05 54.902);
+  --chart-4: oklch(0.51 0.053 54.883);
+  --chart-5: oklch(0.477 0.052 238.51);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.546 0.245 262.881);
+  --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
@@ -397,6 +387,39 @@ a {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* 文字与前景 - 冰蓝色系 */
+  --sea-ink: #e0e9f5; /* 主要文字：极浅的冷蓝白 */
+  --sea-ink-soft: #b0c4de; /* 次要文字：淡钢蓝 */
+
+  /* 品牌核心色 - 宝石蓝/天蓝 */
+  --lagoon: #3b82f6; /* 主题色：明亮的纯蓝 (类似 Blue 500) */
+  --lagoon-deep: #60a5fa; /* 悬浮/高亮色：稍浅的蓝色 */
+  --palm: #38bdf8; /* 辅助色：青蓝色 */
+
+  /* 背景色体系 - 深夜蓝 */
+  --sand: #0b1120; /* 最底层背景：极深蓝 */
+  --foam: #0f172a; /* 次层背景：经典深蓝 */
+  --bg-base: #020617; /* 页面基础背景 */
+
+  /* 容器与表面 */
+  --surface: rgba(15, 23, 42, 0.8); /* 半透明表面 */
+  --surface-strong: rgba(30, 41, 59, 0.92); /* 强对比表面 */
+
+  /* 边框与光效 */
+  --line: rgba(59, 130, 246, 0.2); /* 线条：浅蓝色描边 */
+  --inset-glint: rgba(186, 230, 253, 0.1); /* 内发光：微弱的冰蓝光 */
+
+  /* 交互与组件 */
+  --kicker: #93c5fd; /* 强调标签文字 */
+  --header-bg: rgba(2, 6, 23, 0.8);
+  --chip-bg: rgba(30, 41, 59, 0.9);
+  --chip-line: rgba(59, 130, 246, 0.3);
+  --link-bg-hover: rgba(51, 65, 85, 0.8);
+
+  /* 渐变装饰 */
+  --hero-a: rgba(37, 99, 235, 0.15); /* 英雄区渐变 A */
+  --hero-b: rgba(56, 189, 248, 0.1); /* 英雄区渐变 B */
 }
 
 @layer base {

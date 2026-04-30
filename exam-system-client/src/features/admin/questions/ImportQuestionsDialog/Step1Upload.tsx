@@ -1,15 +1,18 @@
-import { useCallback, useRef } from 'react'
-import { Upload, FileCheck, Download } from 'lucide-react'
-import { toast } from 'sonner'
+import {useCallback, useRef} from 'react'
+import {Download, FileCheck, Upload} from 'lucide-react'
+import {toast} from 'sonner'
 
-import { Button } from '#/components/ui/button'
+import {Button} from '#/components/ui/button'
 
 interface Step1UploadProps {
   selectedFile: File | null
   onFileChange: (file: File | null) => void
 }
 
-export default function Step1Upload({ selectedFile, onFileChange }: Step1UploadProps) {
+export default function Step1Upload({
+  selectedFile,
+  onFileChange,
+}: Step1UploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = useCallback(
@@ -31,7 +34,7 @@ export default function Step1Upload({ selectedFile, onFileChange }: Step1UploadP
         onFileChange(file)
       }
     },
-    [onFileChange]
+    [onFileChange],
   )
 
   const handleDownloadTemplate = async () => {
@@ -73,7 +76,10 @@ export default function Step1Upload({ selectedFile, onFileChange }: Step1UploadP
               {(selectedFile.size / 1024).toFixed(2)} KB
             </p>
           </div>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+          >
             重新选择
           </Button>
         </div>
@@ -85,7 +91,9 @@ export default function Step1Upload({ selectedFile, onFileChange }: Step1UploadP
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="w-8 h-8 opacity-60" />
-            <span className="text-sm text-muted-foreground">点击选择 Excel 文件</span>
+            <span className="text-sm text-muted-foreground">
+              点击选择 Excel 文件
+            </span>
           </Button>
           <p className="text-xs text-muted-foreground">支持 .xlsx, .xls 格式</p>
           <Button variant="ghost" size="sm" onClick={handleDownloadTemplate}>

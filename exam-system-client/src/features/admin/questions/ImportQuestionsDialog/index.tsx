@@ -1,18 +1,18 @@
-import { useCallback, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {useCallback, useState} from 'react'
+import {useMutation, useQueryClient} from '@tanstack/react-query'
 
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
 } from '#/components/ui/dialog'
-import { Button } from '#/components/ui/button'
-import { api } from '#/ApiInstance.ts'
-import type { QuestionImportView, QuestionImportInput } from '#/__generated/model/static'
-import { toast } from 'sonner'
+import {Button} from '#/components/ui/button'
+import {api} from '#/ApiInstance.ts'
+import type {QuestionImportInput, QuestionImportView,} from '#/__generated/model/static'
+import {toast} from 'sonner'
 
 import StepIndicator from './StepIndicator'
 import Step1Upload from './Step1Upload'
@@ -138,7 +138,10 @@ export default function ImportQuestionsDialog({
 
         <div className="flex-1 overflow-auto px-6 py-4">
           {step === 1 && (
-            <Step1Upload selectedFile={selectedFile} onFileChange={setSelectedFile} />
+            <Step1Upload
+              selectedFile={selectedFile}
+              onFileChange={setSelectedFile}
+            />
           )}
 
           {step === 2 && <Step2Preview data={previewData} />}
@@ -152,7 +155,10 @@ export default function ImportQuestionsDialog({
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 取消
               </Button>
-              <Button onClick={handlePreview} disabled={!selectedFile || isPreviewLoading}>
+              <Button
+                onClick={handlePreview}
+                disabled={!selectedFile || isPreviewLoading}
+              >
                 {isPreviewLoading ? '预览中...' : '预览数据'}
               </Button>
             </>
@@ -160,7 +166,11 @@ export default function ImportQuestionsDialog({
 
           {step === 2 && (
             <>
-              <Button variant="outline" onClick={handleBack} disabled={importMutation.isPending}>
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                disabled={importMutation.isPending}
+              >
                 上一步
               </Button>
               <Button
@@ -172,7 +182,9 @@ export default function ImportQuestionsDialog({
             </>
           )}
 
-          {step === 3 && <Button onClick={() => handleOpenChange(false)}>关闭</Button>}
+          {step === 3 && (
+            <Button onClick={() => handleOpenChange(false)}>关闭</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

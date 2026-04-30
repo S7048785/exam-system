@@ -1,35 +1,29 @@
 import {useEffect, useState} from 'react'
-import { useForm } from '@tanstack/react-form'
+import {useForm} from '@tanstack/react-form'
 import type {
-  CategoriesTree,
-  QuestionSaveInput,
-  QuestionUpdateInput,
-  QuestionsPageView,
+	CategoriesTree,
+	QuestionSaveInput,
+	QuestionsPageView,
+	QuestionUpdateInput,
 } from '#/__generated/model/static'
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
 } from '#/components/ui/drawer'
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select'
-import { toast } from 'sonner'
-import { useIsMobile } from '#/hooks/use-mobile.ts'
+import {Button} from '#/components/ui/button'
+import {Input} from '#/components/ui/input'
+import {Label} from '#/components/ui/label'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from '#/components/ui/select'
+import {toast} from 'sonner'
+import {useIsMobile} from '#/hooks/use-mobile.ts'
 import ChoiceForm from './ChoiceForm'
 import JudgeForm from './JudgeForm'
 import TextForm from './TextForm'
-import {flattenCategories} from "#/features/admin/questions/utils.ts";
+import {flattenCategories} from '#/features/admin/questions/utils.ts'
 
 // 题目类型
 const QUESTION_TYPES = [
@@ -92,12 +86,12 @@ export default function QuestionDrawer({
     defaultValues: {
       type: question?.type || 'CHOICE',
       title: question?.title || '',
-      difficulty: question?.difficulty || 'MEDIUM' as Difficulty,
+      difficulty: question?.difficulty || ('MEDIUM' as Difficulty),
       score: question?.score || 5,
       multi: question?.multi || false,
       categoryId: question?.categoryId || undefined,
       analysis: question?.analysis || '',
-      answers: question?.answers
+      answers: question?.answers,
     },
     onSubmit: async ({ value }) => {
       if (!value.title.trim()) {
@@ -145,7 +139,7 @@ export default function QuestionDrawer({
           })),
           answers: { id: question?.answers?.id, answer: correctAnswers },
         }
-        console.log("update", input)
+        console.log('update', input)
         onSubmit(input)
       } else if (value.type === 'JUDGE') {
         if (!value.categoryId) {
@@ -160,7 +154,6 @@ export default function QuestionDrawer({
           answers: { id: question?.answers?.id, answer: judgeData.judgeAnswer },
         }
         onSubmit(input)
-
       } else {
         // TEXT
         const input: QuestionSaveInput | QuestionUpdateInput = {
@@ -193,7 +186,11 @@ export default function QuestionDrawer({
           type: 'CHOICE',
           title: '',
           difficulty: 'MEDIUM',
-          score: 1, analysis: "", answers: undefined, categoryId: undefined, multi: false
+          score: 1,
+          analysis: '',
+          answers: undefined,
+          categoryId: undefined,
+          multi: false,
         })
         setChoiceData({
           multi: false,
@@ -217,9 +214,7 @@ export default function QuestionDrawer({
     >
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>
-            {mode === 'add' ? '新增题目' : '编辑题目'}
-          </DrawerTitle>
+          <DrawerTitle>{mode === 'add' ? '新增题目' : '编辑题目'}</DrawerTitle>
           <DrawerDescription>
             {mode === 'add'
               ? '创建一道新的题目'
@@ -227,8 +222,14 @@ export default function QuestionDrawer({
           </DrawerDescription>
         </DrawerHeader>
 
-        <div data-vaul-no-drag className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-          <form className="flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
+        <div
+          data-vaul-no-drag
+          className="flex flex-col gap-4 overflow-y-auto px-4 text-sm"
+        >
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => e.preventDefault()}
+          >
             {/* 题目类型 */}
             <form.Field
               name="type"
@@ -237,7 +238,9 @@ export default function QuestionDrawer({
                   <Label htmlFor="type">题目类型</Label>
                   <Select
                     value={field.state.value}
-                    onValueChange={(val) => field.handleChange(val as QuestionType)}
+                    onValueChange={(val) =>
+                      field.handleChange(val as QuestionType)
+                    }
                     disabled={mode === 'edit'}
                   >
                     <SelectTrigger id="type">
@@ -278,62 +281,62 @@ export default function QuestionDrawer({
             />
             {
               <form.Field
-                name={"categoryId"}
+                name={'categoryId'}
                 children={(field) => (
-                    <div className="space-y-2">
-                      <Label htmlFor="categoryId">分类</Label>
-                      <Select
-                          value={field.state.value?.toString()}
-                          onValueChange={(val) => field.handleChange(Number(val))}
-                      >
-                        <SelectTrigger id="categoryId">
-                          <SelectValue placeholder="选择分类" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {flatCategories.map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id.toString()}>
-                                {'　'.repeat(cat.level)}
-                                {cat.level > 0 && '├ '}
-                                {cat.name}
-                              </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="categoryId">分类</Label>
+                    <Select
+                      value={field.state.value?.toString()}
+                      onValueChange={(val) => field.handleChange(Number(val))}
+                    >
+                      <SelectTrigger id="categoryId">
+                        <SelectValue placeholder="选择分类" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {flatCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id.toString()}>
+                            {'　'.repeat(cat.level)}
+                            {cat.level > 0 && '├ '}
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               />
             }
 
             <form.Subscribe selector={(state) => state.values.type}>
               {(type) => (
-                  <>
-                    {/* 选择题特有字段 */}
-                    {type === 'CHOICE' && (
-                        <ChoiceForm
-                            value={choiceData}
-                            onChange={setChoiceData}
-                            editData={mode === 'edit' ? question : null}
-                        />
-                    )}
+                <>
+                  {/* 选择题特有字段 */}
+                  {type === 'CHOICE' && (
+                    <ChoiceForm
+                      value={choiceData}
+                      onChange={setChoiceData}
+                      editData={mode === 'edit' ? question : null}
+                    />
+                  )}
 
-                    {/* 判断题特有字段 */}
-                    {type === 'JUDGE' && (
-                        <JudgeForm
-                            value={judgeData}
-                            onChange={setJudgeData}
-                            editData={mode === 'edit' ? question : null}
-                        />
-                    )}
+                  {/* 判断题特有字段 */}
+                  {type === 'JUDGE' && (
+                    <JudgeForm
+                      value={judgeData}
+                      onChange={setJudgeData}
+                      editData={mode === 'edit' ? question : null}
+                    />
+                  )}
 
-                    {/* 简答题特有字段 */}
-                    {type === 'TEXT' && (
-                        <TextForm
-                            value={textAnswer}
-                            onChange={setTextAnswer}
-                            editData={mode === 'edit' ? question : null}
-                        />
-                    )}
-                  </>
+                  {/* 简答题特有字段 */}
+                  {type === 'TEXT' && (
+                    <TextForm
+                      value={textAnswer}
+                      onChange={setTextAnswer}
+                      editData={mode === 'edit' ? question : null}
+                    />
+                  )}
+                </>
               )}
             </form.Subscribe>
 
@@ -345,7 +348,9 @@ export default function QuestionDrawer({
                   <Label htmlFor="difficulty">难度</Label>
                   <Select
                     value={field.state.value}
-                    onValueChange={(val) => field.handleChange(val as Difficulty)}
+                    onValueChange={(val) =>
+                      field.handleChange(val as Difficulty)
+                    }
                   >
                     <SelectTrigger id="difficulty">
                       <SelectValue placeholder="选择难度" />

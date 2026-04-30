@@ -1,6 +1,7 @@
-import { Link } from '@tanstack/react-router'
-import { ExternalLink } from 'lucide-react'
+import {Link} from '@tanstack/react-router'
+import {ExternalLink} from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
+import LoginDialog from '../features/login/LoginDialog.tsx'
 
 export default function Header() {
   return (
@@ -61,16 +62,17 @@ export default function Header() {
               </a>
             </div>
           </details>
-          <a href="/post" className="nav-link">
+          <a href="/exam/list" className="nav-link">
             考试入口
           </a>
           <a href="/post" className="nav-link">
             考试排行榜
           </a>
-          <Link to="/admin/dashboard" className="nav-link gap-1">
+          <Link to="/admin/banners" className="nav-link gap-1">
             管理员后台
             <ExternalLink size={16} className="mb-0.5" />
           </Link>
+          <LoginDialog />
         </div>
       </nav>
     </header>

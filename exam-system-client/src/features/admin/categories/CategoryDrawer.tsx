@@ -1,19 +1,19 @@
-import { useEffect } from 'react'
-import { useForm } from '@tanstack/react-form'
-import type { CategoriesTree } from '#/__generated/model/static'
+import {useEffect} from 'react'
+import {useForm} from '@tanstack/react-form'
+import type {CategoriesTree} from '#/__generated/model/static'
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerFooter,
+	DrawerHeader,
+	DrawerTitle,
 } from '#/components/ui/drawer'
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { toast } from 'sonner'
-import { useIsMobile } from '#/hooks/use-mobile.ts'
+import {Button} from '#/components/ui/button'
+import {Input} from '#/components/ui/input'
+import {Label} from '#/components/ui/label'
+import {toast} from 'sonner'
+import {useIsMobile} from '#/hooks/use-mobile.ts'
 
 interface CategoryDrawerProps {
   open: boolean
@@ -70,7 +70,10 @@ export default function CategoryDrawer({
   // 获取父分类名称
   const getParentName = () => {
     if (parentId === 0) return '顶级分类'
-    const findParent = (cats: readonly CategoriesTree[], id: number): string | null => {
+    const findParent = (
+      cats: readonly CategoriesTree[],
+      id: number,
+    ): string | null => {
       for (const cat of cats) {
         if (cat.id === id) return cat.name
         if (cat.children) {
@@ -84,12 +87,14 @@ export default function CategoryDrawer({
   }
 
   return (
-    <Drawer direction={isMobile ? 'bottom' : 'right'} open={open} onOpenChange={onOpenChange}>
+    <Drawer
+      direction={isMobile ? 'bottom' : 'right'}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>
-            {mode === 'add' ? '新增分类' : '编辑分类'}
-          </DrawerTitle>
+          <DrawerTitle>{mode === 'add' ? '新增分类' : '编辑分类'}</DrawerTitle>
           <DrawerDescription>
             {mode === 'add'
               ? `将为「${getParentName()}」添加子分类`
@@ -146,7 +151,10 @@ export default function CategoryDrawer({
                     category?.parentId === 0
                       ? '顶级分类'
                       : (() => {
-                          const findParent = (cats: readonly CategoriesTree[], id: number): string | null => {
+                          const findParent = (
+                            cats: readonly CategoriesTree[],
+                            id: number,
+                          ): string | null => {
                             for (const cat of cats) {
                               if (cat.id === id) return cat.name
                               if (cat.children) {
@@ -156,12 +164,17 @@ export default function CategoryDrawer({
                             }
                             return null
                           }
-                          return findParent(categories, category?.parentId ?? 0) ?? '未知'
+                          return (
+                            findParent(categories, category?.parentId ?? 0) ??
+                            '未知'
+                          )
                         })()
                   }
                   disabled
                 />
-                <p className="text-xs text-muted-foreground">编辑模式下不可修改父分类</p>
+                <p className="text-xs text-muted-foreground">
+                  编辑模式下不可修改父分类
+                </p>
               </div>
             )}
 

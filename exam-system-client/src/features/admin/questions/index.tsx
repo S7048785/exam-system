@@ -1,24 +1,24 @@
-import {  useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { api } from '#/ApiInstance.ts'
+import {useMutation, useQueryClient, useSuspenseQuery,} from '@tanstack/react-query'
+import {api} from '#/ApiInstance.ts'
 import type {
-  QuestionListReq,
-  QuestionSaveInput,
-  QuestionUpdateInput,
-  QuestionsPageView,
+	QuestionListReq,
+	QuestionSaveInput,
+	QuestionsPageView,
+	QuestionUpdateInput,
 } from '#/__generated/model/static'
 import QuestionTable from './QuestionTable'
 import QuestionDrawer from './QuestionDrawer'
 import ImportQuestionsDialog from './ImportQuestionsDialog/index'
 import AiGenerateDialog from './AiGenerateDialog'
-import { useState } from 'react'
-import { toast } from 'sonner'
-import {categoryTreeQueryOptions, questionsQueryOptions} from "#/features/admin/questions/questionQueries.ts";
-import {useNavigate, useSearch} from "@tanstack/react-router";
+import {useState} from 'react'
+import {toast} from 'sonner'
+import {categoryTreeQueryOptions, questionsQueryOptions,} from '#/features/admin/questions/questionQueries.ts'
+import {useNavigate, useSearch} from '@tanstack/react-router'
 
 export default function QuestionsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-   // 列表筛选条件
+  // 列表筛选条件
   const filters = useSearch({ from: '/admin/questions' })
 
   // Drawer 状态
@@ -26,7 +26,8 @@ export default function QuestionsPage() {
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit'>('add')
 
   // 当前编辑的题目
-  const [selectedQuestion, setSelectedQuestion] = useState<QuestionsPageView | null>(null)
+  const [selectedQuestion, setSelectedQuestion] =
+    useState<QuestionsPageView | null>(null)
 
   // 导入弹窗状态
   const [importDialogOpen, setImportDialogOpen] = useState(false)
@@ -35,7 +36,7 @@ export default function QuestionsPage() {
   const [aiGenerateDialogOpen, setAiGenerateDialogOpen] = useState(false)
 
   const handleAiDialog = () => {
-    setAiGenerateDialogOpen(state => !state)
+    setAiGenerateDialogOpen((state) => !state)
   }
 
   // 获取分类树（静态数据）
@@ -43,7 +44,9 @@ export default function QuestionsPage() {
   const categories = categoryData.data ?? []
 
   // 获取题目列表（使用 useSuspenseQuery + loader 预取）
-  const { data: listData, refetch } = useSuspenseQuery(questionsQueryOptions(filters))
+  const { data: listData, refetch } = useSuspenseQuery(
+    questionsQueryOptions(filters),
+  )
 
   const questions = listData.data?.records ?? []
   const total = listData.data?.total ?? 0
@@ -115,11 +118,15 @@ export default function QuestionsPage() {
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id)
   }
-// 分页 / 筛选变化 → 更新 URL（推荐方式）
+  // 分页 / 筛选变化 → 更新 URL（推荐方式）
   const updateFilters = (newFilters: Partial<QuestionListReq>) => {
     navigate({
       to: '/admin/questions',
-      search: (prev) => ({ ...prev, ...newFilters, page: newFilters.page ?? 1 }),
+      search: (prev) => ({
+        ...prev,
+        ...newFilters,
+        page: newFilters.page ?? 1,
+      }),
       replace: true,
     })
   }

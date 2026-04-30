@@ -1,19 +1,13 @@
-import { useForm } from '@tanstack/react-form'
-import type { CategoriesTree } from '#/__generated/model/static'
-import { TYPE_OPTIONS, DIFFICULTY_OPTIONS } from './constants'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Switch } from '#/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select'
-import { Button } from '#/components/ui/button'
-import { DialogFooter } from '#/components/ui/dialog'
-import {toast} from "sonner";
+import {useForm} from '@tanstack/react-form'
+import type {CategoriesTree} from '#/__generated/model/static'
+import {DIFFICULTY_OPTIONS, TYPE_OPTIONS} from './constants'
+import {Input} from '#/components/ui/input'
+import {Label} from '#/components/ui/label'
+import {Switch} from '#/components/ui/switch'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from '#/components/ui/select'
+import {Button} from '#/components/ui/button'
+import {DialogFooter} from '#/components/ui/dialog'
+import {toast} from 'sonner'
 
 interface Step1ParamsProps {
   categories: readonly CategoriesTree[]
@@ -30,7 +24,7 @@ interface Step1ParamsProps {
 
 function flattenCategories(
   categories: readonly CategoriesTree[],
-  level: number = 0
+  level: number = 0,
 ): Array<CategoriesTree & { level: number }> {
   const result: Array<CategoriesTree & { level: number }> = []
   for (const category of categories) {
@@ -58,13 +52,13 @@ export default function Step1Params({
       categoryId: null as number | null,
       includeMultiple: false,
     },
-    onSubmit: ({value}) => {
+    onSubmit: ({ value }) => {
       if (!value.categoryId) {
         toast.error('请选择分类')
         return
       }
       onStartGenerate(value)
-    }
+    },
   })
 
   return (
@@ -83,10 +77,16 @@ export default function Step1Params({
                 max={50}
                 value={field.state.value}
                 onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(Math.max(1, Math.min(50, Number(e.target.value))))}
+                onChange={(e) =>
+                  field.handleChange(
+                    Math.max(1, Math.min(50, Number(e.target.value))),
+                  )
+                }
                 placeholder="请输入生成数量"
               />
-              <p className="text-xs text-muted-foreground">支持生成 1-50 道题目</p>
+              <p className="text-xs text-muted-foreground">
+                支持生成 1-50 道题目
+              </p>
             </div>
           )}
         />
@@ -96,7 +96,10 @@ export default function Step1Params({
           children={(field) => (
             <div className="space-y-2">
               <Label>题目类型</Label>
-              <Select value={field.state.value} onValueChange={field.handleChange}>
+              <Select
+                value={field.state.value}
+                onValueChange={field.handleChange}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="请选择题目类型" />
                 </SelectTrigger>
@@ -121,7 +124,9 @@ export default function Step1Params({
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label htmlFor="multiple">包含多选题</Label>
-                        <p className="text-xs text-muted-foreground">是否在选择题中包含多选题</p>
+                        <p className="text-xs text-muted-foreground">
+                          是否在选择题中包含多选题
+                        </p>
                       </div>
                       <Switch
                         id="multiple"
@@ -141,7 +146,10 @@ export default function Step1Params({
           children={(field) => (
             <div className="space-y-2">
               <Label>难度</Label>
-              <Select value={field.state.value} onValueChange={field.handleChange}>
+              <Select
+                value={field.state.value}
+                onValueChange={field.handleChange}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="请选择难度" />
                 </SelectTrigger>
@@ -191,10 +199,7 @@ export default function Step1Params({
         <Button variant="outline" onClick={onCancel}>
           取消
         </Button>
-        <Button
-          onClick={() => form.handleSubmit()}
-          disabled={isGenerating}
-        >
+        <Button onClick={() => form.handleSubmit()} disabled={isGenerating}>
           {isGenerating ? '生成中...' : '开始生成'}
         </Button>
       </DialogFooter>

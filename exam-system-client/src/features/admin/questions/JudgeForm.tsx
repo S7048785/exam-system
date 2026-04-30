@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
-import type { QuestionsPageView } from '#/__generated/model/static'
-import { Checkbox } from '#/components/ui/checkbox'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import {useEffect} from 'react'
+import type {QuestionsPageView} from '#/__generated/model/static'
+import {Checkbox} from '#/components/ui/checkbox'
+import {Label} from '#/components/ui/label'
+import {Textarea} from '#/components/ui/textarea'
 
 interface JudgeFormProps {
   value: {
@@ -50,7 +50,9 @@ export default function JudgeForm({
             <Checkbox
               id="judge-true"
               checked={value.judgeAnswer === 'true'}
-              onCheckedChange={() => onChange({ ...value, judgeAnswer: 'true' })}
+              onCheckedChange={() =>
+                onChange({ ...value, judgeAnswer: 'true' })
+              }
             />
             <Label htmlFor="judge-true" className="cursor-pointer select-none">
               正确
@@ -60,7 +62,9 @@ export default function JudgeForm({
             <Checkbox
               id="judge-false"
               checked={value.judgeAnswer === 'false'}
-              onCheckedChange={() => onChange({ ...value, judgeAnswer: 'false' })}
+              onCheckedChange={() =>
+                onChange({ ...value, judgeAnswer: 'false' })
+              }
             />
             <Label htmlFor="judge-false" className="cursor-pointer select-none">
               错误

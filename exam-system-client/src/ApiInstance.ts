@@ -1,5 +1,5 @@
 ﻿// src/ApiInstance.ts
-import { Api } from './__generated'
+import {Api} from './__generated'
 
 // 判断是否为客户端环境
 const isClient = typeof window !== 'undefined'
@@ -13,17 +13,24 @@ export const api = new Api(async ({ uri, method, headers, body }) => {
     : undefined
 
   const isFormData = body instanceof FormData
-  const response = await fetch(`http://${BASE_URL}${uri}`, {
+  const response = await fetch(`${BASE_URL}${uri}`, {
     method,
-    body: body !== undefined ? (isFormData ? body : JSON.stringify(body)) : undefined,
+    body:
+      body !== undefined
+        ? isFormData
+          ? body
+          : JSON.stringify(body)
+        : undefined,
     headers: {
-      ...(isFormData ? {} : { 'content-type': 'application/json;charset=UTF-8' }),
+      ...(isFormData
+        ? {}
+        : { 'content-type': 'application/json;charset=UTF-8' }),
       ...headers,
       ...(tenant !== undefined && tenant !== '' ? { tenant } : {}),
     },
   })
   if (response.status !== 200) {
-    throw response.json()
+    throw await response.json()
   }
   const text = await response.text()
   if (text.length === 0) {

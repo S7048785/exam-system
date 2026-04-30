@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
+// import { CapWidget } from '@pitininja/cap-react-widget'
+import {createFileRoute} from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_public/about')({
   component: About,
@@ -18,6 +19,15 @@ function About() {
           your own routes, styling, and add-ons.
         </p>
       </section>
+      <ContactForm />
     </main>
+  )
+}
+
+function ContactForm() {
+  return (
+    <>
+      <button type="submit">Submit</button>
+    </>
   )
 }

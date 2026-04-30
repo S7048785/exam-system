@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
-import type { QuestionsPageView } from '#/__generated/model/static'
-import { Button } from '#/components/ui/button'
-import { Checkbox } from '#/components/ui/checkbox'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
-import { Plus, Trash2 } from 'lucide-react'
+import {useEffect} from 'react'
+import type {QuestionsPageView} from '#/__generated/model/static'
+import {Button} from '#/components/ui/button'
+import {Checkbox} from '#/components/ui/checkbox'
+import {Input} from '#/components/ui/input'
+import {Label} from '#/components/ui/label'
+import {Textarea} from '#/components/ui/textarea'
+import {Plus, Trash2} from 'lucide-react'
 
 interface ChoiceFormProps {
   value: {
@@ -79,14 +79,14 @@ export default function ChoiceForm({
   onChange,
   editData,
 }: ChoiceFormProps) {
-
   // 初始化/回填数据
   useEffect(() => {
     if (editData) {
-      const choices: Array<{ content: string; correct: boolean }> = editData.choices.map((c) => ({
-        content: c.content,
-        correct: c.correct || false,
-      }))
+      const choices: Array<{ content: string; correct: boolean }> =
+        editData.choices.map((c) => ({
+          content: c.content,
+          correct: c.correct || false,
+        }))
       // 补齐至少2个选项
       while (choices.length < 2) {
         choices.push({ content: '', correct: false })
@@ -117,7 +117,10 @@ export default function ChoiceForm({
     onChange(newValue)
   }
 
-  const handleChoiceChange = (index: number, choice: { content: string; correct: boolean }) => {
+  const handleChoiceChange = (
+    index: number,
+    choice: { content: string; correct: boolean },
+  ) => {
     const newChoices = [...value.choices]
     newChoices[index] = choice
     // 单选题只保留一个正确答案
@@ -131,7 +134,10 @@ export default function ChoiceForm({
 
   const addChoice = () => {
     if (value.choices.length < 8) {
-      onChange({ ...value, choices: [...value.choices, { content: '', correct: false }] })
+      onChange({
+        ...value,
+        choices: [...value.choices, { content: '', correct: false }],
+      })
     }
   }
 

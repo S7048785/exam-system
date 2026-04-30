@@ -1,12 +1,11 @@
-﻿import { rm } from 'node:fs/promises'
-import { existsSync } from 'node:fs' // ← 这里！
+﻿import {mkdir, rm} from 'node:fs/promises'
+import {existsSync} from 'node:fs' // ← 这里！
 import path from 'node:path'
 import AdmZip from 'adm-zip'
-import { mkdir } from 'node:fs/promises'
 
 const SOURCE_URL = `http://${process.env.VITE_API_URL}/ts.zip`
 const GENERATE_PATH = 'src/__generated'
-const TEMP_DIR = (await import('os')).tmpdir()
+const TEMP_DIR = (await import('node:os')).tmpdir()
 
 async function main() {
   try {

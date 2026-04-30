@@ -1,17 +1,10 @@
-import type { CategoriesTree } from '#/__generated/model/static'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '#/components/ui/table'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '#/components/ui/popover'
-import { HelpCircle, Pencil, Plus, RotateCw, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
-import { toast } from 'sonner'
+import type {CategoriesTree} from '#/__generated/model/static'
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from '#/components/ui/table'
+import {Badge} from '#/components/ui/badge'
+import {Button} from '#/components/ui/button'
+import {Popover, PopoverContent, PopoverTrigger,} from '#/components/ui/popover'
+import {ChevronDown, ChevronRight, HelpCircle, Pencil, Plus, RotateCw, Trash2,} from 'lucide-react'
+import {toast} from 'sonner'
 
 interface CategoryTableProps {
   data: readonly CategoriesTree[]
@@ -27,13 +20,17 @@ interface CategoryTableProps {
 function flattenTree(
   categories: readonly CategoriesTree[],
   expandedIds: Set<number>,
-  level: number = 0
+  level: number = 0,
 ): Array<CategoriesTree & { level: number }> {
   const result: Array<CategoriesTree & { level: number }> = []
   for (const category of categories) {
     result.push({ ...category, level })
     // 如果该分类已展开且有子分类，则递归展开
-    if (expandedIds.has(category.id) && category.children && category.children.length > 0) {
+    if (
+      expandedIds.has(category.id) &&
+      category.children &&
+      category.children.length > 0
+    ) {
       result.push(...flattenTree(category.children, expandedIds, level + 1))
     }
   }
@@ -90,15 +87,13 @@ export default function CategoryTable({
           </TableHeader>
           <TableBody>
             {flatData.map((category) => {
-              const hasChildren = category.children && category.children.length > 0
+              const hasChildren =
+                category.children && category.children.length > 0
               const isExpanded = expandedIds.has(category.id)
               const isTopLevel = category.level === 0
 
               return (
-                <TableRow
-                  key={category.id}
-                  className="hover:bg-muted/50"
-                >
+                <TableRow key={category.id} className="hover:bg-muted/50">
                   {/* 展开/折叠按钮 */}
                   <TableCell>
                     {hasChildren ? (
@@ -165,7 +160,11 @@ export default function CategoryTable({
                       </Button>
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                          >
                             <Trash2 className="h-4 w-4 mr-1" />
                             删除
                           </Button>
@@ -175,7 +174,9 @@ export default function CategoryTable({
                             <div className="flex items-start gap-2">
                               <HelpCircle className="h-5 w-5 text-destructive mt-0.5" />
                               <div className="space-y-1">
-                                <h4 className="font-medium leading-none">确定要删除吗？</h4>
+                                <h4 className="font-medium leading-none">
+                                  确定要删除吗？
+                                </h4>
                                 <p className="text-sm text-muted-foreground">
                                   删除后无法撤销，请谨慎操作。
                                 </p>

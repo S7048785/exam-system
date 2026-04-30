@@ -1,13 +1,6 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '#/components/ui/table'
-import type { QuestionImportView } from '#/__generated/model/static'
-import { TYPE_MAP, DIFFICULTY_MAP, renderChoicesAndAnswer } from './constants'
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from '#/components/ui/table'
+import type {QuestionImportView} from '#/__generated/model/static'
+import {DIFFICULTY_MAP, renderChoicesAndAnswer, TYPE_MAP} from './constants'
 
 interface Step2PreviewProps {
   data: readonly QuestionImportView[]
@@ -67,13 +60,19 @@ export default function Step2Preview({ data }: Step2PreviewProps) {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className={`text-xs px-2 py-1 rounded ${difficultyInfo.className}`}>
+                    <span
+                      className={`text-xs px-2 py-1 rounded ${difficultyInfo.className}`}
+                    >
                       {difficultyInfo.label}
                     </span>
                   </TableCell>
                   <TableCell>{question.score || '-'}</TableCell>
                   <TableCell>
-                    {renderChoicesAndAnswer(question.type, question.choices, question.answer)}
+                    {renderChoicesAndAnswer(
+                      question.type,
+                      question.choices,
+                      question.answer,
+                    )}
                   </TableCell>
                 </TableRow>
               )

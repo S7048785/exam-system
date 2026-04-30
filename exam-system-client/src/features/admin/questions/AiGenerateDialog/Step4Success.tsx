@@ -1,6 +1,6 @@
-import { CheckCircle } from 'lucide-react'
-import { Button } from '#/components/ui/button'
-import { DialogFooter } from '#/components/ui/dialog'
+import {CheckCircle} from 'lucide-react'
+import {Button} from '#/components/ui/button'
+import {DialogFooter} from '#/components/ui/dialog'
 
 interface Step4SuccessProps {
   count: number

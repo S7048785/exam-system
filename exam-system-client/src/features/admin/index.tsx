@@ -1,11 +1,10 @@
-import { AppSidebar } from '@/features/admin/app-sidebar'
-import { SiteHeader } from '@/components/site-header'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import {SiteHeader} from '@/components/site-header'
+import {SidebarInset, SidebarProvider} from '@/components/ui/sidebar'
+import {AppSidebar} from '@/features/admin/app-sidebar'
+import {Outlet} from '@tanstack/react-router'
 import React from 'react'
-import {Outlet} from "@tanstack/react-router";
 
-export default function AdminSidebar() {
-
+export default function AdminPage() {
   return (
     <SidebarProvider
       style={
@@ -21,7 +20,7 @@ export default function AdminSidebar() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:p-4 overflow-hidden">
-             <Outlet />
+              <Outlet />
             </div>
           </div>
         </div>

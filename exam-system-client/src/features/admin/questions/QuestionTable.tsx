@@ -1,38 +1,20 @@
-import type {
-  CategoriesTree,
-  QuestionListReq,
-  QuestionsPageView,
-} from '#/__generated/model/static'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '#/components/ui/table'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '#/components/ui/popover'
-import { HelpCircle, Pencil, Plus, RotateCw, Trash2, Upload, Sparkles } from 'lucide-react'
-import { toast } from 'sonner'
-import { flattenCategories } from './utils'
+import type {CategoriesTree, QuestionListReq, QuestionsPageView,} from '#/__generated/model/static'
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from '#/components/ui/table'
+import {Badge} from '#/components/ui/badge'
+import {Button} from '#/components/ui/button'
+import {Input} from '#/components/ui/input'
+import {Label} from '#/components/ui/label'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from '#/components/ui/select'
+import {Popover, PopoverContent, PopoverTrigger,} from '#/components/ui/popover'
+import {HelpCircle, Pencil, Plus, RotateCw, Sparkles, Trash2, Upload,} from 'lucide-react'
+import {toast} from 'sonner'
+import {flattenCategories} from './utils'
 
 // 题型映射
-const TYPE_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+const TYPE_MAP: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'outline' }
+> = {
   CHOICE: { label: '选择题', variant: 'default' },
   JUDGE: { label: '判断题', variant: 'secondary' },
   TEXT: { label: '简答题', variant: 'outline' },
@@ -40,9 +22,20 @@ const TYPE_MAP: Record<string, { label: string; variant: 'default' | 'secondary'
 
 // 难度映射
 const DIFFICULTY_MAP: Record<string, { label: string; className: string }> = {
-  EASY: { label: '简单', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
-  MEDIUM: { label: '普通', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' },
-  HARD: { label: '困难', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
+  EASY: {
+    label: '简单',
+    className:
+      'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+  },
+  MEDIUM: {
+    label: '普通',
+    className:
+      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+  },
+  HARD: {
+    label: '困难',
+    className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+  },
 }
 
 interface QuestionTableProps {
@@ -197,9 +190,7 @@ export default function QuestionTable({
 
       {/* 操作栏 */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          共 {total} 道题目
-        </div>
+        <div className="text-sm text-muted-foreground">共 {total} 道题目</div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={onImport}>
             <Upload className="h-4 w-4 mr-1" />
@@ -233,14 +224,23 @@ export default function QuestionTable({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={7}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   暂无数据
                 </TableCell>
               </TableRow>
             ) : (
               data.map((question) => {
-                const typeInfo = TYPE_MAP[question.type] ?? { label: question.type, variant: 'secondary' as const }
-                const difficultyInfo = DIFFICULTY_MAP[question.difficulty] ?? { label: question.difficulty, className: '' }
+                const typeInfo = TYPE_MAP[question.type] ?? {
+                  label: question.type,
+                  variant: 'secondary' as const,
+                }
+                const difficultyInfo = DIFFICULTY_MAP[question.difficulty] ?? {
+                  label: question.difficulty,
+                  className: '',
+                }
 
                 return (
                   <TableRow key={question.id} className="hover:bg-muted/50">
@@ -302,7 +302,9 @@ export default function QuestionTable({
                               <div className="flex items-start gap-2">
                                 <HelpCircle className="h-5 w-5 text-destructive mt-0.5" />
                                 <div className="space-y-1">
-                                  <h4 className="font-medium leading-none">确定要删除吗？</h4>
+                                  <h4 className="font-medium leading-none">
+                                    确定要删除吗？
+                                  </h4>
                                   <p className="text-sm text-muted-foreground">
                                     删除后无法撤销，请谨慎操作。
                                   </p>

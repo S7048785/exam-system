@@ -1,9 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '#/ApiInstance.ts'
-import type { CategoriesTree, CategorySaveInput, CategoryUpdateInput } from '#/__generated/model/static'
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
+import {api} from '#/ApiInstance.ts'
+import type {CategoriesTree, CategorySaveInput, CategoryUpdateInput,} from '#/__generated/model/static'
 import CategoryTable from './CategoryTable'
 import CategoryDrawer from './CategoryDrawer'
-import { useState } from 'react'
+import {useState} from 'react'
 
 export default function CategoriesPage() {
   const queryClient = useQueryClient()
@@ -12,7 +12,8 @@ export default function CategoriesPage() {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
 
   // 选中的分类（用于编辑）
-  const [selectedCategory, setSelectedCategory] = useState<CategoriesTree | null>(null)
+  const [selectedCategory, setSelectedCategory] =
+    useState<CategoriesTree | null>(null)
 
   // Drawer 状态
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -27,7 +28,8 @@ export default function CategoriesPage() {
 
   // 新增分类
   const addMutation = useMutation({
-    mutationFn: (input: CategorySaveInput) => api.categoryController.addCategory({ body: input }),
+    mutationFn: (input: CategorySaveInput) =>
+      api.categoryController.addCategory({ body: input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categoryTree'] })
     },

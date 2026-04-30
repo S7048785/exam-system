@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
-import type { QuestionsPageView } from '#/__generated/model/static'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import {useEffect} from 'react'
+import type {QuestionsPageView} from '#/__generated/model/static'
+import {Label} from '#/components/ui/label'
+import {Textarea} from '#/components/ui/textarea'
 
 interface TextFormProps {
   value: string
@@ -9,11 +9,7 @@ interface TextFormProps {
   editData?: QuestionsPageView | null
 }
 
-export default function TextForm({
-  value,
-  onChange,
-  editData,
-}: TextFormProps) {
+export default function TextForm({ value, onChange, editData }: TextFormProps) {
   // 初始化/回填数据
   useEffect(() => {
     if (editData) {

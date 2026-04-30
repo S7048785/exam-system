@@ -60,11 +60,13 @@ src/
 ## API 生成
 
 API 从后端服务自动生成。运行 `bun run api` 会：
+
 1. 从 `VITE_API_URL` 下载 TypeScript 类型定义 zip
 2. 解压到 `src/__generated/` 目录
 3. 生成 `Api` 类、各 Controller 服务和 DTO 类型
 
 使用示例：
+
 ```typescript
 import { api } from '#/ApiInstance.ts'
 // 调用 API
@@ -74,6 +76,7 @@ const banners = await api.bannerController.getAllBanners()
 ## 路由模式
 
 TanStack Router 使用文件路由：
+
 - `src/routes/` 中的文件自动映射为路由
 - 嵌套路由通过目录结构实现
 - 路由文件导出 `Route` 对象
@@ -87,6 +90,7 @@ TanStack Router 使用文件路由：
 ## 环境变量
 
 `.env` 文件包含：
+
 ```
 VITE_API_URL='localhost:8101'  # 后端 API 地址
 ```

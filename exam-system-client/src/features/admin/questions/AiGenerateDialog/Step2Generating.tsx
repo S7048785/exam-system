@@ -1,6 +1,6 @@
-import { Sparkles } from 'lucide-react'
-import { Button } from '#/components/ui/button'
-import { DialogFooter } from '#/components/ui/dialog'
+import {Sparkles} from 'lucide-react'
+import {Button} from '#/components/ui/button'
+import {DialogFooter} from '#/components/ui/dialog'
 
 export default function Step2Generating() {
   return (
@@ -13,9 +13,7 @@ export default function Step2Generating() {
         </div>
         <div className="text-center space-y-2">
           <h3 className="text-lg font-medium">AI 正在生成题目...</h3>
-          <p className="text-sm text-muted-foreground">
-            正在生成题目，请稍候
-          </p>
+          <p className="text-sm text-muted-foreground">正在生成题目，请稍候</p>
         </div>
       </div>
 

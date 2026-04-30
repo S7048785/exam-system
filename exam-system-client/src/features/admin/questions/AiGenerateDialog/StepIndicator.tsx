@@ -1,5 +1,6 @@
-import { STEPS, type Step } from './constants'
-import { CheckIcon } from 'lucide-react'
+import type {Step} from './constants';
+import {STEPS} from './constants'
+import {CheckIcon} from 'lucide-react'
 
 interface StepIndicatorProps {
   currentStep: Step

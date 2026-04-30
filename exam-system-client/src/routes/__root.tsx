@@ -1,20 +1,12 @@
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import {
-  HeadContent,
-  Link,
-  Scripts,
-  createRootRouteWithContext,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import  { ProgressBar } from "#/components/ProgressBar.tsx"
+import {ProgressBar} from '#/components/ProgressBar.tsx'
+import {createRootRouteWithContext, HeadContent, Link, Scripts,} from '@tanstack/react-router'
 
-import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
-
+import '@pitininja/cap-react-widget/dist/index.css'
 import appCss from '../styles.css?url'
 
-import { TooltipProvider } from '#/components/ui/tooltip'
-import type { QueryClient } from '@tanstack/react-query'
-import {Toaster} from "sonner";
+import {TooltipProvider} from '#/components/ui/tooltip'
+import type {QueryClient} from '@tanstack/react-query'
+import {Toaster} from 'sonner'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -67,7 +59,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -75,10 +66,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased wrap-anywhere selection:bg-[rgba(79,184,178,0.24)]">
-      <ProgressBar />
+        <ProgressBar />
         <TooltipProvider>{children}</TooltipProvider>
-      <Toaster />
-        <TanStackDevtools
+        <Toaster />
+        {/* <TanStackDevtools
           config={{
             position: 'bottom-right',
           }}
@@ -89,7 +80,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             },
             TanStackQueryDevtools,
           ]}
-        />
+        /> */}
         <Scripts />
       </body>
     </html>
