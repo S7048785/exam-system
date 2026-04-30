@@ -11,14 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as ExamListRouteImport } from './routes/exam/list'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as AdminQuestionsRouteImport } from './routes/admin/questions'
-import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminBannersRouteImport } from './routes/admin/banners'
 import { Route as AdminAboutRouteImport } from './routes/admin/about'
 import { Route as PublicAboutRouteImport } from './routes/_public/about'
+import { Route as AdminPapersRuleRouteImport } from './routes/admin/papers/rule'
+import { Route as AdminPapersListRouteImport } from './routes/admin/papers/list'
+import { Route as AdminPapersCreateRouteImport } from './routes/admin/papers/create'
+import { Route as AdminPapersIdEditRouteImport } from './routes/admin/papers/$id.edit'
 
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
@@ -29,10 +34,20 @@ const PublicRouteRoute = PublicRouteRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRouteRoute,
+} as any)
+const ExamListRoute = ExamListRouteImport.update({
+  id: '/exam/list',
+  path: '/exam/list',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
   id: '/demo/tanstack-query',
@@ -42,11 +57,6 @@ const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
 const AdminQuestionsRoute = AdminQuestionsRouteImport.update({
   id: '/questions',
   path: '/questions',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminDashboardRoute = AdminDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
@@ -69,6 +79,26 @@ const PublicAboutRoute = PublicAboutRouteImport.update({
   path: '/about',
   getParentRoute: () => PublicRouteRoute,
 } as any)
+const AdminPapersRuleRoute = AdminPapersRuleRouteImport.update({
+  id: '/papers/rule',
+  path: '/papers/rule',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPapersListRoute = AdminPapersListRouteImport.update({
+  id: '/papers/list',
+  path: '/papers/list',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPapersCreateRoute = AdminPapersCreateRouteImport.update({
+  id: '/papers/create',
+  path: '/papers/create',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminPapersIdEditRoute = AdminPapersIdEditRouteImport.update({
+  id: '/papers/$id/edit',
+  path: '/papers/$id/edit',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
@@ -77,20 +107,29 @@ export interface FileRoutesByFullPath {
   '/admin/about': typeof AdminAboutRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
-  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/exam/list': typeof ExamListRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/papers/create': typeof AdminPapersCreateRoute
+  '/admin/papers/list': typeof AdminPapersListRoute
+  '/admin/papers/rule': typeof AdminPapersRuleRoute
+  '/admin/papers/$id/edit': typeof AdminPapersIdEditRoute
 }
 export interface FileRoutesByTo {
-  '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof PublicAboutRoute
   '/admin/about': typeof AdminAboutRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
-  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/exam/list': typeof ExamListRoute
   '/': typeof PublicIndexRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/papers/create': typeof AdminPapersCreateRoute
+  '/admin/papers/list': typeof AdminPapersListRoute
+  '/admin/papers/rule': typeof AdminPapersRuleRoute
+  '/admin/papers/$id/edit': typeof AdminPapersIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -100,10 +139,15 @@ export interface FileRoutesById {
   '/admin/about': typeof AdminAboutRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
-  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/questions': typeof AdminQuestionsRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/exam/list': typeof ExamListRoute
   '/_public/': typeof PublicIndexRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/papers/create': typeof AdminPapersCreateRoute
+  '/admin/papers/list': typeof AdminPapersListRoute
+  '/admin/papers/rule': typeof AdminPapersRuleRoute
+  '/admin/papers/$id/edit': typeof AdminPapersIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -114,20 +158,29 @@ export interface FileRouteTypes {
     | '/admin/about'
     | '/admin/banners'
     | '/admin/categories'
-    | '/admin/dashboard'
     | '/admin/questions'
     | '/demo/tanstack-query'
+    | '/exam/list'
+    | '/admin/'
+    | '/admin/papers/create'
+    | '/admin/papers/list'
+    | '/admin/papers/rule'
+    | '/admin/papers/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/admin'
     | '/about'
     | '/admin/about'
     | '/admin/banners'
     | '/admin/categories'
-    | '/admin/dashboard'
     | '/admin/questions'
     | '/demo/tanstack-query'
+    | '/exam/list'
     | '/'
+    | '/admin'
+    | '/admin/papers/create'
+    | '/admin/papers/list'
+    | '/admin/papers/rule'
+    | '/admin/papers/$id/edit'
   id:
     | '__root__'
     | '/_public'
@@ -136,16 +189,22 @@ export interface FileRouteTypes {
     | '/admin/about'
     | '/admin/banners'
     | '/admin/categories'
-    | '/admin/dashboard'
     | '/admin/questions'
     | '/demo/tanstack-query'
+    | '/exam/list'
     | '/_public/'
+    | '/admin/'
+    | '/admin/papers/create'
+    | '/admin/papers/list'
+    | '/admin/papers/rule'
+    | '/admin/papers/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
+  ExamListRoute: typeof ExamListRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -164,12 +223,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/_public/': {
       id: '/_public/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRouteRoute
+    }
+    '/exam/list': {
+      id: '/exam/list'
+      path: '/exam/list'
+      fullPath: '/exam/list'
+      preLoaderRoute: typeof ExamListRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/demo/tanstack-query': {
       id: '/demo/tanstack-query'
@@ -183,13 +256,6 @@ declare module '@tanstack/react-router' {
       path: '/questions'
       fullPath: '/admin/questions'
       preLoaderRoute: typeof AdminQuestionsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/dashboard': {
-      id: '/admin/dashboard'
-      path: '/dashboard'
-      fullPath: '/admin/dashboard'
-      preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/categories': {
@@ -220,6 +286,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicAboutRouteImport
       parentRoute: typeof PublicRouteRoute
     }
+    '/admin/papers/rule': {
+      id: '/admin/papers/rule'
+      path: '/papers/rule'
+      fullPath: '/admin/papers/rule'
+      preLoaderRoute: typeof AdminPapersRuleRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/papers/list': {
+      id: '/admin/papers/list'
+      path: '/papers/list'
+      fullPath: '/admin/papers/list'
+      preLoaderRoute: typeof AdminPapersListRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/papers/create': {
+      id: '/admin/papers/create'
+      path: '/papers/create'
+      fullPath: '/admin/papers/create'
+      preLoaderRoute: typeof AdminPapersCreateRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/papers/$id/edit': {
+      id: '/admin/papers/$id/edit'
+      path: '/papers/$id/edit'
+      fullPath: '/admin/papers/$id/edit'
+      preLoaderRoute: typeof AdminPapersIdEditRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
@@ -241,16 +335,24 @@ interface AdminRouteRouteChildren {
   AdminAboutRoute: typeof AdminAboutRoute
   AdminBannersRoute: typeof AdminBannersRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
-  AdminDashboardRoute: typeof AdminDashboardRoute
   AdminQuestionsRoute: typeof AdminQuestionsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminPapersCreateRoute: typeof AdminPapersCreateRoute
+  AdminPapersListRoute: typeof AdminPapersListRoute
+  AdminPapersRuleRoute: typeof AdminPapersRuleRoute
+  AdminPapersIdEditRoute: typeof AdminPapersIdEditRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAboutRoute: AdminAboutRoute,
   AdminBannersRoute: AdminBannersRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
-  AdminDashboardRoute: AdminDashboardRoute,
   AdminQuestionsRoute: AdminQuestionsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AdminPapersCreateRoute: AdminPapersCreateRoute,
+  AdminPapersListRoute: AdminPapersListRoute,
+  AdminPapersRuleRoute: AdminPapersRuleRoute,
+  AdminPapersIdEditRoute: AdminPapersIdEditRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
@@ -261,6 +363,7 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
+  ExamListRoute: ExamListRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
