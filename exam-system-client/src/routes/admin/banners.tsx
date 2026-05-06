@@ -1,4 +1,4 @@
-import BannersPage from 'src/features/admin/banners'
+import BannersPage from '#/features/admin/banners'
 import {createFileRoute} from '@tanstack/react-router'
 import {bannerAllQueryOptions} from '#/features/admin/banners/bannerQueries.ts'
 

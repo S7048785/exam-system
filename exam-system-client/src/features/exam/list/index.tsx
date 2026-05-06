@@ -8,6 +8,7 @@ import {getRouteApi, useRouter} from '@tanstack/react-router'
 import {ArrowLeftIcon} from 'lucide-react'
 import {useState} from 'react'
 import {ExamStartDialog} from './components/ExamStartDialog'
+import {PAPER_STATUS} from "#/features/admin/papers/utils.ts";
 
 const routeApi = getRouteApi('/exam/list')
 
@@ -15,7 +16,7 @@ export default function ExamListPage() {
   const { keyword } = routeApi.useSearch()
   const { data } = useSuspenseQuery(
     paperListQueryOptions({
-      status: 'PUBLISHED',
+      status: PAPER_STATUS.PUBLISHED,
       name: keyword,
     }),
   )

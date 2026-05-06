@@ -2,6 +2,7 @@ import ExamListPage from '#/features/exam/list'
 import {paperListQueryOptions} from '#/features/exam/list/examQueries'
 import {createFileRoute} from '@tanstack/react-router'
 import z from 'zod'
+import {PAPER_STATUS} from "#/features/admin/papers/utils.ts";
 
 export const Route = createFileRoute('/exam/list')({
   component: ExamListPage,
@@ -12,9 +13,9 @@ export const Route = createFileRoute('/exam/list')({
   loader: async ({ context, deps: { keyword } }) => {
     return context.queryClient.ensureQueryData(
       paperListQueryOptions({
-        status: 'PUBLISHED',
+        status: PAPER_STATUS.PUBLISHED,
         name: keyword,
       }),
     )
-  },
+  }
 })
