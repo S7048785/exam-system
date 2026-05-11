@@ -1,0 +1,15 @@
+export com.yyjy.models.entity.Users
+ -> package com.yyjy.models.entity.dto
+
+input UserLoginInput {
+    email
+    encryptedPassword: String
+    token: String
+}
+
+input UserRegisterInput {
+    email
+    captcha: String
+    realName
+    password: String
+}
