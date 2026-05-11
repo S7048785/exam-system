@@ -1,7 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(bun --bun run build 2>&1 | tail -20)"
-    ]
+    "allow": ["Bash(bun --bun run build 2>&1 | tail -20)"]
   }
 }

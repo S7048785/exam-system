@@ -1,12 +1,12 @@
-import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query'
+import {useMutation, useSuspenseQuery} from '@tanstack/react-query'
 import {api} from '#/ApiInstance.ts'
 import type {CategoriesTree, CategorySaveInput, CategoryUpdateInput,} from '#/__generated/model/static'
 import CategoryTable from './CategoryTable'
 import CategoryDrawer from './CategoryDrawer'
 import {useState} from 'react'
+import {categoryTreeOptions} from "#/features/admin/categories/categoryQueries.ts";
 
 export default function CategoriesPage() {
-  const queryClient = useQueryClient()
 
   // 展开的分类 ID 集合
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
@@ -21,17 +21,18 @@ export default function CategoriesPage() {
   const [drawerParentId, setDrawerParentId] = useState<number>(0)
 
   // 获取树形数据
-  const { data: treeData, refetch } = useQuery({
-    queryKey: ['categoryTree'],
-    queryFn: () => api.categoryController.tree(),
-  })
+  // const { data: treeData, refetch } = useQuery({
+  //   queryKey: ['categoryTree'],
+  //   queryFn: () => api.categoryController.tree(),
+  // })
+  const { data: treeData, refetch } = useSuspenseQuery(categoryTreeOptions)
 
   // 新增分类
   const addMutation = useMutation({
     mutationFn: (input: CategorySaveInput) =>
       api.categoryController.addCategory({ body: input }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categoryTree'] })
+      refetch()
     },
   })
 
@@ -40,7 +41,7 @@ export default function CategoriesPage() {
     mutationFn: ({ input }: { input: CategoryUpdateInput }) =>
       api.categoryController.updateCategory({ body: input }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categoryTree'] })
+      refetch()
     },
   })
 
@@ -48,7 +49,7 @@ export default function CategoriesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.categoryController.removeCategory({ id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categoryTree'] })
+      refetch()
     },
   })
 
@@ -103,7 +104,7 @@ export default function CategoriesPage() {
     deleteMutation.mutate(id)
   }
 
-  const categories = treeData?.data ?? []
+  const categories = treeData.data ?? []
 
   return (
     <div className="space-y-4">

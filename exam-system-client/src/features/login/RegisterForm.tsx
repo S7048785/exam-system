@@ -1,24 +1,28 @@
-import {Button} from '#/components/ui/button.tsx'
+﻿import {Button} from '#/components/ui/button.tsx'
 import {Input} from '#/components/ui/input.tsx'
 import {Label} from '#/components/ui/label.tsx'
-import {useEmailAction, useRegisterAction,} from '#/features/login/useUserActions.ts'
+import {useEmailAction, useRegisterAction} from '#/features/login/useUserActions.ts'
 import {useForm} from '@tanstack/react-form'
 import {Ghost, Lock, User} from 'lucide-react'
-import {useId, useState} from 'react'
+import {memo, useEffect, useId, useRef, useState} from 'react'
 import {toast} from 'sonner'
 import z from 'zod'
 
 const registerSchema = z.object({
   email: z.string().min(4, '邮箱长度不能小于4位字符'),
-  realName: z.string().length(2, '真实姓名长度不能小于2位字符'),
+  realName: z.string().length(2, '真实姓名长度必须是2位字符'),
   captcha: z.string().min(4, '验证码长度不能小于4位字符'),
   password: z.string().min(6, '密码长度不能小于6位字符'),
 })
+
 type RegisterFormProps = {
-	onRegisterSuccess: () => void
+  onRegisterSuccess: () => void
 }
-export function RegisterForm({ onRegisterSuccess }: RegisterFormProps) {
+
+function RegisterForm({ onRegisterSuccess }: RegisterFormProps) {
   const id = useId()
+  const registerMutation = useRegisterAction()
+
   const form = useForm({
     defaultValues: {
       email: '',
@@ -30,21 +34,21 @@ export function RegisterForm({ onRegisterSuccess }: RegisterFormProps) {
       onChange: registerSchema,
     },
     onSubmit: async ({ value }) => {
-      console.log(value)
       await registerMutation.mutateAsync({
         captcha: value.captcha,
         email: value.email,
         realName: value.realName,
         password: value.password,
       })
+
       if (registerMutation.isError) {
         toast.error(registerMutation.error.message || '注册失败')
         return
       }
+
       onRegisterSuccess()
     },
   })
-  const registerMutation = useRegisterAction()
 
   return (
     <form
@@ -149,7 +153,6 @@ export function RegisterForm({ onRegisterSuccess }: RegisterFormProps) {
               </div>
             )}
           />
-          {/* 订阅 email 值 */}
           <form.Subscribe
             selector={(state) => state.values.email}
             children={(email) => <CaptchaButton email={email || ''} />}
@@ -157,11 +160,7 @@ export function RegisterForm({ onRegisterSuccess }: RegisterFormProps) {
         </div>
       </div>
       <div className="flex items-center space-x-8 pt-4">
-        <Button
-          className="flex-1 py-6"
-          type="submit"
-          disabled={registerMutation.isPending}
-        >
+        <Button className="flex-1 py-6" type="submit" disabled={registerMutation.isPending}>
           {registerMutation.isPending ? '注册中...' : '注册'}
         </Button>
       </div>
@@ -172,6 +171,15 @@ export function RegisterForm({ onRegisterSuccess }: RegisterFormProps) {
 function CaptchaButton({ email }: { email: string }) {
   const [countdown, setCountdown] = useState(0)
   const emailMutation = useEmailAction()
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [])
 
   const handleSend = async () => {
     if (!email || countdown > 0) return
@@ -179,17 +187,25 @@ function CaptchaButton({ email }: { email: string }) {
     try {
       await emailMutation.mutateAsync(email)
       setCountdown(60)
-      const timer = setInterval(() => {
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+
+      timerRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
-            clearInterval(timer)
+            if (timerRef.current) {
+              clearInterval(timerRef.current)
+              timerRef.current = null
+            }
             return 0
           }
           return prev - 1
         })
       }, 1000)
     } catch {
-      // 错误已由 useEmailAction 处理
+      // 错误已经由 useEmailAction 处理
     }
   }
 
@@ -207,3 +223,5 @@ function CaptchaButton({ email }: { email: string }) {
     </div>
   )
 }
+
+export default memo(RegisterForm)

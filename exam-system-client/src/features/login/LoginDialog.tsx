@@ -1,34 +1,43 @@
-﻿import {useState} from 'react'
+﻿import {memo, useCallback, useState} from 'react'
 
 import {Button} from '#/components/ui/button.tsx'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
 } from '#/components/ui/dialog.tsx'
-import LoginForm from '#/features/login/LoginForm.tsx'
 import {Tabs, TabsContent, TabsContents, TabsList, TabsTrigger,} from '@/components/animate-ui/components/animate/tabs'
+import LoginForm from '#/features/login/LoginForm.tsx'
+import RegisterForm from '#/features/login/RegisterForm.tsx'
 
-import {RegisterForm} from '#/features/login/RegisterForm.tsx'
-
-export default function LoginDialog() {
+function LoginDialog() {
   const [open, setOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('account')
+
+  const handleLoginSuccess = useCallback(() => {
+    setOpen(false)
+  }, [])
+
+  const handleRegisterSuccess = useCallback(() => {
+    setOpen(false)
+  }, [])
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">Sign in</Button>
       </DialogTrigger>
       <DialogContent
-        className="px-8 py-5" // 阻止点击背景关闭
+        className="px-8 py-5"
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <div className="gap-2">
           <div
             aria-hidden="true"
-            className="flex size-11 shrink-0 items-center justify-center mx-auto rounded-full border"
+            className="mx-auto flex size-11 shrink-0 items-center justify-center rounded-full border"
           >
             <svg
               aria-hidden="true"
@@ -47,18 +56,22 @@ export default function LoginDialog() {
               输入你的账号信息进行登录，并验证你不是机器人
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="account">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="account">Account</TabsTrigger>
-              <TabsTrigger value="password">Password</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
             </TabsList>
-            <div className="shadow-none py-0 border-0">
+            <div className="border-0 py-0 shadow-none">
               <TabsContents className="py-6">
                 <TabsContent value="account" className="flex flex-col gap-6">
-                  <LoginForm onLoginSuccess={() => setOpen(false)} />
+                  {activeTab === 'account' ? (
+                    <LoginForm onLoginSuccess={handleLoginSuccess} />
+                  ) : null}
                 </TabsContent>
-                <TabsContent value="password" className="flex flex-col gap-6">
-                  <RegisterForm onRegisterSuccess={() => setOpen(false)} />
+                <TabsContent value="register" className="flex flex-col gap-6">
+                  {activeTab === 'register' ? (
+                    <RegisterForm onRegisterSuccess={handleRegisterSuccess} />
+                  ) : null}
                 </TabsContent>
               </TabsContents>
             </div>
@@ -68,3 +81,5 @@ export default function LoginDialog() {
     </Dialog>
   )
 }
+
+export default memo(LoginDialog)

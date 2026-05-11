@@ -11,7 +11,7 @@ export const Route = createFileRoute('/exam/list')({
   }),
   loaderDeps: ({ search: { keyword } }) => ({ keyword }),
   loader: async ({ context, deps: { keyword } }) => {
-    return context.queryClient.ensureQueryData(
+    return context.queryClient.fetchQuery(
       paperListQueryOptions({
         status: PAPER_STATUS.PUBLISHED,
         name: keyword,

@@ -16,5 +16,4 @@ export const paperListQueryOptions = (param: {
         name: param.name,
         status: param.status,
       }),
-
   })

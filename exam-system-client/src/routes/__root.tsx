@@ -7,13 +7,16 @@ import appCss from '../styles.css?url'
 import {TooltipProvider} from '#/components/ui/tooltip'
 import type {QueryClient} from '@tanstack/react-query'
 import {Toaster} from 'sonner'
-import type {UserInfo} from "#/stores/user.ts";
+import type {UserInfo} from '#/stores/user.ts'
+
+// 服务端初始化（在 __root.server.ts 中处理）
+import '../lib/__root.server'
+import {getUserInfoQueryOptions} from '#/features/login/userQueries.ts'
 
 interface MyRouterContext {
   queryClient: QueryClient
-  user?: UserInfo
+  user: UserInfo | null
 }
-
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
@@ -58,9 +61,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       </div>
     )
   },
-  beforeLoad: async  () => ({
-    user: null,
-  })
+  beforeLoad: async ({ context }) => {
+    // 预加载用户信息到查询缓存中，但不阻塞渲染
+    const res = await context.queryClient.fetchQuery(getUserInfoQueryOptions)
+    // await context.queryClient.prefetchQuery(getUserInfoQueryOptions)
+
+    return {
+      user: res.data
+    }
+  },
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {

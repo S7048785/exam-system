@@ -6,7 +6,7 @@ import {paperListQueryOptions} from '#/features/exam/list/examQueries.ts'
 import {useSuspenseQuery} from '@tanstack/react-query'
 import {getRouteApi, useRouter} from '@tanstack/react-router'
 import {ArrowLeftIcon} from 'lucide-react'
-import {useState} from 'react'
+import {useRef, useState} from 'react'
 import {ExamStartDialog} from './components/ExamStartDialog'
 import {PAPER_STATUS} from "#/features/admin/papers/utils.ts";
 
@@ -22,11 +22,12 @@ export default function ExamListPage() {
   )
   const { history, navigate } = useRouter()
 
+  const ref = useRef<HTMLInputElement>(null)
+
   const onSearch = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const formData = new FormData(event.currentTarget)
-    const inputValue = formData.get('keyword') as string
-    navigate({ to: '/exam/list', search: { keyword: inputValue || undefined } })
+    const inputValue = ref.current?.value
+    navigate({ to: '/exam/list', search: { keyword: inputValue } })
   }
 
   const [selectedPaper, setSelectedPaper] = useState<
@@ -55,6 +56,7 @@ export default function ExamListPage() {
       </div>
       <form onSubmit={onSearch} className="flex gap-2 md:w-[80%] md:mx-auto">
         <Input
+          ref={ref}
           defaultValue={keyword}
           name="keyword"
           type="search"
