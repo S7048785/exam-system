@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.gradle-user
 .idea
 
 build/
