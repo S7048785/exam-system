@@ -1,0 +1,42 @@
+exam:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: HOST
+    port: PROT
+    database: DATABASE
+    username: USERNAME
+    password: PASSWORD
+  front:
+    ip:
+      - http://localhost:3000
+      - http://localhost:5173
+  exclude:
+    path:
+      - /user/login
+      - /user/register
+      - /user/send-captcha
+      - /user/info
+  redis:
+    host: HOST
+    port: PORT
+    database: DATABASE
+  ai:
+    api-key: API_KEY_DASHSCOPE
+  cap:
+    url: URL
+    site-key: SITE_KEY
+    secret-key: SECRET_KEY
+  mail:
+    host: HOST
+    port: 465
+    username: USERNAME
+    password: PASSWORD
+    from: FROM
+
+jimmer:
+  client:
+    openapi:
+      path: /openapi.yml       # OpenAPI规范文件地址
+      ui-path: /openapi.html   # 可视化文档页面地址
+    ts:
+      path: /ts.zip

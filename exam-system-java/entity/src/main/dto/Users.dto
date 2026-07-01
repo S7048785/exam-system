@@ -1,0 +1,18 @@
+export com.yyjy.exam.entity.user.entity.Users
+    -> package com.yyjy.exam.entity.user.dto
+
+import jakarta.validation.constraints.Email
+
+input UserLoginInput {
+    @Email(message = "邮箱格式错误")
+    email
+    password: String
+}
+
+input UserRegisterInput {
+    @Email(message = "邮箱格式错误")
+    email
+    captcha: String
+    realName
+    password: String
+}

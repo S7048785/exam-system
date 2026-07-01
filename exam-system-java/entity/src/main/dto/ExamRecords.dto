@@ -1,0 +1,61 @@
+export com.yyjy.exam.entity.exam.entity.ExamRecords
+    -> package com.yyjy.exam.entity.exam.dto
+
+ ExamStartView {
+    id
+    paper {
+        id
+    }
+    studentName
+    score
+    startTime
+    status
+    windowSwitches
+}
+ExamRecordDetail {
+    id
+    studentName
+    score
+    answers
+    startTime
+    endTime
+    status
+    windowSwitches
+    answerRecords {
+        id
+        examRecordId
+        questionId
+        userAnswer
+        score
+        correct
+        aiCorrection
+    }
+    paper {
+        id
+        name
+        description
+        status
+        totalScore
+        questionCount
+        duration
+        paperQuestions as questions {
+            flat(question) {
+                id
+                title
+                type
+                multi
+                difficulty
+                score
+                questionChoices as choices {
+                    content
+                    correct
+                    sort
+                }
+                flat(questionAnswers) {
+                    answer
+                }
+            }
+        }
+    }
+}
+

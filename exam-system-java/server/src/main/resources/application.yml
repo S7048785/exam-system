@@ -1,0 +1,95 @@
+server:
+  port: 8101
+  error:
+    include-stacktrace: never
+    include-exception: false
+    include-message: never
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: exam-system-server
+  profiles:
+    active: dev
+  mvc:
+    dispatch-options-request: true
+  servlet:
+    multipart:
+      max-file-size: 10MB # 限制文件上传大小
+      max-request-size: 10MB
+  main:
+    lazy-initialization: true       # 最强启动优化：懒加载Bean
+    #    allow-circular-references: true
+    banner-mode: off # 关闭启动banner
+  data:
+    redis:
+      host: ${exam.redis.host}
+      port: ${exam.redis.port}
+      database: ${exam.redis.database}
+      connect-timeout: 2s
+      timeout: 2s
+  datasource:
+    driver-class-name: ${exam.datasource.driver-class-name}
+    url: jdbc:mysql://${exam.datasource.host}:${exam.datasource.port}/${exam.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${exam.datasource.username}
+    password: ${exam.datasource.password}
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 4
+      initialization-fail-timeout: 0
+  ai:
+    dashscope:
+      api-key: ${exam.ai.api-key}
+      chat:
+        options:
+          model: qwen3.5-flash   # 推荐模型：qwen-max（最强）、qwen-plus、qwen-turbo（性价比高）
+          temperature: 0.7
+          multi-model: true   # 🔑 添加这个配置
+          max-tokens: 8192   # 根据题目数量适当调大
+  mail:
+    #发送邮件配置相关
+    # 配置邮件服务器的地址
+    host: ${exam.mail.host}
+    # 配置邮件服务器的端口（465或587）
+    port: ${exam.mail.port}
+    # 配置用户的账号
+    username: ${exam.mail.username}
+    # 配置用户的密码 (授权码)
+    password: ${exam.mail.password}
+    # 配置默认编码
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          socketFactory:
+            # SSL 连接配置
+            class: javax.net.ssl.SSLSocketFactory
+            # 开启 debug，这样方便开发者查看邮件发送日志
+            debug: true
+jimmer:
+  language: java
+  dialect: org.babyfish.jimmer.sql.dialect.MySqlDialect
+  show-sql: false
+  pretty-sql: false
+  database-validation-mode: ERROR
+
+
+sa-token:
+  token-name: access_token
+  timeout: 7200
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  is-log: true
+  cookie:
+    path: /
+    http-only: true
+    secure: false
+    same-site: Lax
+
+logging:
+  level:
+    root: info

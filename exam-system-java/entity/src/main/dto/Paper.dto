@@ -1,0 +1,44 @@
+export com.yyjy.exam.entity.paper.entity.Paper
+    -> package com.yyjy.exam.entity.paper.dto
+
+PaperDetail {
+    id
+    name
+    description
+    status
+    totalScore
+    questionCount
+    duration
+    paperQuestions as questions {
+        flat(question) {
+            id
+            title
+            type
+            questionChoices as choices {
+                content
+                correct
+            }
+            flat(questionAnswers) {
+                answer
+            }
+        }
+        score
+    }
+    createTime
+}
+
+input PaperSaveInput {
+    name
+    description
+    duration
+    questions: Map<String, Int>
+}
+
+input PaperUpdateInput {
+    id
+    name
+    description
+    duration
+    questions: Map<String, Int>
+}
+
