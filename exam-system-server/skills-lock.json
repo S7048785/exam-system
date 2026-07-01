@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "skills": {
+    "code-audit": {
+      "source": "3stoneBrother/code-audit",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "508bec1af7dd0eb8285c84bc4cfe5580a0c0930677679a0b20c756a5c8706842"
+    },
+    "jimmer-orm": {
+      "source": "coooolfan/unirhy",
+      "sourceType": "github",
+      "computedHash": "b3929874e115cf1f8f4947c03c4fd36ffe667038bc224592eb51af79956d50ac"
+    }
+  }
+}

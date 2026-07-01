@@ -1,0 +1,16 @@
+export com.yyjy.models.entity.Banners
+ -> package com.yyjy.models.entity.dto
+
+
+input BannerSaveInput {
+    #allScalars
+    -id
+    -createTime
+    -updateTime
+}
+
+input BannersUpdateInput {
+    #allScalars
+    -createTime
+    -updateTime
+}
