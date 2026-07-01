@@ -7,7 +7,7 @@ const BASE_URL =
 export const api = new Api(async ({ uri, method, headers, body }) => {
   const isFormData = body instanceof FormData
 
-  const response = await fetch(`${BASE_URL}${uri}`, {
+  const response = await fetch(`${BASE_URL}/api${uri}`, {
     method,
     body: body != null ? (isFormData ? body : JSON.stringify(body)) : undefined,
     headers: {
