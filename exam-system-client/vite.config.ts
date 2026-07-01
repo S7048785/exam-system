@@ -8,10 +8,19 @@ import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
   resolve: {
-    tsconfigPaths: true, // 启用原生 tsconfig paths 支持
+    // 启用原生 tsconfig paths 支持
+    tsconfigPaths: true,
   },
   optimizeDeps: {
     include: ['@hugeicons/core-free-icons'],
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8101',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [
     devtools(),
