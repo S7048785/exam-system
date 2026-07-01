@@ -75,6 +75,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans wrap-anywhere antialiased">
         <ProgressBar />
+        {/* Ambient Background Blurs (Global) */}
+        <div className="pointer-events-none fixed top-0 left-0 z-0 h-screen w-full overflow-hidden">
+          {/* Top Left Blob: Gold/Stone hue in dark mode, subtle stone in light */}
+          <div className="absolute top-[-10%] left-[-10%] h-[60vw] w-[60vw] rounded-full bg-stone-200/40 mix-blend-multiply blur-[100px] transition-colors duration-1000 dark:bg-amber-900/10 dark:mix-blend-screen"></div>
+
+          {/* Bottom Right Blob: Jade/Moss hue */}
+          <div className="absolute right-[-10%] bottom-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-100/40 mix-blend-multiply blur-[120px] transition-colors duration-1000 dark:bg-blue-900/15 dark:mix-blend-screen"></div>
+        </div>
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
         <Scripts />

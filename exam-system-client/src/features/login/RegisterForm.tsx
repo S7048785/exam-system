@@ -1,14 +1,17 @@
 ﻿import { Button } from '#/components/ui/button.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
-import { useRegisterAction } from '#/features/login/useUserActions.ts'
-import { useForm } from '@tanstack/react-form'
+import {
+  useEmailAction,
+  useRegisterAction,
+} from '#/features/login/useUserActions.ts'
+import { useForm, useStore } from '@tanstack/react-form'
 import { useRouter } from '@tanstack/react-router'
 import { Ghost, Key, Lock, User } from 'lucide-react'
-import { useId, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import z from 'zod'
-import SendCaptchaButton from '#/features/login/SendCaptchaButton.tsx'
+import TimingButton from '#/features/login/TimingButton.tsx'
 import CapWidget from '#/components/CapWidget.tsx'
 
 export const registerSchema = z.object({
@@ -26,6 +29,14 @@ export default function RegisterForm() {
   const [captchaToken, setCaptchaToken] = useState('')
   const capRef = useRef<any>(null)
 
+  const emailMutation = useEmailAction()
+  const handleEmailSend = async () => {
+    console.log('重复渲染')
+    const email = form.getFieldValue('email')
+    await emailMutation.mutateAsync({ email, captcha: captchaToken })
+    toast.success('验证码发送成功')
+  }
+
   const form = useForm({
     defaultValues: {
       email: '',
@@ -42,26 +53,37 @@ export default function RegisterForm() {
         return
       }
 
-      try {
-        await registerMutation.mutateAsync({
+      registerMutation.mutate(
+        {
           captcha: value.captcha,
           email: value.email,
           realName: value.realName,
           password: value.password,
-        })
-      } catch (e: any) {
-        toast.error(e.message || '注册失败')
-        if (registerMutation.isError) {
-          setCaptchaToken('')
-          capRef.current?.reset?.()
-          return
-        }
-      }
+        },
+        {
+          onSuccess: () => {
+            toast.success('注册成功')
+          },
+          onError: (error: any) => {
+            toast.error(error.message || '注册失败')
+            setCaptchaToken('')
+            capRef.current?.reset?.()
+          },
+        },
+      )
 
-      toast.success('注册成功')
       await router.navigate({ to: '/sign-in' })
     },
   })
+  // 1. 用 useStore 订阅 email，这个值变化会触发组件重新渲染
+  const email = useStore(form.store, (state) => state.values.email)
+
+  const emailSendButtonDisabled = useMemo(() => {
+    return (
+      captchaToken.length === 0 ||
+      !registerSchema.shape.email.safeParse(email).success
+    )
+  }, [captchaToken, email])
 
   return (
     <form
@@ -166,11 +188,9 @@ export default function RegisterForm() {
               </div>
             )}
           />
-          <form.Subscribe
-            selector={(state) => state.values.email}
-            children={(email) => (
-              <SendCaptchaButton email={email} disabled={captchaToken === ''} />
-            )}
+          <TimingButton
+            onClick={handleEmailSend}
+            disabled={emailSendButtonDisabled}
           />
         </div>
       </div>

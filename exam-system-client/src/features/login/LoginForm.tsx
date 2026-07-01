@@ -7,8 +7,8 @@ import useUserStore from '#/stores/user.ts'
 import { useForm } from '@tanstack/react-form'
 import { Lock, User } from 'lucide-react'
 import { useId } from 'react'
-import { toast } from 'sonner'
 import z from 'zod'
+import { toast } from 'sonner'
 
 const userSchema = z.object({
   email: z.string().min(4, '用户名长度不能小于4位字符'),
@@ -30,23 +30,24 @@ export default function LoginForm() {
       onChange: userSchema,
     },
     onSubmit: async ({ value }) => {
-      try {
-        await loginMutation.mutateAsync({
+      loginMutation.mutate(
+        {
           email: value.email,
           password: value.password,
-        })
-      } catch (error: any) {
-        toast.error(error.message || '登录失败')
-        if (loginMutation.isError) {
-          form.resetField('password')
-        }
-        return
-      }
-
-      const res = await api.userController.getUserInfo()
-      if (res.data) {
-        setUser(res.data)
-      }
+        },
+        {
+          onError: (error: any) => {
+            toast.error(error.message || '网络错误')
+            form.resetField('password')
+            return
+          },
+          onSuccess: async () => {
+            toast.success('登录成功')
+            const res = await api.userController.getUserInfo()
+            setUser(res.data)
+          },
+        },
+      )
 
       // 使所有路由的 loader 数据失效，强制它们在下次渲染时重新执行。
       // await router.invalidate()

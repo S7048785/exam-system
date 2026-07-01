@@ -1,27 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { useEmailAction } from '#/features/login/useUserActions.ts'
 import { Button } from '#/components/ui/button.tsx'
-import { registerSchema } from '#/features/login/RegisterForm.tsx'
 
-export default function SendCaptchaButton({
-  email,
+export default function TimingButton({
   disabled,
+  onClick,
 }: {
-  email: string
   disabled: boolean
+  onClick: () => Promise<void>
 }) {
   // 计时倒计时60秒
   const [countdown, setCountdown] = useState(0)
-  // 发送验证码
-  const emailMutation = useEmailAction()
   // 定时器引用
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // 该组件频繁重渲染，无需useMemo
-  const isDisabled =
-    disabled ||
-    !registerSchema.shape.email.safeParse(email).success ||
-    countdown > 0 ||
-    emailMutation.isPending
+  const isDisabled = disabled || countdown > 0
 
   // 组件卸载时清除定时器
   useEffect(() => () => clearInterval(timerRef.current || undefined), [])
@@ -31,7 +23,7 @@ export default function SendCaptchaButton({
     if (isDisabled) return
 
     try {
-      await emailMutation.mutateAsync(email)
+      await onClick()
       setCountdown(60)
 
       if (timerRef.current) {
