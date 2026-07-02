@@ -2,7 +2,6 @@ import { ProgressBar } from '#/components/ProgressBar.tsx'
 import {
   createRootRouteWithContext,
   HeadContent,
-  Link,
   Scripts,
 } from '@tanstack/react-router'
 
@@ -30,7 +29,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        title: '在线考试系统云平台',
       },
     ],
     links: [
@@ -41,16 +40,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
   }),
   shellComponent: RootDocument,
-  // 当路由不存在时显示这个组件
-  notFoundComponent: () => {
-    return (
-      <div>
-        <h2>404 - 页面没找到</h2>
-        <p>抱歉，您访问的路径不存在。</p>
-        <Link to="/">返回首页</Link>
-      </div>
-    )
-  },
   // 当代码运行报错时显示
   errorComponent: ({ error }) => {
     return (

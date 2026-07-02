@@ -1,16 +1,6 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import useUserStore from '#/stores/user.ts'
+import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_public/')({
-  beforeLoad: () => {
-    const { user } = useUserStore.getState()
-    if (user) {
-      if (user.role === 'admin') {
-        throw redirect({ to: '/admin/banners' })
-      }
-      throw redirect({ to: '/exam/list' })
-    }
-  },
   component: App,
 })
 
