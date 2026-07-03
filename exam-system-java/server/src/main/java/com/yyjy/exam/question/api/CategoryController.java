@@ -6,13 +6,14 @@ import com.yyjy.exam.entity.question.dto.CategoriesTree;
 import com.yyjy.exam.entity.question.dto.CategorySaveInput;
 import com.yyjy.exam.entity.question.dto.CategoryUpdateInput;
 import com.yyjy.exam.entity.question.entity.Categories;
-import com.yyjy.exam.entity.question.entity.CategoriesTable;
-import com.yyjy.exam.entity.question.entity.QuestionsTable;
+import com.yyjy.exam.entity.question.entity.CategoriesFetcher;
 import com.yyjy.exam.question.repository.CategoriesRepository;
 import lombok.RequiredArgsConstructor;
+import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.client.meta.Api;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.exception.SaveException;
+import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryController {
 	
+	public static final Fetcher<Categories> CATEGORY_INFO =
+			CategoriesFetcher.$
+					.name()
+					.parentId()
+					.sort()
+					.recursiveChildren()
+					.questionCount();
 	private final CategoriesRepository categoriesRepository;
 	
 	@Api
@@ -47,18 +55,12 @@ public class CategoryController {
 	
 	@Api
 	@DeleteMapping("/remove/{id}")
-	public R<Void> removeCategory(@PathVariable Long id) {
+	public R<Void> removeCategory(@PathVariable long id) {
 		if (categoriesRepository.existsByParentId(id)) {
 			throw new BusinessException("该分类下有子分类，不能删除");
 		}
 		
-		QuestionsTable qt = QuestionsTable.$;
-		boolean hasQuestions = categoriesRepository.sql().createQuery(qt)
-				                       .where(qt.categoryId().eq(id))
-				                       .select(qt)
-				                       .limit(1)
-				                       .fetchFirstOrNull() != null;
-		if (hasQuestions) {
+		if (categoriesRepository.hasQuestions(id)) {
 			throw new BusinessException("该分类下有题目，不能删除");
 		}
 		
@@ -72,18 +74,14 @@ public class CategoryController {
 	
 	@Api
 	@GetMapping("/{id}")
-	public R<Void> getCategory(@PathVariable Long id) {
+	public R<Void> getCategory(@PathVariable long id) {
 		return R.ok();
 	}
 	
 	@Api
 	@GetMapping("/list")
-	public R<List<Categories>> listCategories() {
-		CategoriesTable t = CategoriesTable.$;
-		List<Categories> categories = categoriesRepository.sql().createQuery(t)
-				                              .select(t)
-				                              .execute();
-		return R.ok(categories);
+	public R<List<@FetchBy("CATEGORY_INFO") Categories>> listCategories() {
+		return R.ok(categoriesRepository.findAllWithFetcher(CATEGORY_INFO));
 	}
 	
 	@Api
