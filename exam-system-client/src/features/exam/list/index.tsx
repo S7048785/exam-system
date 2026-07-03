@@ -1,4 +1,3 @@
-import type { PaperDto } from '#/__generated/model/dto'
 import { Button } from '#/components/ui/button.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import ExamPaperList from '#/features/exam/list/components/ExamPaperList.tsx'
@@ -10,9 +9,10 @@ import { useRef, useState } from 'react'
 import { ExamStartDialog } from './components/ExamStartDialog'
 import { PAPER_STATUS } from '#/features/admin/papers/utils.ts'
 
-const routeApi = getRouteApi('/exam/list')
+const routeApi = getRouteApi('/_auth/exam/list')
 
 export default function ExamListPage() {
+  const { history, navigate } = useRouter()
   const { keyword } = routeApi.useSearch()
   const { data } = useSuspenseQuery(
     paperListQueryOptions({
@@ -20,7 +20,6 @@ export default function ExamListPage() {
       name: keyword,
     }),
   )
-  const { history, navigate } = useRouter()
 
   const ref = useRef<HTMLInputElement>(null)
 
@@ -39,7 +38,7 @@ export default function ExamListPage() {
       setSelectedPaper(null)
       return
     }
-    setSelectedPaper(data.data![index])
+    setSelectedPaper(data.data[index])
   }
   const closeDialog = () => {
     toggleDialog(null)
@@ -64,7 +63,7 @@ export default function ExamListPage() {
         />
         <Button>Search</Button>
       </form>
-      <ExamPaperList data={data.data || []} onOpenChange={toggleDialog} />
+      <ExamPaperList data={data.data} onOpenChange={toggleDialog} />
       <ExamStartDialog
         open={selectedPaper !== null}
         data={selectedPaper}

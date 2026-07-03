@@ -35,8 +35,7 @@ interface CategoriesRepository : KRepository<Categories, Long> {
                 val childrenSum = node.children?.let { calculateCount(it) }
                 if (childrenSum != null) {
                     node.questionCount = childrenSum
-                } // 将汇总值赋给父节点
-                if (childrenSum != null) {
+                    // 将汇总值赋给父节点
                     total += childrenSum
                 }
             }

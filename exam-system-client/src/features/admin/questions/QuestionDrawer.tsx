@@ -137,13 +137,13 @@ export default function QuestionDrawer({
           id: question?.id,
           multi: value.multi,
           categoryId: value.categoryId,
-          analysis: value.analysis.trim() || undefined,
+          analysis: value.analysis.trim(),
           choices: filledChoices.map((c, i) => ({
             content: c.content.trim(),
             correct: c.correct,
             sort: i,
           })),
-          answers: { id: question?.answers?.id, answer: correctAnswers },
+          answers: { id: question?.answers.id, answer: correctAnswers },
         }
         console.log('update', input)
         onSubmit(input)
@@ -154,19 +154,19 @@ export default function QuestionDrawer({
         }
         const input: QuestionSaveInput | QuestionUpdateInput = {
           ...baseData,
-          id: question?.id,
+          id: question!.id,
           categoryId: value.categoryId,
-          analysis: value.analysis.trim() || undefined,
-          answers: { id: question?.answers?.id, answer: judgeData.judgeAnswer },
+          analysis: value.analysis.trim(),
+          answers: { id: question?.answers.id, answer: judgeData.judgeAnswer },
         }
         onSubmit(input)
       } else {
         // TEXT
         const input: QuestionSaveInput | QuestionUpdateInput = {
           ...baseData,
-          id: question?.id,
+          id: question!.id,
           categoryId: value.categoryId,
-          answers: { id: question?.answers?.id, answer: textAnswer.trim() },
+          answers: { id: question?.answers.id, answer: textAnswer.trim() },
         }
         onSubmit(input)
       }

@@ -51,4 +51,13 @@ public interface QuestionsRepository extends JRepository<Questions, Long> {
                 .select(t.title())
                 .execute();
     }
+
+    default List<Long> findIdsByTypeAndCategoryIds(String type, List<Long> categoryIds) {
+        QuestionsTable t = QuestionsTable.$;
+        return sql().createQuery(t)
+                .where(t.type().eq(type))
+                .where(t.categoryId().in(categoryIds))
+                .select(t.id())
+                .execute();
+    }
 }

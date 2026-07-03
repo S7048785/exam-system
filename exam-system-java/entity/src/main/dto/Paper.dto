@@ -26,19 +26,3 @@ PaperDetail {
     }
     createTime
 }
-
-input PaperSaveInput {
-    name
-    description
-    duration
-    questions: Map<String, Int>
-}
-
-input PaperUpdateInput {
-    id
-    name
-    description
-    duration
-    questions: Map<String, Int>
-}
-
