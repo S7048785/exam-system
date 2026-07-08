@@ -2,7 +2,7 @@ import ExamListPage from '#/features/exam/list'
 import { paperListQueryOptions } from '#/features/exam/list/examQueries.ts'
 import { createFileRoute } from '@tanstack/react-router'
 import z from 'zod'
-import { PAPER_STATUS } from '#/features/admin/papers/utils.ts'
+import { PAPER_STATUS } from '#/features/admin/papers/constants.ts'
 
 export const Route = createFileRoute('/_auth/exam/list')({
   component: ExamListPage,

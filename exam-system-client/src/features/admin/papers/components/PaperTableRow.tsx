@@ -3,7 +3,7 @@ import { Badge } from '#/components/ui/badge.tsx'
 import {
   PAPER_STATUS,
   PAPER_STATUS_MAP,
-} from '#/features/admin/papers/utils.ts'
+} from '#/features/admin/papers/constants.ts'
 import { Button } from '#/components/ui/button.tsx'
 import { Pencil, Trash2 } from 'lucide-react'
 import type { PaperDto } from '#/__generated/model/dto'

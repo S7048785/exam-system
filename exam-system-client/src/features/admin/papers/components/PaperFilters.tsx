@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#/components/ui/select.tsx'
-import { PAPER_STATUS } from '#/features/admin/papers/utils.ts'
+import { PAPER_STATUS } from '#/features/admin/papers/constants.ts'
 import { Button } from '#/components/ui/button.tsx'
 import { Plus } from 'lucide-react'
 import type { PaperStatus } from '#/__generated/model/enums'

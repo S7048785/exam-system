@@ -5,7 +5,7 @@ import {
   questionsQueryOptions,
 } from '#/features/admin/questions/questionQueries.ts'
 
-import { QUESTION_DIFFICULTY_MAP, QUESTION_TYPE_MAP } from '../utils.ts'
+import { QUESTION_DIFFICULTY_MAP, QUESTION_TYPE_MAP } from '../constants.ts'
 import { flattenCategories } from '#/features/admin/questions/utils.ts'
 import {
   Table,
