@@ -21,7 +21,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { paperDetailQueryOptions, paperQueries } from '../paperQueries.ts'
-import QuestionSelector from './QuestionSelector.tsx'
+import QuestionSelector from '../components/QuestionSelector.tsx'
 
 export default function CreateEditPage() {
   const { id } = Route.useParams()
@@ -46,18 +46,16 @@ export default function CreateEditPage() {
 
   // 填充编辑数据
   useEffect(() => {
-    if (paperDetail.data) {
-      setName(paperDetail.data.name)
-      setDescription(paperDetail.data.description ?? '')
-      setDuration(paperDetail.data.duration)
+    setName(paperDetail.data.name)
+    setDescription(paperDetail.data.description)
+    setDuration(paperDetail.data.duration)
 
-      // 将已有题目转换为 selectedQuestions Map
-      const questionMap = new Map<number, { score: number }>()
-      paperDetail.data.questions.forEach((q: any) => {
-        questionMap.set(q.id, { score: q.score ?? 5 })
-      })
-      setSelectedQuestions(questionMap)
-    }
+    // 将已有题目转换为 selectedQuestions Map
+    const questionMap = new Map<number, { score: number }>()
+    paperDetail.data.questions.forEach((q: any) => {
+      questionMap.set(q.id, { score: q.score ?? 5 })
+    })
+    setSelectedQuestions(questionMap)
   }, [paperDetail])
 
   // 保存试卷

@@ -1,4 +1,4 @@
-import CreateEditPage from '#/features/admin/papers/components/CreateEditPage.tsx'
+import CreateEditPage from '#/features/admin/papers/create/CreateEditPage.tsx'
 import { paperDetailQueryOptions } from '#/features/admin/papers/paperQueries'
 import { createFileRoute } from '@tanstack/react-router'
 

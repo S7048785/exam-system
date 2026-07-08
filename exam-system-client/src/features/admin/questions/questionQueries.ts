@@ -14,4 +14,5 @@ export const questionsQueryOptions = (filters: QuestionListReq) =>
     queryKey: ['questions', filters],
     queryFn: () => api.questionController.listQuestions({ req: filters }),
     staleTime: 30 * 1000, // 列表数据缓存短一些
+    placeholderData: (previousData) => previousData,
   })

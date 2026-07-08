@@ -23,17 +23,6 @@ body {
 	background-color: var(--background);
 }
 
-a {
-	text-decoration-color: rgba(50, 143, 151, 0.4);
-	text-decoration-thickness: 1px;
-	text-underline-offset: 2px;
-	color: #537c8d;
-
-	&:hover {
-		color: #32465d !important;
-	}
-}
-
 code {
 	font-size: 0.9em;
 	border: 1px solid var(--line);

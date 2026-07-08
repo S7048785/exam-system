@@ -57,7 +57,7 @@ export default function AiGenerateDialog({
 
   // 获取分类树
   const { data: categoryData } = useSuspenseQuery(categoryTreeQueryOptions)
-  const categories = categoryData.data ?? []
+  const categories = categoryData.data
 
   // AI生成题目
   const generateMutation = useMutation({
@@ -65,7 +65,7 @@ export default function AiGenerateDialog({
       return api.questionController.aiGenerate({ body: req })
     },
     onSuccess: (response) => {
-      if (response.code === 200 && response.data) {
+      if (response.code === 200) {
         setGeneratedQuestions([...response.data])
         setStep(3)
       } else {
