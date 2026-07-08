@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import type { QuestionsPageView } from '#/__generated/model/static'
-import { Button } from '#/components/ui/button'
-import { Checkbox } from '#/components/ui/checkbox'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import { Button } from '#/components/ui/button.tsx'
+import { Checkbox } from '#/components/ui/checkbox.tsx'
+import { Input } from '#/components/ui/input.tsx'
+import { Label } from '#/components/ui/label.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import { Plus, Trash2 } from 'lucide-react'
 
 interface ChoiceFormProps {
@@ -92,7 +92,7 @@ export default function ChoiceForm({
         choices.push({ content: '', correct: false })
       }
       // 解析正确答案
-      const answerStr = editData.answers?.answer || ''
+      const answerStr = editData.answers.answer || ''
       const correctLetters = answerStr.split(',')
       choices.forEach((c, i) => {
         c.correct = correctLetters.includes(String.fromCharCode(65 + i))

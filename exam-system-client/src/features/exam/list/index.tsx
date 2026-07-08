@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { ExamStartDialog } from './components/ExamStartDialog'
 import { PAPER_STATUS } from '#/features/admin/papers/utils.ts'
+import type { PaperDto } from '#/__generated/model/dto'
 
 const routeApi = getRouteApi('/_auth/exam/list')
 

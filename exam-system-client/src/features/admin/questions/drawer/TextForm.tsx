@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { QuestionsPageView } from '#/__generated/model/static'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import { Label } from '#/components/ui/label.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 
 interface TextFormProps {
   value: string
@@ -13,7 +13,7 @@ export default function TextForm({ value, onChange, editData }: TextFormProps) {
   // 初始化/回填数据
   useEffect(() => {
     if (editData) {
-      onChange(editData.answers?.answer || '')
+      onChange(editData.answers.answer || '')
     }
   }, [editData])
 

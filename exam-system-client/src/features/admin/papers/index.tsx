@@ -28,8 +28,8 @@ export default function PapersPage() {
     papersQueryOptions({ ...filters, name: filters.name || undefined }),
   )
 
-  const papers = listData.data ?? []
-  const total = listData.data?.length ?? 0
+  const papers = listData.data
+  const total = listData.data.length
 
   // 更新试卷状态
   const changeStatusMutation = useChangeStatus()

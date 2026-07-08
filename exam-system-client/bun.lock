@@ -27,6 +27,7 @@
         "cap-widget": "^0.1.46",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "immer": "^11.1.11",
         "lucide-react": "^0.545.0",
         "motion": "^12.38.0",
         "next-themes": "^0.4.6",
@@ -1204,7 +1205,7 @@
 
     "ignore": ["ignore@5.3.2", "https://registry.npmmirror.com/ignore/-/ignore-5.3.2.tgz", {}, "sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g=="],
 
-    "immer": ["immer@10.2.0", "https://registry.npmmirror.com/immer/-/immer-10.2.0.tgz", {}, "sha512-d/+XTN3zfODyjr89gM3mPq1WNX2B8pYsu7eORitdwyA2sBubnTl3laYlBk4sXY5FUa5qTZGBDPJICVbvqzjlbw=="],
+    "immer": ["immer@11.1.11", "https://registry.npmmirror.com/immer/-/immer-11.1.11.tgz", {}, "sha512-qzXuyXAkPySAGYkfsAwodDPWT8Zm7/Uo5BNt4BjhMhG5WlWyZZ4wQqnWwdS8kjlQ1Cwu6gjw3A6+0gTQwlyYtw=="],
 
     "import-fresh": ["import-fresh@3.3.1", "https://registry.npmmirror.com/import-fresh/-/import-fresh-3.3.1.tgz", { "dependencies": { "parent-module": "^1.0.0", "resolve-from": "^4.0.0" } }, "sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ=="],
 
@@ -1873,6 +1874,8 @@
     "readdirp/picomatch": ["picomatch@2.3.2", "https://registry.npmmirror.com/picomatch/-/picomatch-2.3.2.tgz", {}, "sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA=="],
 
     "recast/source-map": ["source-map@0.6.1", "https://registry.npmmirror.com/source-map/-/source-map-0.6.1.tgz", {}, "sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g=="],
+
+    "recharts/immer": ["immer@10.2.0", "https://registry.npmmirror.com/immer/-/immer-10.2.0.tgz", {}, "sha512-d/+XTN3zfODyjr89gM3mPq1WNX2B8pYsu7eORitdwyA2sBubnTl3laYlBk4sXY5FUa5qTZGBDPJICVbvqzjlbw=="],
 
     "restore-cursor/onetime": ["onetime@7.0.0", "https://registry.npmmirror.com/onetime/-/onetime-7.0.0.tgz", { "dependencies": { "mimic-function": "^5.0.0" } }, "sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ=="],
 

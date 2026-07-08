@@ -1,32 +1,49 @@
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { api } from '#/ApiInstance.ts'
 import type {
-  QuestionListReq,
   QuestionSaveInput,
   QuestionsPageView,
   QuestionUpdateInput,
 } from '#/__generated/model/static'
 import QuestionTable from './QuestionTable'
-import QuestionDrawer from './QuestionDrawer'
+import QuestionDrawer from './drawer/QuestionDrawer.tsx'
 import ImportQuestionsDialog from './ImportQuestionsDialog/index'
 import AiGenerateDialog from './AiGenerateDialog'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
   categoryTreeQueryOptions,
   questionsQueryOptions,
 } from '#/features/admin/questions/questionQueries.ts'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useImmer } from 'use-immer'
+import { Label } from '#/components/ui/label.tsx'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '#/components/ui/select.tsx'
+import { DIFFICULTY_MAP, TYPE_MAP } from '#/types/questoin.ts'
+import { Input } from '#/components/ui/input.tsx'
+import { Button } from '#/components/ui/button.tsx'
+import { Plus, RotateCw, Sparkles, Upload } from 'lucide-react'
+import { flattenCategories } from '#/features/admin/questions/utils.ts'
+
+export interface QuestionListReq2 {
+  page?: number | undefined
+  size?: number | undefined
+  categoryId?: number | undefined
+  difficulty?: string | undefined
+  type?: string | undefined
+  keyword?: string | undefined
+}
 
 export default function QuestionsPage() {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  // 列表筛选条件
-  const filters = useSearch({ from: '/admin/questions' })
+  const [filters, setFilters] = useImmer<QuestionListReq2>({
+    page: 1,
+    size: 10,
+  })
 
   // Drawer 状态
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -48,24 +65,34 @@ export default function QuestionsPage() {
 
   // 获取分类树（静态数据）
   const { data: categoryData } = useSuspenseQuery(categoryTreeQueryOptions)
-  const categories = categoryData.data ?? []
+  const categories = categoryData.data
+
+  const flatCategories = useMemo(
+    () => flattenCategories(categories),
+    [categories],
+  )
+  // 分类名称映射
+  const categoryNameMap = useMemo(
+    () => new Map(flatCategories.map((c) => [c.id, c.name])),
+    [flatCategories],
+  )
 
   // 获取题目列表（使用 useSuspenseQuery + loader 预取）
   const { data: listData, refetch } = useSuspenseQuery(
     questionsQueryOptions(filters),
   )
 
-  const questions = listData.data?.records ?? []
-  const total = listData.data?.total ?? 0
-  const page = listData.data?.current ?? 1
-  const size = listData.data?.size ?? 10
+  const questions = listData.data.records
+  const total = listData.data.total
+  const page = listData.data.current
+  const size = listData.data.size
 
   // 新增题目
   const addMutation = useMutation({
     mutationFn: (input: QuestionSaveInput) =>
       api.questionController.addQuestion({ body: input }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      refetch()
       toast.success('题目添加成功')
     },
     onError: () => {
@@ -78,7 +105,7 @@ export default function QuestionsPage() {
     mutationFn: (input: QuestionUpdateInput) =>
       api.questionController.updateQuestion({ body: input }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      refetch()
       toast.success('题目更新成功')
     },
     onError: () => {
@@ -90,7 +117,7 @@ export default function QuestionsPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.questionController.removeQuestion({ id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['questions'] })
+      refetch()
     },
     onError: () => {
       toast.error('删除题目失败')
@@ -125,49 +152,167 @@ export default function QuestionsPage() {
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id)
   }
-  // 分页 / 筛选变化 → 更新 URL（推荐方式）
-  const updateFilters = (newFilters: Partial<QuestionListReq>) => {
-    navigate({
-      to: '/admin/questions',
-      search: (prev) => ({
-        ...prev,
-        ...newFilters,
-        page: newFilters.page ?? 1,
-      }),
-      replace: true,
-    })
-  }
   // 分页变化
   const handlePageChange = (newPage: number) => {
-    updateFilters({ page: newPage })
+    setFilters((draft) => {
+      draft.page = newPage
+    })
   }
 
   const handlePageSizeChange = (newSize: number) => {
-    updateFilters({ size: newSize, page: 1 })
+    setFilters((draft) => {
+      draft.size = newSize
+      draft.page = 1
+    })
   }
 
-  const handleFiltersChange = (newFilters: QuestionListReq) => {
-    updateFilters({ ...newFilters, page: 1 })
+  const handleFiltersChange = (newFilters: QuestionListReq2) => {
+    setFilters((draft) => {
+      Object.assign(draft, newFilters)
+      draft.page = 1
+    })
   }
 
   return (
     <div className="space-y-4">
+      {/* 筛选器 */}
+      <div className="flex flex-wrap items-end gap-3">
+        {/* 分类筛选 */}
+        <div className="space-y-1.5">
+          <Label className="text-muted-foreground text-xs">分类</Label>
+          <Select
+            value={filters.categoryId?.toString() || 'all'}
+            onValueChange={(val) =>
+              handleFiltersChange({
+                ...filters,
+                categoryId: val === 'all' ? undefined : Number(val),
+              })
+            }
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="全部分类" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部分类</SelectItem>
+              {flatCategories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id.toString()}>
+                  {'　'.repeat(cat.level)}
+                  {cat.level > 0 && '├ '}
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 难度筛选 */}
+        <div className="space-y-1.5">
+          <Label className="text-muted-foreground text-xs">难度</Label>
+          <Select
+            value={filters.difficulty || 'all'}
+            onValueChange={(val) =>
+              handleFiltersChange({
+                ...filters,
+                difficulty: val === 'all' ? undefined : val,
+              })
+            }
+          >
+            <SelectTrigger className="w-28">
+              <SelectValue placeholder="全部难度" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部难度</SelectItem>
+              {Object.entries(DIFFICULTY_MAP).map(([value, { label }]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 类型筛选 */}
+        <div className="space-y-1.5">
+          <Label className="text-muted-foreground text-xs">类型</Label>
+          <Select
+            value={filters.type || 'all'}
+            onValueChange={(val) =>
+              handleFiltersChange({
+                ...filters,
+                type: val === 'all' ? undefined : val,
+              })
+            }
+          >
+            <SelectTrigger className="w-28">
+              <SelectValue placeholder="全部类型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部类型</SelectItem>
+              {Object.entries(TYPE_MAP).map(([value, { label }]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 关键词搜索 */}
+        <div className="space-y-1.5">
+          <Label className="text-muted-foreground text-xs">关键词</Label>
+          <Input
+            placeholder="搜索题目..."
+            className="w-48"
+            value={filters.keyword || ''}
+            onChange={(e) =>
+              handleFiltersChange({
+                ...filters,
+                keyword: e.target.value || undefined,
+              })
+            }
+          />
+        </div>
+
+        {/* 刷新按钮 */}
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RotateCw className="mr-1 h-4 w-4" />
+          刷新
+        </Button>
+      </div>
+
+      {/* 操作栏 */}
+      <div className="flex items-center justify-between">
+        <div className="text-muted-foreground text-sm">共 {total} 道题目</div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="mr-1 h-4 w-4" />
+            导入
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => handleAiDialog()}>
+            <Sparkles className="mr-1 h-4 w-4" />
+            AI生成
+          </Button>
+          <Button size="sm" onClick={() => handleOpenAddDrawer()}>
+            <Plus className="mr-1 h-4 w-4" />
+            新增题目
+          </Button>
+        </div>
+      </div>
+
       <QuestionTable
         data={questions}
         total={total}
         page={page}
         size={size}
-        filters={filters}
-        categories={categories}
-        onRefresh={() => refetch()}
+        categoryNameMap={categoryNameMap}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
-        onFiltersChange={handleFiltersChange}
-        onAdd={handleOpenAddDrawer}
         onEdit={handleOpenEditDrawer}
         onDelete={handleDelete}
-        onImport={() => setImportDialogOpen(true)}
-        onAiGenerate={handleAiDialog}
       />
 
       <QuestionDrawer

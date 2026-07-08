@@ -13,37 +13,25 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
-} from '#/components/ui/drawer'
-import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+} from '#/components/ui/drawer.tsx'
+import { Button } from '#/components/ui/button.tsx'
+import { Input } from '#/components/ui/input.tsx'
+import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '#/components/ui/select'
+} from '#/components/ui/select.tsx'
 import { toast } from 'sonner'
 import { useIsMobile } from '#/hooks/use-mobile.ts'
-import ChoiceForm from './ChoiceForm'
-import JudgeForm from './JudgeForm'
-import TextForm from './TextForm'
+import ChoiceForm from './ChoiceForm.tsx'
+import JudgeForm from '../JudgeForm.tsx'
+import TextForm from './TextForm.tsx'
 import { flattenCategories } from '#/features/admin/questions/utils.ts'
-
-// 题目类型
-const QUESTION_TYPES = [
-  { value: 'CHOICE', label: '选择题' },
-  { value: 'JUDGE', label: '判断题' },
-  { value: 'TEXT', label: '简答题' },
-] as const
-
-// 难度选项
-const DIFFICULTIES = [
-  { value: 'EASY', label: '简单' },
-  { value: 'MEDIUM', label: '普通' },
-  { value: 'HARD', label: '困难' },
-] as const
+import type { Difficulty, QuestionType } from '#/types/questoin.ts'
+import { DIFFICULTIES, QUESTION_TYPES } from '#/types/questoin.ts'
 
 interface QuestionDrawerProps {
   open: boolean
@@ -53,11 +41,6 @@ interface QuestionDrawerProps {
   onSubmit: (values: QuestionSaveInput | QuestionUpdateInput) => void
   categories: readonly CategoriesTree[]
 }
-
-// 题型类型
-type QuestionType = (typeof QUESTION_TYPES)[number]['value']
-// 难度类型
-type Difficulty = (typeof DIFFICULTIES)[number]['value']
 
 export default function QuestionDrawer({
   open,
@@ -153,6 +136,7 @@ export default function QuestionDrawer({
           return
         }
         const input: QuestionSaveInput | QuestionUpdateInput = {
+          choices: [],
           ...baseData,
           id: question!.id,
           categoryId: value.categoryId,
@@ -163,6 +147,8 @@ export default function QuestionDrawer({
       } else {
         // TEXT
         const input: QuestionSaveInput | QuestionUpdateInput = {
+          analysis: '',
+          choices: [],
           ...baseData,
           id: question!.id,
           categoryId: value.categoryId,
