@@ -9,50 +9,51 @@ import java.util.List;
 
 @Entity
 public interface Questions {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    long id();
-
-    String title();
-
-    String type();
-
-    @Nullable
-    Boolean multi();
-
-    @ManyToOne
-    Categories category();
-
-    @IdView
-    long categoryId();
-
-    String difficulty();
-
-    @Nullable
-    Integer score();
-
-    @Nullable
-    String analysis();
-
-    @OneToMany(mappedBy = "question")
-    List<PaperQuestion> paperQuestions();
-
-    @OneToMany(mappedBy = "question")
-    List<QuestionChoices> questionChoices();
-
-    @OneToOne(mappedBy = "question")
-    @Nullable
-    QuestionAnswers questionAnswers();
-
-    @Nullable
-    LocalDateTime createTime();
-
-    @Nullable
-    LocalDateTime updateTime();
-
-    @Column(name = "deleted_at")
-    @LogicalDeleted("now")
-    @Nullable
-    LocalDateTime delFlag();
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	long id();
+	
+	String title();
+	
+	String type();
+	
+	@Nullable
+	Boolean multi();
+	
+	@JoinColumn(name = "category_id")
+	@ManyToOne
+	QuestionsCategories category();
+	
+	@IdView
+	long categoryId();
+	
+	String difficulty();
+	
+	@Nullable
+	Integer score();
+	
+	@Nullable
+	String analysis();
+	
+	@OneToMany(mappedBy = "question")
+	List<PaperQuestion> paperQuestions();
+	
+	@OneToMany(mappedBy = "question")
+	List<QuestionChoices> questionChoices();
+	
+	@OneToOne(mappedBy = "question")
+	@Nullable
+	QuestionAnswers questionAnswers();
+	
+	@Nullable
+	LocalDateTime createTime();
+	
+	@Nullable
+	LocalDateTime updateTime();
+	
+	@Column(name = "deleted_at")
+	@LogicalDeleted("now")
+	@Nullable
+	LocalDateTime delFlag();
 }

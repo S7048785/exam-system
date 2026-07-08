@@ -16,28 +16,37 @@ import java.util.List;
 @RequestMapping("/exams")
 @RequiredArgsConstructor
 public class ExamController {
-
-    private final ExamRecordService examRecordService;
-
-    @Api
-    @PostMapping("/start")
-    public R<ExamRecords> startExam(@RequestBody StartExamReq req) {
-        return R.ok(examRecordService.startExam(req.paperId(), req.studentName()));
-    }
-
-    @Api
-    @GetMapping("/{id}")
-    public R<ExamRecords> getExamRecord(@PathVariable int id) {
-        return R.ok(examRecordService.getExamRecord(id));
-    }
-
-    @Api
-    @PostMapping("/submit/{examRecordId}")
-    public R<Void> submitAnswers(
-            @PathVariable int examRecordId,
-            @RequestBody List<SubmitAnswerReq> answers
-    ) {
-        examRecordService.submitAnswers(examRecordId, answers);
-        return R.ok();
-    }
+	
+	private final ExamRecordService examRecordService;
+	
+	/**
+	 * 用户开始考试
+	 */
+	@Api
+	@PostMapping("/start")
+	public R<ExamRecords> startExam(@RequestBody StartExamReq req) {
+		return R.ok(examRecordService.startExam(req.paperId(), req.studentName()));
+	}
+	
+	/**
+	 * 获取考试记录
+	 *
+	 * @param id
+	 * @return
+	 */
+	@Api
+	@GetMapping("/{id}")
+	public R<ExamRecords> getExamRecord(@PathVariable int id) {
+		return R.ok(examRecordService.getExamRecord(id));
+	}
+	
+	@Api
+	@PostMapping("/submit/{examRecordId}")
+	public R<Void> submitAnswers(
+			@PathVariable int examRecordId,
+			@RequestBody List<SubmitAnswerReq> answers
+	) {
+		examRecordService.submitAnswers(examRecordId, answers);
+		return R.ok();
+	}
 }

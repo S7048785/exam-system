@@ -1,5 +1,6 @@
 package com.yyjy.exam.question.api;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.question.dto.*;
 import com.yyjy.exam.entity.question.entity.Questions;
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@SaCheckRole("admin")
 @Api
 @RestController
 @RequiredArgsConstructor
@@ -68,6 +70,7 @@ public class QuestionController {
 	@Api
 	@GetMapping("/list")
 	public R<QuestionPageRes> listQuestions(@Validated QuestionListReq req) {
+		
 		return R.ok(questionService.list(req));
 	}
 	

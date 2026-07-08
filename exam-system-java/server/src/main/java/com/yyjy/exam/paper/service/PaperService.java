@@ -1,5 +1,6 @@
 package com.yyjy.exam.paper.service;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
@@ -30,8 +31,8 @@ public class PaperService {
 	private final PaperQuestionRepository paperQuestionRepo;
 	private final QuestionsRepository questionsRepository;
 	
-	public List<Paper> listPapersByNameAndStatus(String name, PaperStatus status, Fetcher<Paper> fetcher) {
-		return paperRepository.listByNameAndStatus(name, status, fetcher);
+	public List<Paper> listPapersByNameAndStatus(String name, PaperStatus status, int page, int size, Fetcher<Paper> fetcher) {
+		return paperRepository.listByNameAndStatus(name, status, page, size, fetcher);
 	}
 	
 	public PaperDetail getPaper(int id) {
@@ -40,15 +41,15 @@ public class PaperService {
 			throw new BusinessException(MessageConstant.PAPER_NOT_FOUND);
 		}
 		
-		List<PaperDetail.TargetOf_questions> sorted = result.getQuestions().stream()
-				                                              .sorted(Comparator.comparingInt(q -> switch (q.getType()) {
-					                                              case "CHOICE" -> 1;
-					                                              case "JUDGE" -> 2;
-					                                              case "TEXT" -> 3;
-					                                              default ->
-							                                              throw new BusinessException(MessageConstant.QUESTION_TYPE_NOT_EXIST);
-				                                              }))
-				                                              .toList();
+		List<PaperDetail.TargetOf_questions> sorted =
+				result.getQuestions().stream()
+						.sorted(Comparator.comparingInt(q -> switch (q.getType()) {
+							case "CHOICE" -> 1;
+							case "JUDGE" -> 2;
+							case "TEXT" -> 3;
+							default -> throw new BusinessException(MessageConstant.QUESTION_TYPE_NOT_EXIST);
+						}))
+						.toList();
 		
 		result.setQuestions(sorted);
 		return result;
@@ -62,7 +63,9 @@ public class PaperService {
 		
 		double totalScore = paperInput.questions().values().stream().mapToDouble(Integer::doubleValue).sum();
 		
+		var userId = StpUtil.getLoginIdAsLong();
 		paperRepository.save(PaperDraft.$.produce(draft -> {
+			draft.setUserId(userId);
 			draft.setName(paperInput.name());
 			draft.setDescription(paperInput.description());
 			draft.setDuration(paperInput.duration());

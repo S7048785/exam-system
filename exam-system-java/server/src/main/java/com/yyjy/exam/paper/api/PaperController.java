@@ -1,5 +1,6 @@
 package com.yyjy.exam.paper.api;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@SaCheckRole("admin")
 @Api
 @RestController
 @RequestMapping("/paper")
@@ -81,9 +83,11 @@ public class PaperController {
 	@GetMapping("/list")
 	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(
 			@RequestParam(name = "name", required = false) String name,
-			@RequestParam(name = "status", required = false) PaperStatus status
+			@RequestParam(name = "status", required = false) PaperStatus status,
+			@RequestParam(name = "page", defaultValue = "1") int page,
+			@RequestParam(name = "size", defaultValue = "10") int size
 	) {
-		return R.ok(paperService.listPapersByNameAndStatus(name, status, PAPER_ITEM));
+		return R.ok(paperService.listPapersByNameAndStatus(name, status, page, size, PAPER_ITEM));
 	}
 	
 	/**

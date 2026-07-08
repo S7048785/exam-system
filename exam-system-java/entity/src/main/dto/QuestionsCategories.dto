@@ -1,0 +1,25 @@
+export com.yyjy.exam.entity.question.entity.QuestionsCategories
+    -> package com.yyjy.exam.entity.question.dto
+
+QuestionsCategoriesTree {
+    id
+    name
+    parentId
+    sort
+    children*
+    questionCount
+}
+
+
+input QuestionsCategorySaveInput {
+    name
+    parentId
+    sort
+}
+
+input QuestionsCategoryUpdateInput {
+    id
+    name
+    parentId
+    sort
+}
