@@ -27,7 +27,7 @@ import Step2Generating from './Step2Generating'
 import Step3Preview from './Step3Preview'
 import Step4Success from './Step4Success'
 import StepIndicator from './StepIndicator'
-import type { Step } from './constants'
+import type { Step } from './constants.ts'
 
 interface AiGenerateDialogProps {
   open: boolean

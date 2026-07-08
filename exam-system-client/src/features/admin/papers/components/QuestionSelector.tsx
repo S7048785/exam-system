@@ -16,8 +16,7 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
-import { Input } from '#/components/ui/input.tsx'
-import { Label } from '#/components/ui/label.tsx'
+import { Input, Label } from '#/components/ui'
 import { Badge } from '#/components/ui/badge.tsx'
 import { useMemo, useState } from 'react'
 

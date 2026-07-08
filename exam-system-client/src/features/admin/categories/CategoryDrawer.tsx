@@ -10,8 +10,7 @@ import {
   DrawerTitle,
 } from '#/components/ui/drawer'
 import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { Input, Label } from '#/components/ui'
 import { toast } from 'sonner'
 import { useIsMobile } from '#/hooks/use-mobile.ts'
 

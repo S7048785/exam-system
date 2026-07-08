@@ -1,5 +1,5 @@
 import { Button } from '#/components/ui/button.tsx'
-import { Input } from '#/components/ui/input.tsx'
+import { Input } from '#/components/ui'
 import ExamPaperList from '#/features/exam/list/components/ExamPaperList.tsx'
 import { paperListQueryOptions } from '#/features/exam/list/examQueries.ts'
 import { useSuspenseQuery } from '@tanstack/react-query'

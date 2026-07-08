@@ -1,5 +1,5 @@
-import type { Step } from './constants'
-import { STEPS } from './constants'
+import type { Step } from './constants.ts'
+import { STEPS } from './constants.ts'
 import { CheckIcon } from 'lucide-react'
 
 interface StepIndicatorProps {

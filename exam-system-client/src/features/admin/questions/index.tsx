@@ -8,7 +8,7 @@ import type {
 import QuestionTable from './QuestionTable'
 import QuestionDrawer from './drawer/QuestionDrawer.tsx'
 import ImportQuestionsDialog from './ImportQuestionsDialog/index'
-import AiGenerateDialog from './AiGenerateDialog'
+import AiGenerateDialog from './AiGenerateDialog/Dialog.tsx'
 import { useMemo, useState } from 'react'
 import {
   categoryTreeQueryOptions,

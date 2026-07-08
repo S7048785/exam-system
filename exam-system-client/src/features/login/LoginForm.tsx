@@ -1,7 +1,6 @@
 ﻿import { api } from '#/ApiInstance.ts'
 import { Button } from '#/components/ui/button.tsx'
-import { Input } from '#/components/ui/input.tsx'
-import { Label } from '#/components/ui/label.tsx'
+import { Input, Label } from '#/components/ui'
 import { useLoginAction } from '#/features/login/useUserActions.ts'
 import useUserStore from '#/stores/user.ts'
 import { useForm } from '@tanstack/react-form'
