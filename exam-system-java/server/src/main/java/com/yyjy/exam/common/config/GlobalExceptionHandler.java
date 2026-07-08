@@ -1,5 +1,6 @@
 package com.yyjy.exam.common.config;
 
+import cn.dev33.satoken.exception.NotLoginException;
 import com.yyjy.exam.common.convention.result.ErrorResponse;
 import com.yyjy.exam.common.exception.BusinessException;
 import org.slf4j.Logger;
@@ -32,6 +33,12 @@ public class GlobalExceptionHandler {
 		log.error("服务器内部错误: {}", ex.getMessage(), ex);
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 				       .body(new ErrorResponse("服务器内部错误"));
+	}
+	
+	@ExceptionHandler
+	public ResponseEntity<ErrorResponse> handleException(NotLoginException ex) {
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+				       .body(new ErrorResponse("用户未登录"));
 	}
 	
 }

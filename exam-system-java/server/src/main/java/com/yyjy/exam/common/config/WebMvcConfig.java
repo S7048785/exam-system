@@ -1,7 +1,6 @@
 package com.yyjy.exam.common.config;
 
 import cn.dev33.satoken.interceptor.SaInterceptor;
-import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.property.ExcludeProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -29,7 +28,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 		excludePaths.add("/openapi.yml");
 		excludePaths.add("/openapi.html");
 		
-		registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
+		registry.addInterceptor(new SaInterceptor())
 				.addPathPatterns("/**")
 				.excludePathPatterns(excludePaths);
 	}
