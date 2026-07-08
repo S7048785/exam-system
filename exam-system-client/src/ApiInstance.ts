@@ -1,4 +1,5 @@
 ﻿import { Api } from './__generated'
+import { redirect } from '@tanstack/react-router'
 
 // 由于 TanStack Start 有 SSR，SSR 阶段的 Node.js 环境不走 Vite proxy，需要保留直连 URL
 const BASE_URL =
@@ -20,7 +21,14 @@ export const api = new Api(async ({ uri, method, headers, body }) => {
   })
 
   if (!response.ok) {
-    throw await response.json()
+    switch (response.status) {
+      case 401:
+        throw redirect({ to: '/sign-in' })
+      case 403:
+        throw redirect({ to: '/403' })
+      default:
+        throw await response.json()
+    }
   }
 
   const text = await response.text()

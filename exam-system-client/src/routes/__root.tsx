@@ -44,9 +44,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   errorComponent: ({ error }) => {
     return (
       <div>
-        <h1>糟糕，出错了</h1>
         <pre>{error.message}</pre>
-        <button onClick={() => window.location.reload()}>刷新试试</button>
       </div>
     )
   },
