@@ -1,11 +1,13 @@
 ﻿import { api } from '#/ApiInstance.ts'
 import { Button } from '#/components/ui/button.tsx'
-import { Input, Label } from '#/components/ui'
+import { Checkbox } from '#/components/ui/checkbox'
+import { Input } from '#/components/ui/input'
+import { Label } from '#/components/ui/label'
 import { useLoginAction } from '#/features/login/useUserActions.ts'
 import useUserStore from '#/stores/user.ts'
 import { useForm } from '@tanstack/react-form'
 import { Lock, User } from 'lucide-react'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import z from 'zod'
 import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
@@ -15,17 +17,34 @@ const userSchema = z.object({
   password: z.string().min(6, '密码长度不能小于6位字符'),
 })
 
+const REMEMBERED_CREDENTIALS_KEY = 'remembered-credentials'
+
+/**
+ * 从本地存储中获取保存的登录凭证据
+ */
+function getSavedCredentials(): { email: string; password: string } | null {
+  try {
+    const raw = localStorage.getItem(REMEMBERED_CREDENTIALS_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function LoginForm() {
+  const saved = getSavedCredentials()
+
   const id = useId()
   const navigate = useNavigate()
 
   const loginMutation = useLoginAction()
   const setUser = useUserStore((s) => s.setUser)
+  const [rememberMe, setRememberMe] = useState(!!saved)
 
   const form = useForm({
     defaultValues: {
-      email: '',
-      password: '',
+      email: saved?.email || '',
+      password: saved?.password || '',
     },
     validators: {
       onChange: userSchema,
@@ -44,6 +63,19 @@ export default function LoginForm() {
           },
           onSuccess: async () => {
             toast.success('登录成功')
+
+            if (rememberMe) {
+              localStorage.setItem(
+                REMEMBERED_CREDENTIALS_KEY,
+                JSON.stringify({
+                  email: value.email,
+                  password: value.password,
+                }),
+              )
+            } else {
+              localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY)
+            }
+
             const res = await api.userController.getUserInfo()
             setUser(res.data)
             if (res.data.role === 'admin') {
@@ -113,7 +145,17 @@ export default function LoginForm() {
           )}
         />
       </div>
-      <div className="mt-8 flex w-full flex-col items-center gap-y-4">
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`${id}-remember`}
+          checked={rememberMe}
+          onCheckedChange={(checked) => setRememberMe(!!checked)}
+        />
+        <Label htmlFor={`${id}-remember`} className="cursor-pointer text-sm">
+          记住密码
+        </Label>
+      </div>
+      <div className="flex w-full flex-col items-center gap-y-4">
         <Button
           className="w-full py-6"
           type="submit"
