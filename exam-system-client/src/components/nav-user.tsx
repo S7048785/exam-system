@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Activity, useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import {
@@ -6,8 +6,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
@@ -56,6 +54,12 @@ export function NavUser({
     }
   }, [theme])
 
+  function toggleTheme() {
+    const next: ThemeMode =
+      theme === 'light' ? 'dark' : theme === 'dark' ? 'auto' : 'light'
+    setTheme(next)
+  }
+
   function handleLogout() {
     useUserStore.getState().logout()
     navigate({ to: '/sign-in' })
@@ -90,7 +94,7 @@ export function NavUser({
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+              <div className="flex items-center gap-2 px-1 py-1.5 text-center text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback className="rounded-lg">CN</AvatarFallback>
@@ -104,26 +108,20 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs">主题</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={theme}
-              onValueChange={(value) => setTheme(value as ThemeMode)}
+            <DropdownMenuItem
+              className="justify-center"
+              onSelect={(e) => {
+                e.preventDefault()
+                toggleTheme()
+              }}
             >
-              <DropdownMenuRadioItem value="light">
-                <Sun strokeWidth={2} />
-                浅色
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="dark">
-                <Moon strokeWidth={2} />
-                深色
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="auto">
-                <Monitor strokeWidth={2} />
-                跟随系统
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
+              <Activity mode={theme === 'light' ? 'visible' : 'hidden'}><Sun strokeWidth={2} /></Activity>
+              <Activity mode={theme === 'dark' ? 'visible' : 'hidden'}><Moon strokeWidth={2} /></Activity>
+              <Activity mode={theme === 'auto' ? 'visible' : 'hidden'}><Monitor strokeWidth={2} /></Activity>
+              切换主题
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem className="justify-center" onClick={handleLogout}>
               <LogOut strokeWidth={2} />
               退出登录
             </DropdownMenuItem>
