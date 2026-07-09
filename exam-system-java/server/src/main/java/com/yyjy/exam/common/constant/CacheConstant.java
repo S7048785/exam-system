@@ -16,4 +16,5 @@ public final class CacheConstant {
     public static final long DEFAULT_EXPIRE_SECONDS = 1800;
     public static final long HOT_DATA_EXPIRE_SECONDS = 3600;
     public static final String CAPTCHA_REGISTER_KEY = "captcha:register:";
+    public static final String DASHBOARD_STATS_KEY = "dashboard:stats";
 }
