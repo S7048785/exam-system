@@ -4,7 +4,7 @@ import { Input } from '#/components/ui'
 import ExamPaperList from '#/features/exam/list/components/ExamPaperList.tsx'
 import { paperListQueryOptions } from '#/features/exam/list/examQueries.ts'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeftIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { PAPER_STATUS } from '#/features/admin/papers/constants.ts'
@@ -27,11 +27,9 @@ export const Route = createFileRoute('/_auth/exam/list')({
   },
 })
 
-const routeApi = getRouteApi('/_auth/exam/list')
-
-export default function ExamListPage() {
+function ExamListPage() {
   const { history, navigate } = useRouter()
-  const { keyword } = routeApi.useSearch()
+  const { keyword } = Route.useSearch()
   const { data } = useSuspenseQuery(
     paperListQueryOptions({
       status: PAPER_STATUS.PUBLISHED,

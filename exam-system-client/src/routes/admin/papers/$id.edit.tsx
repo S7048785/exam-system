@@ -21,7 +21,7 @@ export const Route = createFileRoute('/admin/papers/$id/edit')({
   component: EditPaperPage,
 })
 
-export default function EditPaperPage() {
+function EditPaperPage() {
   const { id } = useParams({ strict: false })
   const paperId = Number(id)
   const navigate = useNavigate()

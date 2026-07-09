@@ -13,9 +13,20 @@ import { NavMain } from '#/features/admin/nav-main.tsx'
 import useUserStore from '#/stores/user.ts'
 
 import { Link } from '@tanstack/react-router'
-import { ChartBar, EqualApproximately, Folder, ScrollText } from 'lucide-react'
+import {
+  ChartBar,
+  EqualApproximately,
+  Folder,
+  LayoutDashboard,
+  ScrollText,
+} from 'lucide-react'
 
 const navMain = [
+  {
+    title: '仪表盘',
+    url: '/admin',
+    icon: <LayoutDashboard strokeWidth={2} />,
+  },
   // {
   //   title: '轮播图',
   //   url: '/admin/banners',

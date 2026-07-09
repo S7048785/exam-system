@@ -8,6 +8,7 @@ import { Lock, User } from 'lucide-react'
 import { useId } from 'react'
 import z from 'zod'
 import { toast } from 'sonner'
+import { useNavigate } from '@tanstack/react-router'
 
 const userSchema = z.object({
   email: z.string().min(4, '用户名长度不能小于4位字符'),
@@ -16,6 +17,7 @@ const userSchema = z.object({
 
 export default function LoginForm() {
   const id = useId()
+  const navigate = useNavigate()
 
   const loginMutation = useLoginAction()
   const setUser = useUserStore((s) => s.setUser)
@@ -44,10 +46,12 @@ export default function LoginForm() {
             toast.success('登录成功')
             const res = await api.userController.getUserInfo()
             setUser(res.data)
+            if (res.data.role === 'admin') {
+              navigate({ to: '/admin/questions' })
+            }
           },
         },
       )
-
       // 使所有路由的 loader 数据失效，强制它们在下次渲染时重新执行。
       // await router.invalidate()
     },
@@ -73,7 +77,7 @@ export default function LoginForm() {
                   className="ps-9"
                   placeholder="请输入邮箱"
                   required
-                  autoComplete="current-email"
+                  autoComplete="on"
                   type="email"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -93,7 +97,7 @@ export default function LoginForm() {
               <div className="relative">
                 <Input
                   id={`${id}-password`}
-                  autoComplete="current-password"
+                  autoComplete="on"
                   placeholder="请输入密码"
                   className="ps-9"
                   required

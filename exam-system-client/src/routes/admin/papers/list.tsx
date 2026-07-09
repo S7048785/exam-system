@@ -21,7 +21,7 @@ export const Route = createFileRoute('/admin/papers/list')({
   ),
 })
 
-export default function PapersPage() {
+function PapersPage() {
   const navigate = useNavigate()
 
   // 列表筛选条件
