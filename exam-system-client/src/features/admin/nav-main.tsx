@@ -11,7 +11,7 @@ import {
 import { cn } from '#/lib/utils.ts'
 import { Link, useMatches, useMatchRoute } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { Activity, useState } from 'react'
 
 export function NavMain({
   items,
@@ -77,23 +77,29 @@ function MenuItem({
   // 父级菜单是否激活（包含子路径）
   const isParentActive = !!matchRoute({ to: item.url, fuzzy: true })
   // 基础样式抽离，避免重复
-  const activeStyles =
-    'min-w-8 bg-primary duration-200 ease-linear hover:bg-primary/90!'
+  const activeStyles = isParentActive
+    ? 'bg-primary duration-200 ease-linear hover:bg-primary/90!'
+    : ''
   // 有子菜单的情况
   if (item.submenu) {
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
           onClick={onToggle}
-          className={cn('min-w-8', isParentActive && activeStyles)}
+          className={cn('items-between flex min-w-8', activeStyles)}
         >
-          {item.icon}
-          <span className="flex-1">{item.title}</span>
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
+          <div className="flex gap-4">
+            {item.icon}
+            <span className="">{item.title}</span>
+          </div>
+          <div className="ml-auto">
+            <Activity mode={isExpanded ? 'visible' : 'hidden'}>
+              <ChevronDown className="h-4 w-4" />
+            </Activity>
+            <Activity mode={isExpanded ? 'hidden' : 'visible'}>
+              <ChevronRight className="h-4 w-4" />
+            </Activity>
+          </div>
         </SidebarMenuButton>
         {isExpanded && (
           <SidebarMenuSub>

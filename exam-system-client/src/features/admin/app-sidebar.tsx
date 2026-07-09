@@ -24,7 +24,7 @@ import {
 const navMain = [
   {
     title: '仪表盘',
-    url: '/admin',
+    url: '/admin/dashboard',
     icon: <LayoutDashboard strokeWidth={2} />,
   },
   // {
