@@ -1,10 +1,13 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
@@ -14,13 +17,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '#/components/ui/sidebar'
-import {
-  Bell,
-  CreditCard,
-  LogOut,
-  MoveVertical,
-  UserCircle,
-} from 'lucide-react'
+import useUserStore from '#/stores/user.ts'
+import type { ThemeMode } from '#/components/ThemeToggle.tsx'
+import { applyThemeMode, getInitialMode } from '#/components/ThemeToggle.tsx'
+import { LogOut, Monitor, Moon, MoveVertical, Sun } from 'lucide-react'
 
 export function NavUser({
   user,
@@ -32,6 +32,34 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const navigate = useNavigate()
+  const [theme, setTheme] = useState<ThemeMode>(getInitialMode)
+
+  // Apply theme on change
+  useEffect(() => {
+    applyThemeMode(theme)
+    window.localStorage.setItem('theme', theme)
+  }, [theme])
+
+  // Listen for system preference changes when in auto mode
+  useEffect(() => {
+    if (theme !== 'auto') {
+      return
+    }
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => applyThemeMode('auto')
+
+    media.addEventListener('change', onChange)
+    return () => {
+      media.removeEventListener('change', onChange)
+    }
+  }, [theme])
+
+  function handleLogout() {
+    useUserStore.getState().logout()
+    navigate({ to: '/sign-in' })
+  }
 
   return (
     <SidebarMenu>
@@ -57,7 +85,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? 'bottom' : 'right'}
+            side={isMobile ? 'bottom' : 'top'}
             align="end"
             sideOffset={4}
           >
@@ -76,24 +104,28 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <UserCircle strokeWidth={2} />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard strokeWidth={2} />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell strokeWidth={2} />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
+            <DropdownMenuLabel className="text-xs">主题</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={theme}
+              onValueChange={(value) => setTheme(value as ThemeMode)}
+            >
+              <DropdownMenuRadioItem value="light">
+                <Sun strokeWidth={2} />
+                浅色
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="dark">
+                <Moon strokeWidth={2} />
+                深色
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="auto">
+                <Monitor strokeWidth={2} />
+                跟随系统
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut strokeWidth={2} />
-              Log out
+              退出登录
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

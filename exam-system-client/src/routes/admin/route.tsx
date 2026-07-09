@@ -15,5 +15,4 @@ export const Route = createFileRoute('/admin')({
       throw redirect({ to: '/403' })
     }
   },
-  ssr: false,
 })
