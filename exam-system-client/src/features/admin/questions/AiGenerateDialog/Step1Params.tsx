@@ -1,7 +1,8 @@
 import { useForm } from '@tanstack/react-form'
 import type { CategoriesTree } from '#/__generated/model/static'
 import { DIFFICULTY_OPTIONS, TYPE_OPTIONS } from './constants.ts'
-import { Input, Label } from '#/components/ui'
+import { Input } from '#/components/ui/input'
+import { Label } from '#/components/ui/label'
 import { Switch } from '#/components/ui/switch'
 import {
   Select,

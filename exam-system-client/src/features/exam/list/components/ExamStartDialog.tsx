@@ -1,6 +1,6 @@
 ﻿import type { PaperDto } from '#/__generated/model/dto'
 import { Button } from '#/components/ui/button'
-import { Input } from '#/components/ui'
+import { Input } from '#/components/ui/input'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Dialog,

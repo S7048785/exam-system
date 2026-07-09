@@ -2,17 +2,14 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { dashboardStatsOptions } from '#/features/admin/dashboard/dashboardQueries.ts'
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '#/components/ui'
+} from '#/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card'
 import { ClipboardList, FileQuestion, ScrollText, Users } from 'lucide-react'
 
 export const Route = createFileRoute('/admin/')({

@@ -15,7 +15,8 @@ import {
   DrawerTitle,
 } from '#/components/ui/drawer.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { Input, Label } from '#/components/ui'
+import { Input } from '#/components/ui/input'
+import { Label } from '#/components/ui/label'
 import {
   Select,
   SelectContent,

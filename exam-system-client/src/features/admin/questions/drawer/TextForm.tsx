@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { QuestionsPageView } from '#/__generated/model/static'
-import { Label } from '#/components/ui'
+import { Label } from '#/components/ui/label'
 import { Textarea } from '#/components/ui/textarea.tsx'
 
 interface TextFormProps {

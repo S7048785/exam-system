@@ -1,7 +1,8 @@
 import { api } from '#/ApiInstance.ts'
 import { FancyMultiSelect } from '#/components/fancy-multi-select.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { Input, Label } from '#/components/ui'
+import { Input } from '#/components/ui/input'
+import { Label } from '#/components/ui/label'
 import {
   Table,
   TableBody,
