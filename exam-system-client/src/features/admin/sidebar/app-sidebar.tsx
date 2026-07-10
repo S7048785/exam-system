@@ -19,6 +19,7 @@ import {
   Folder,
   LayoutDashboard,
   ScrollText,
+  Users,
 } from 'lucide-react'
 
 const navMain = [
@@ -36,6 +37,11 @@ const navMain = [
     title: '题目',
     url: '/admin/questions',
     icon: <ChartBar strokeWidth={2} />,
+  },
+  {
+    title: '用户管理',
+    url: '/admin/users',
+    icon: <Users strokeWidth={2} />,
   },
   {
     title: '试卷',
