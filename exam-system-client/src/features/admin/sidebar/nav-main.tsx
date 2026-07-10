@@ -7,7 +7,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from '#/components/ui/sidebar'
+} from '#/components/ui/sidebar.tsx'
 import { cn } from '#/lib/utils.ts'
 import { Link, useMatches, useMatchRoute } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -78,7 +78,7 @@ function MenuItem({
   const isParentActive = !!matchRoute({ to: item.url, fuzzy: true })
   // 基础样式抽离，避免重复
   const activeStyles = isParentActive
-    ? 'bg-primary duration-200 ease-linear hover:bg-primary/90!'
+    ? 'bg-primary text-primary-foreground! duration-200 ease-linear hover:bg-primary/90!'
     : ''
   // 有子菜单的情况
   if (item.submenu) {

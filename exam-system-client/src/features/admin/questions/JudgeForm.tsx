@@ -23,7 +23,7 @@ export default function JudgeForm({
     if (editData) {
       onChange({
         analysis: editData.analysis || '',
-        judgeAnswer: editData.answers?.answer || 'true',
+        judgeAnswer: editData.answers.answer || 'true',
       })
     }
   }, [editData])

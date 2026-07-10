@@ -1,7 +1,8 @@
 ﻿import { Api } from './__generated'
 import { redirect } from '@tanstack/react-router'
 
-// 由于 TanStack Start 有 SSR，SSR 阶段的 Node.js 环境不走 Vite proxy，需要保留直连 URL
+// 浏览器端走 Vite proxy (/api → localhost:8101)，使用相对路径
+// 服务端 SSR 阶段直接连接后端
 const BASE_URL =
   typeof window !== 'undefined' ? '' : import.meta.env.VITE_API_URL
 

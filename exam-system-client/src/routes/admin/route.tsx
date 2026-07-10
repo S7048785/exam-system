@@ -1,17 +1,16 @@
 import AdminPage from '#/features/admin'
-import useUserStore from '#/stores/user.ts'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/admin')({
   component: AdminPage,
-  beforeLoad: () => {
-    const { user } = useUserStore.getState()
+  ssr: false,
+  beforeLoad: ({ context }) => {
     // 登录校验
-    if (!user) {
+    if (!context.user) {
       throw redirect({ to: '/sign-in' })
     }
     // 权限校验
-    if (user.role !== 'admin') {
+    if (context.user.role !== 'admin') {
       throw redirect({ to: '/403' })
     }
   },

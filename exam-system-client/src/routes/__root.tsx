@@ -4,19 +4,32 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
-
 import '@pitininja/cap-react-widget/dist/index.css'
 import appCss from '../styles.css?url'
 
 import { TooltipProvider } from '#/components/ui/tooltip'
 import type { QueryClient } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
+import { serverApi } from '#/api.server.ts'
+import type { UserInfo } from '#/stores/user.ts'
+import { createServerFn } from '@tanstack/react-start'
 
 interface MyRouterContext {
   queryClient: QueryClient
+  user: UserInfo | null
 }
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
+
+const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
+  // We need to auth on the server so we have access to secure cookies
+  try {
+    const user = await serverApi.userController.getUserInfo()
+    return user.data
+  } catch {
+    return null
+  }
+})
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
@@ -39,6 +52,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
     ],
   }),
+  beforeLoad: async () => {
+    const user = await fetchUser()
+    return {
+      user,
+    }
+  },
   shellComponent: RootDocument,
   // 当代码运行报错时显示
   errorComponent: ({ error }) => {
@@ -62,14 +81,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans wrap-anywhere antialiased">
         <ProgressBar />
-        {/* Ambient Background Blurs (Global) */}
-        <div className="pointer-events-none fixed top-0 left-0 z-0 h-screen w-full overflow-hidden">
-          {/* Top Left Blob: Gold/Stone hue in dark mode, subtle stone in light */}
-          <div className="absolute top-[-10%] left-[-10%] h-[60vw] w-[60vw] rounded-full bg-stone-200/40 mix-blend-multiply blur-[100px] transition-colors duration-1000 dark:bg-amber-900/10 dark:mix-blend-screen"></div>
-
-          {/* Bottom Right Blob: Jade/Moss hue */}
-          <div className="absolute right-[-10%] bottom-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-100/40 mix-blend-multiply blur-[120px] transition-colors duration-1000 dark:bg-blue-900/15 dark:mix-blend-screen"></div>
-        </div>
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
         <Scripts />

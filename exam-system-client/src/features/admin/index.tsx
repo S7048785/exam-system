@@ -1,6 +1,6 @@
-import { SiteHeader } from '@/components/site-header'
+import { SiteHeader } from '#/features/admin/site-header.tsx'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { AppSidebar } from '@/features/admin/app-sidebar'
+import { AppSidebar } from '#/features/admin/sidebar/app-sidebar.tsx'
 import { Outlet } from '@tanstack/react-router'
 import React from 'react'
 

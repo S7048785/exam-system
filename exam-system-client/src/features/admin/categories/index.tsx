@@ -1,14 +1,14 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { api } from '#/ApiInstance.ts'
-import type {
-  CategoriesTree,
-  CategorySaveInput,
-  CategoryUpdateInput,
-} from '#/__generated/model/static'
 import CategoryTable from './CategoryTable'
 import CategoryDrawer from './CategoryDrawer'
 import { useState } from 'react'
 import { categoryTreeOptions } from '#/features/admin/categories/categoryQueries.ts'
+import type {
+  QuestionsCategoriesTree,
+  QuestionsCategorySaveInput,
+  QuestionsCategoryUpdateInput,
+} from '#/__generated/model/static'
 
 export default function CategoriesPage() {
   // 展开的分类 ID 集合
@@ -16,7 +16,7 @@ export default function CategoriesPage() {
 
   // 选中的分类（用于编辑）
   const [selectedCategory, setSelectedCategory] =
-    useState<CategoriesTree | null>(null)
+    useState<QuestionsCategoriesTree | null>(null)
 
   // Drawer 状态
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -32,8 +32,8 @@ export default function CategoriesPage() {
 
   // 新增分类
   const addMutation = useMutation({
-    mutationFn: (input: CategorySaveInput) =>
-      api.categoryController.addCategory({ body: input }),
+    mutationFn: (input: QuestionsCategorySaveInput) =>
+      api.questionCategoryController.addCategory({ body: input }),
     onSuccess: () => {
       refetch()
     },
@@ -41,8 +41,8 @@ export default function CategoriesPage() {
 
   // 更新分类
   const updateMutation = useMutation({
-    mutationFn: ({ input }: { input: CategoryUpdateInput }) =>
-      api.categoryController.updateCategory({ body: input }),
+    mutationFn: ({ input }: { input: QuestionsCategoryUpdateInput }) =>
+      api.questionCategoryController.updateCategory({ body: input }),
     onSuccess: () => {
       refetch()
     },
@@ -50,7 +50,8 @@ export default function CategoriesPage() {
 
   // 删除分类
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => api.categoryController.removeCategory({ id }),
+    mutationFn: (id: number) =>
+      api.questionCategoryController.removeCategory({ id }),
     onSuccess: () => {
       refetch()
     },
@@ -75,7 +76,7 @@ export default function CategoriesPage() {
   }
 
   // 打开编辑 Drawer
-  const handleOpenEditDrawer = (category: CategoriesTree) => {
+  const handleOpenEditDrawer = (category: QuestionsCategoriesTree) => {
     setSelectedCategory(category)
     setDrawerMode('edit')
     setDrawerOpen(true)
@@ -107,7 +108,7 @@ export default function CategoriesPage() {
     deleteMutation.mutate(id)
   }
 
-  const categories = treeData.data ?? []
+  const categories = treeData.data
 
   return (
     <div className="space-y-4">

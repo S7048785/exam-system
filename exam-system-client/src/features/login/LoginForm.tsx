@@ -145,7 +145,7 @@ export default function LoginForm() {
           )}
         />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex justify-end gap-2">
         <Checkbox
           id={`${id}-remember`}
           checked={rememberMe}

@@ -37,7 +37,7 @@ function PapersPage() {
 
   // 获取试卷列表
   const { data: listData, refetch } = useSuspenseQuery(
-    papersQueryOptions({ ...filters, name: filters.name || undefined }),
+    papersQueryOptions({ ...filters }),
   )
 
   const papers = listData.data

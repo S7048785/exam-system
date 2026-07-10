@@ -1,9 +1,14 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import LoginForm from '#/features/login/LoginForm.tsx'
 import ThemeToggle from '#/components/ThemeToggle.tsx'
+import { redirectIfAuthenticated } from '#/features/login/redirect-if-auth.ts'
 
 export const Route = createFileRoute('/_public/sign-in')({
   component: SigninPage,
+  ssr: false,
+  beforeLoad: ({ context }) => {
+    redirectIfAuthenticated(context.user)
+  },
 })
 
 function SigninPage() {

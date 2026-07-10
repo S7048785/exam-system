@@ -47,7 +47,7 @@ export default function ImportQuestionsDialog({
       return api.questionController.previewExcel({ body: { file } })
     },
     onSuccess: (response) => {
-      if (response.code === 200 && response.data) {
+      if (response.code === 200) {
         setPreviewData([...response.data])
         setStep(2)
       } else {

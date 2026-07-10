@@ -91,7 +91,7 @@ export default function Step3Preview({
                 <div className="text-sm font-medium">{question.title}</div>
 
                 {/* 选项（如果是选择题） */}
-                {question.choices && question.choices.length > 0 && (
+                {question.choices.length > 0 && (
                   <div className="space-y-1.5 pl-4">
                     {question.choices.map((choice, choiceIndex) => (
                       <div

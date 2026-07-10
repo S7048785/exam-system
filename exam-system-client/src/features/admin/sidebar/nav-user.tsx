@@ -1,6 +1,6 @@
 import { Activity, useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar.tsx'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,13 +8,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu'
+} from '#/components/ui/dropdown-menu.tsx'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from '#/components/ui/sidebar'
+} from '#/components/ui/sidebar.tsx'
 import useUserStore from '#/stores/user.ts'
 import type { ThemeMode } from '#/components/ThemeToggle.tsx'
 import { applyThemeMode, getInitialMode } from '#/components/ThemeToggle.tsx'
@@ -109,19 +109,24 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="justify-center"
               onSelect={(e) => {
                 e.preventDefault()
                 toggleTheme()
               }}
             >
-              <Activity mode={theme === 'light' ? 'visible' : 'hidden'}><Sun strokeWidth={2} /></Activity>
-              <Activity mode={theme === 'dark' ? 'visible' : 'hidden'}><Moon strokeWidth={2} /></Activity>
-              <Activity mode={theme === 'auto' ? 'visible' : 'hidden'}><Monitor strokeWidth={2} /></Activity>
+              <Activity mode={theme === 'light' ? 'visible' : 'hidden'}>
+                <Sun strokeWidth={2} />
+              </Activity>
+              <Activity mode={theme === 'dark' ? 'visible' : 'hidden'}>
+                <Moon strokeWidth={2} />
+              </Activity>
+              <Activity mode={theme === 'auto' ? 'visible' : 'hidden'}>
+                <Monitor strokeWidth={2} />
+              </Activity>
               切换主题
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center" onClick={handleLogout}>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut strokeWidth={2} />
               退出登录
             </DropdownMenuItem>

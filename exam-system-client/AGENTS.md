@@ -25,10 +25,10 @@ bun run api              # 从后端 /api/ts.zip 下载 API 类型到 src/__gene
   设为只读）。
 - **`src/routeTree.gen.ts`** 在添加/删除路由文件后自动更新，无需手动操作。
 - 三个路由布局组（`_auth`, `_public`, `admin`）：
-    - `_auth/` — 登录/注册，**无身份校验**
-    - `_public/` — 需登录（`beforeLoad` 中检查 `useUserStore`）
-    - `admin/` — 需 `role === 'admin'`，使用 `ssr: false`（仅客户端渲染）
-    - `exam/` — 需登录
+  - `_auth/` — 登录/注册，**无身份校验**
+  - `_public/` — 需登录（`beforeLoad` 中检查 `useUserStore`）
+  - `admin/` — 需 `role === 'admin'`，使用 `ssr: false`（仅客户端渲染）
+  - `exam/` — 需登录
 - `src/features/` 按业务模块组织（`admin/`, `exam/`, `login/`），与路由一一对应。
 
 ### API 与数据

@@ -20,9 +20,9 @@ export const Route = createFileRoute('/admin/questions')({
       ),
     ])
   },
-  pendingComponent: () => {
-    return <div>加载中</div>
-  },
+  // pendingComponent: () => {
+  //   return <div>加载中</div>
+  // },
   // pendingMs: 0, // 设置为0, 只要路由跳转，立刻显示 pendingComponent
   // pendingMinMs: 0, // pendingComponent最小显示时间
   // pendingComponent: () => (

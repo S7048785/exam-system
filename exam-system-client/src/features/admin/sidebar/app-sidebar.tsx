@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { NavUser } from '#/components/nav-user'
+import { NavUser } from '#/features/admin/sidebar/nav-user.tsx'
 import {
   Sidebar,
   SidebarContent,
@@ -8,8 +8,8 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-} from '#/components/ui/sidebar'
-import { NavMain } from '#/features/admin/nav-main.tsx'
+} from '#/components/ui/sidebar.tsx'
+import { NavMain } from '#/features/admin/sidebar/nav-main.tsx'
 import useUserStore from '#/stores/user.ts'
 
 import { Link } from '@tanstack/react-router'

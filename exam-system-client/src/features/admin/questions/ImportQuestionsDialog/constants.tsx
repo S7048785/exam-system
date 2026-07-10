@@ -57,7 +57,7 @@ export function renderChoicesAndAnswer(
           return (
             <div
               key={index}
-              className={isCorrect ? 'text-green-600 font-medium' : ''}
+              className={isCorrect ? 'font-medium text-green-600' : ''}
             >
               {label}. {choice.content}
             </div>
@@ -72,12 +72,12 @@ export function renderChoicesAndAnswer(
       answer === 'true' || answer === '正确' || answer === 'T' || answer === 'Y'
     return (
       <span
-        className={`text-sm ${isCorrect ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}`}
+        className={`text-sm ${isCorrect ? 'font-medium text-green-600' : 'font-medium text-red-600'}`}
       >
         {isCorrect ? '正确' : '错误'}
       </span>
     )
   }
 
-  return <span className="text-sm text-muted-foreground">{answer || '-'}</span>
+  return <span className="text-muted-foreground text-sm">{answer || '-'}</span>
 }

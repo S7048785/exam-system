@@ -1,11 +1,10 @@
-// src/queries/questionQueries.ts
 import { queryOptions } from '@tanstack/react-query'
 import { api } from '#/ApiInstance.ts'
 import type { QuestionListReq } from '#/__generated/model/static'
 
 export const categoryTreeQueryOptions = queryOptions({
   queryKey: ['categoryTree'],
-  queryFn: () => api.categoryController.tree(),
+  queryFn: () => api.questionCategoryController.tree(),
   staleTime: 10 * 60 * 1000, // 10分钟缓存
 })
 
