@@ -28,7 +28,8 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   try {
     const user = await serverApi.userController.getUserInfo()
     return user.data
-  } catch {
+  } catch (error) {
+    console.error(error)
     return null
   }
 })

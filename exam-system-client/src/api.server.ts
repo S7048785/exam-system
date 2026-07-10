@@ -1,5 +1,6 @@
 import { getRequest } from '@tanstack/start-server-core'
 import { Api } from './__generated'
+import { redirect } from '@tanstack/react-router'
 
 const BASE_URL = import.meta.env.VITE_API_URL
 
@@ -22,8 +23,13 @@ export const serverApi = new Api(async ({ uri, method, headers, body }) => {
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(text)
+    console.error(await response.text())
+    switch (response.status) {
+      case 401:
+        throw redirect({ to: '/sign-in' })
+      case 403:
+        throw redirect({ to: '/403' })
+    }
   }
 
   const text = await response.text()
