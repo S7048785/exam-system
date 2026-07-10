@@ -32,7 +32,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 		if (status != null) {
 			query = query.where(paper.status().eq(status.getValue()));
 		}
-		return query.select(paper.fetch(fetcher)).limit(page - 1, size).execute();
+		return query.select(paper.fetch(fetcher)).limit(size, (long) (page - 1) * size).execute();
 	}
 	
 	default PaperDetail findDetailById(int id) {

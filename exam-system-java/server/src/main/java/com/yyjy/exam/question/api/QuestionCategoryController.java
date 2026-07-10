@@ -20,11 +20,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @SaCheckRole("admin")
-@Api
+@Api()
 @RestController
-@RequestMapping("/category")
+@RequestMapping("/question-category")
 @RequiredArgsConstructor
-public class CategoryController {
+public class QuestionCategoryController {
 	
 	public static final Fetcher<QuestionsCategories> CATEGORY_INFO =
 			QuestionsCategoriesFetcher.$
