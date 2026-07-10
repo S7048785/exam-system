@@ -16,3 +16,32 @@ input UserRegisterInput {
     realName
     password: String
 }
+
+UserPageView {
+    id
+    email
+    realName
+    role
+    status
+    createTime
+    updateTime
+}
+
+input UserSaveInput {
+    @Email(message = "邮箱格式错误")
+    email
+    realName
+    password
+    role
+    status
+}
+
+input UserUpdateInput {
+    id!
+    @Email(message = "邮箱格式错误")
+    email?
+    realName?
+    password?
+    role
+    status
+}

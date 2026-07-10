@@ -37,6 +37,7 @@ public class GlobalExceptionHandler {
 	
 	@ExceptionHandler
 	public ResponseEntity<ErrorResponse> handleException(NotLoginException ex) {
+		log.error("用户未登录: {}", ex.getMessage(), ex);
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				       .body(new ErrorResponse("用户未登录"));
 	}
