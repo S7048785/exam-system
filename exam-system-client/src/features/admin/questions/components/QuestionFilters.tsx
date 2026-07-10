@@ -1,5 +1,5 @@
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { Input } from '#/components/ui/input.tsx'
+import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
   SelectContent,

@@ -6,24 +6,24 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '#/components/ui/table'
-import { Badge } from '#/components/ui/badge'
-import { Button } from '#/components/ui/button'
+} from '#/components/ui/table.tsx'
+import { Badge } from '#/components/ui/badge.tsx'
+import { Button } from '#/components/ui/button.tsx'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '#/components/ui/select'
+} from '#/components/ui/select.tsx'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '#/components/ui/popover'
+} from '#/components/ui/popover.tsx'
 import { HelpCircle, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { DIFFICULTY_MAP, TYPE_MAP } from '#/types/questoin'
+import { DIFFICULTY_MAP, TYPE_MAP } from '#/types/questoin.ts'
 
 interface QuestionTableProps {
   data: readonly QuestionsPageView[]

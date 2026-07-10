@@ -26,7 +26,7 @@ import {
 import { toast } from 'sonner'
 import { useIsMobile } from '#/hooks/use-mobile.ts'
 import ChoiceForm from './ChoiceForm.tsx'
-import JudgeForm from '../JudgeForm.tsx'
+import JudgeForm from './JudgeForm.tsx'
 import TextForm from './TextForm.tsx'
 import { flattenCategories } from '#/features/admin/questions/utils.ts'
 import type { Difficulty, QuestionType } from '#/types/questoin.ts'

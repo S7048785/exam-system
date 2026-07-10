@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import type { QuestionsPageView } from '#/__generated/model/static'
-import { Checkbox } from '#/components/ui/checkbox'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import { Checkbox } from '#/components/ui/checkbox.tsx'
+import { Label } from '#/components/ui/label.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 
 interface JudgeFormProps {
   value: {

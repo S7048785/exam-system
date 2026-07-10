@@ -20,14 +20,13 @@ import {
 } from '#/components/ui/dialog'
 import { toast } from 'sonner'
 
-import { categoryTreeQueryOptions } from '../questionQueries'
-
 import Step1Params from './Step1Params'
 import Step2Generating from './Step2Generating'
 import Step3Preview from './Step3Preview'
 import Step4Success from './Step4Success'
 import StepIndicator from './StepIndicator'
 import type { Step } from './constants.ts'
+import { categoryTreeQueryOptions } from '#/features/admin/questions/questionQueries.ts'
 
 interface AiGenerateDialogProps {
   open: boolean
@@ -92,15 +91,16 @@ export default function AiGenerateDialog({
         analysis: item.analysis,
         choices:
           item.type === 'CHOICE'
-            ? item.choices!.map((choice, index) => ({
+            ? item.choices.map((choice, index) => ({
                 content: choice,
                 correct: item.answer.includes(
                   String.fromCharCode('A'.charCodeAt(0) + index),
                 ),
                 sort: index,
               }))
-            : undefined,
+            : [],
         answer: item.answer,
+        keywords: '',
       }))
 
       return api.questionController.importQuestions({ body: importInputs })
