@@ -13,6 +13,8 @@ import { Toaster } from 'sonner'
 import { serverApi } from '#/api.server.ts'
 import type { UserInfo } from '#/stores/user.ts'
 import { createServerFn } from '@tanstack/react-start'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -84,6 +86,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
         <Scripts />
+        {import.meta.env.DEV && (
+          <>
+            <ReactQueryDevtools buttonPosition="top-right" />
+            <TanStackRouterDevtools position="bottom-right" />
+          </>
+        )}
       </body>
     </html>
   )

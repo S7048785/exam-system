@@ -1,4 +1,8 @@
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import type {
   QuestionListReq,
   QuestionSaveInput,
@@ -21,7 +25,7 @@ import {
 } from './useQuestionActions'
 import QuestionFilters from './QuestionFilters'
 import { Button } from '#/components/ui/button.tsx'
-import { Plus, Sparkles, Upload } from 'lucide-react'
+import { Loader2, Plus, Sparkles, Upload } from 'lucide-react'
 import { flattenCategories } from '#/features/admin/questions/utils.ts'
 
 export default function QuestionsPage() {
@@ -51,13 +55,13 @@ export default function QuestionsPage() {
     return new Map(flat.map((c) => [c.id, c.name]))
   }, [categories])
 
-  const { data: listData } = useSuspenseQuery(
+  const { data: listData, isFetching } = useQuery(
     questionsQueryOptions({ ...searchFilters, ...pagination }),
   )
-  const questions = listData.data.records
-  const total = listData.data.total
-  const page = listData.data.current
-  const size = listData.data.size
+  const questions = listData?.data.records ?? []
+  const total = listData?.data.total ?? 0
+  const page = listData?.data.current ?? 1
+  const size = listData?.data.size ?? pagination.size
 
   const addMutation = useAddQuestion(() => setDrawerOpen(false))
   const updateMutation = useUpdateQuestion(() => setDrawerOpen(false))
@@ -110,7 +114,6 @@ export default function QuestionsPage() {
     <div className="space-y-4">
       <QuestionFilters
         values={searchFilters}
-        categories={categories}
         onChange={handleFiltersChange}
         onRefresh={invalidateQuestions}
       />
@@ -141,17 +144,24 @@ export default function QuestionsPage() {
         </div>
       </div>
 
-      <QuestionTable
-        data={questions}
-        total={total}
-        page={page}
-        size={size}
-        categoryNameMap={categoryNameMap}
-        onPageChange={handlePageChange}
-        onPageSizeChange={handlePageSizeChange}
-        onEdit={handleOpenEditDrawer}
-        onDelete={handleDelete}
-      />
+      <div className="relative">
+        {isFetching && (
+          <div className="bg-background/50 absolute inset-0 z-10 flex items-center justify-center">
+            <Loader2 className="text-muted-foreground size-8 animate-spin" />
+          </div>
+        )}
+        <QuestionTable
+          data={questions}
+          total={total}
+          page={page}
+          size={size}
+          categoryNameMap={categoryNameMap}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          onEdit={handleOpenEditDrawer}
+          onDelete={handleDelete}
+        />
+      </div>
 
       <QuestionDrawer
         open={drawerOpen}
@@ -159,7 +169,6 @@ export default function QuestionsPage() {
         mode={drawerMode}
         question={selectedQuestion}
         onSubmit={handleSubmit}
-        categories={categories}
       />
 
       <ImportQuestionsDialog

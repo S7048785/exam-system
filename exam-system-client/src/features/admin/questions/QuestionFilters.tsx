@@ -9,29 +9,30 @@ import {
 } from '#/components/ui/select.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { RotateCw } from 'lucide-react'
-import type {
-  CategoriesTree,
-  QuestionListReq,
-} from '#/__generated/model/static'
+import type { QuestionListReq } from '#/__generated/model/static'
 import { DIFFICULTY_MAP, TYPE_MAP } from '#/types/questoin.ts'
 import { flattenCategories } from '#/features/admin/questions/utils.ts'
 import { useMemo } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { categoryTreeQueryOptions } from '#/features/admin/questions/questionQueries.ts'
 
 type SearchFilters = Omit<QuestionListReq, 'page' | 'size'>
 
 interface QuestionFiltersProps {
   values: SearchFilters
-  categories: readonly CategoriesTree[]
   onChange: (filters: SearchFilters) => void
   onRefresh: () => void
 }
 
 export default function QuestionFilters({
   values,
-  categories,
   onChange,
   onRefresh,
 }: QuestionFiltersProps) {
+  console.log('重渲染')
+  const { data: categoryData } = useSuspenseQuery(categoryTreeQueryOptions)
+  const categories = categoryData.data
+
   const flatCategories = useMemo(
     () => flattenCategories(categories),
     [categories],

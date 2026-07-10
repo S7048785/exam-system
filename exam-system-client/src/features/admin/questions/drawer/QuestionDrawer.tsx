@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import type {
-  CategoriesTree,
   QuestionSaveInput,
   QuestionsPageView,
   QuestionUpdateInput,
@@ -32,6 +31,8 @@ import TextForm from './TextForm.tsx'
 import { flattenCategories } from '#/features/admin/questions/utils.ts'
 import type { Difficulty, QuestionType } from '#/types/questoin.ts'
 import { DIFFICULTIES, QUESTION_TYPES } from '#/types/questoin.ts'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { categoryTreeQueryOptions } from '#/features/admin/questions/questionQueries.ts'
 
 interface QuestionDrawerProps {
   open: boolean
@@ -39,7 +40,6 @@ interface QuestionDrawerProps {
   mode: 'add' | 'edit'
   question: QuestionsPageView | null
   onSubmit: (values: QuestionSaveInput | QuestionUpdateInput) => void
-  categories: readonly CategoriesTree[]
 }
 
 export default function QuestionDrawer({
@@ -48,10 +48,11 @@ export default function QuestionDrawer({
   mode,
   question,
   onSubmit,
-  categories,
 }: QuestionDrawerProps) {
   const isMobile = useIsMobile()
 
+  const { data: categoryData } = useSuspenseQuery(categoryTreeQueryOptions)
+  const categories = categoryData.data
   const flatCategories = flattenCategories(categories)
 
   // 各题型特有数据
