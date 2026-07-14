@@ -21,6 +21,9 @@ public interface Paper {
 	@ManyToOne
 	PaperCategories category();
 	
+	@IdView
+	long categoryId();
+	
 	String name();
 	
 	@Nullable
@@ -30,6 +33,9 @@ public interface Paper {
 	
 	@Nullable
 	Double totalScore();
+	
+	@Nullable
+	Double PassingScore();
 	
 	@Nullable
 	Integer questionCount();

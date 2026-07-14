@@ -1,0 +1,26 @@
+export com.yyjy.exam.entity.paper.entity.PaperCategories
+    -> package com.yyjy.exam.entity.paper.dto
+
+PaperCategoriesTree {
+    id
+    name
+    parentId
+    sort
+    description
+    children*
+}
+
+input PaperCategorySaveInput {
+    name
+    parentId
+    sort
+    description
+}
+
+input PaperCategoryUpdateInput {
+    id
+    name
+    parentId
+    sort
+    description
+}

@@ -69,6 +69,7 @@ public class PaperService {
 			draft.setName(paperInput.name());
 			draft.setDescription(paperInput.description());
 			draft.setDuration(paperInput.duration());
+			draft.setCategoryId(paperInput.categoryId());
 			draft.setStatus(PaperConstant.STATUS.DRAFT);
 			draft.setQuestionCount(paperInput.questions().size());
 			draft.setTotalScore(totalScore);
@@ -96,6 +97,7 @@ public class PaperService {
 			draft.setName(paperInput.name());
 			draft.setDescription(paperInput.description());
 			draft.setDuration(paperInput.duration());
+			draft.setCategoryId(paperInput.categoryId());
 			for (Map.Entry<String, Integer> entry : paperInput.questions().entrySet()) {
 				long questionId = Long.parseLong(entry.getKey());
 				double score = entry.getValue().doubleValue();

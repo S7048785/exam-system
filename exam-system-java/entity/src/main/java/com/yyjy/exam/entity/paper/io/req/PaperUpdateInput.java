@@ -10,6 +10,7 @@ public record PaperUpdateInput(
 		String name,
 		String description,
 		int duration,
+		Long categoryId,
 		Map<String, Integer> questions
 ) {
 }

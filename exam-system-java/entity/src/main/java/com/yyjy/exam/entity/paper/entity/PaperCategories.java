@@ -32,6 +32,9 @@ public interface PaperCategories {
 	@ManyToOne
 	PaperCategories parent();
 	
+	@IdView
+	long parentId();
+	
 	@OneToMany(mappedBy = "parent")
 	List<PaperCategories> children();
 	

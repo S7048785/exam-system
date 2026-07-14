@@ -29,6 +29,7 @@ public class PaperController {
 			PaperFetcher.$
 					.name()
 					.description()
+					.categoryId()
 					.status()
 					.totalScore()
 					.questionCount()
