@@ -1,5 +1,5 @@
 import { Activity, useEffect, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar.tsx'
 import {
   DropdownMenu,
@@ -19,6 +19,8 @@ import useUserStore from '#/stores/user.ts'
 import type { ThemeMode } from '#/components/ThemeToggle.tsx'
 import { applyThemeMode, getInitialMode } from '#/components/ThemeToggle.tsx'
 import { LogOut, Monitor, Moon, MoveVertical, Sun } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { api } from '#/ApiInstance.ts'
 
 export function NavUser({
   user,
@@ -31,6 +33,8 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const navigate = useNavigate()
+  const router = useRouter()
+  const queryClient = useQueryClient()
   const [theme, setTheme] = useState<ThemeMode>(getInitialMode)
 
   // Apply theme on change
@@ -61,7 +65,21 @@ export function NavUser({
   }
 
   function handleLogout() {
+    // 1. 调用后端 logout API → 清除 Sa-Token session + cookie access_token
+    api.userController.logout()
+
+    // 2. 清除 zustand 本地用户状态
     useUserStore.getState().logout()
+
+    // 3. 清除 TanStack Query 所有缓存 → 旧数据不再展示
+    queryClient.clear()
+
+    // 4. 重新执行所有路由的 beforeLoad →
+    //    fetchUser() 因 cookie 已清除 → 返回 null →
+    //    路由上下文 user 更新为 null
+    router.invalidate()
+
+    // 5. 跳转到登录页
     navigate({ to: '/sign-in' })
   }
 

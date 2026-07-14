@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import {
   useChangeStatus,
   useDeleteMutation,
@@ -8,6 +8,7 @@ import {
 import type { PaperStatus } from '#/__generated/model/enums'
 import { papersQueryOptions } from '#/features/admin/papers/paperQueries.ts'
 import PaperTable from '#/features/admin/papers/components/PaperTable.tsx'
+import PaperInfoDialog from '#/features/admin/papers/components/PaperInfoDialog.tsx'
 
 export const Route = createFileRoute('/admin/papers/list')({
   component: PapersPage,
@@ -22,7 +23,10 @@ export const Route = createFileRoute('/admin/papers/list')({
 })
 
 function PapersPage() {
-  const navigate = useNavigate()
+  // Dialog 状态
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
+  const [editPaperId, setEditPaperId] = useState<number>()
 
   // 列表筛选条件
   const [filters, setFilters] = useState<{
@@ -65,12 +69,16 @@ function PapersPage() {
 
   // 新增
   const handleAdd = () => {
-    navigate({ to: '/admin/papers/create' })
+    setDialogMode('create')
+    setEditPaperId(undefined)
+    setDialogOpen(true)
   }
 
   // 编辑
   const handleEdit = (id: number) => {
-    navigate({ to: '/admin/papers/$id/edit', params: { id: id.toString() } })
+    setDialogMode('edit')
+    setEditPaperId(id)
+    setDialogOpen(true)
   }
 
   return (
@@ -103,6 +111,13 @@ function PapersPage() {
           page,
           size,
         }}
+      />
+
+      <PaperInfoDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        mode={dialogMode}
+        paperId={editPaperId}
       />
     </div>
   )

@@ -27,7 +27,7 @@ export const Route = createFileRoute('/admin/users')({
   },
 })
 
-export default function UsersPage() {
+function UsersPage() {
   const [pagination, setPagination] = useState({ page: 1, size: 10 })
   const [keyword, setKeyword] = useState('')
   const [searchKeyword, setSearchKeyword] = useState('')

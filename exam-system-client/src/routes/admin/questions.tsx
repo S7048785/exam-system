@@ -30,7 +30,7 @@ export const Route = createFileRoute('/admin/questions')({
   component: QuestionsPage,
   loader: async ({ context }) => {
     // 提前预取分类（静态，几乎不影响性能）
-    context.queryClient.ensureQueryData(categoryTreeQueryOptions)
+    await context.queryClient.ensureQueryData(categoryTreeQueryOptions)
     // 提前预取题目列表（使用当前 search 参数）
     // context.queryClient.ensureQueryData(
     //   questionsQueryOptions({
@@ -49,7 +49,7 @@ export const Route = createFileRoute('/admin/questions')({
   // ), // 可替换成骨架屏
 })
 
-export default function QuestionsPage() {
+function QuestionsPage() {
   const queryClient = Route.useRouteContext().queryClient
 
   const [pagination, setPagination] = useState({ page: 1, size: 10 })

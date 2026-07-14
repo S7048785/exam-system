@@ -50,7 +50,7 @@ export default function PaperTableRow({
         {item.createTime ? new Date(item.createTime).toLocaleString() : '-'}
       </TableCell>
       <TableCell>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           {currentAction && (
             <Button
               variant="ghost"
@@ -64,6 +64,7 @@ export default function PaperTableRow({
           )}
           <Button variant="ghost" size="sm" onClick={() => onEdit(item.id)}>
             <Pencil className="h-4 w-4" />
+            编辑
           </Button>
           <Button
             variant="ghost"
@@ -72,6 +73,7 @@ export default function PaperTableRow({
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
+            删除
           </Button>
         </div>
       </TableCell>

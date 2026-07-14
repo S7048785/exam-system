@@ -29,7 +29,6 @@ export default function QuestionFilters({
   onChange,
   onRefresh,
 }: QuestionFiltersProps) {
-  console.log('重渲染')
   const { data: categoryData } = useSuspenseQuery(categoryTreeQueryOptions)
   const categories = categoryData.data
 
