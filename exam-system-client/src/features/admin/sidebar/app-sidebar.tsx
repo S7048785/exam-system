@@ -51,6 +51,7 @@ const navMain = [
       { title: '试卷列表', url: '/admin/papers/list' },
       { title: '创建试卷', url: '/admin/papers/create' },
       { title: '规则创建', url: '/admin/papers/rule' },
+      { title: '试卷分类', url: '/admin/paper-categories' },
     ],
   },
   {
