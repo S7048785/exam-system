@@ -6,6 +6,7 @@ PaperDetail {
     name
     description
     status
+    categoryId
     totalScore
     questionCount
     duration
