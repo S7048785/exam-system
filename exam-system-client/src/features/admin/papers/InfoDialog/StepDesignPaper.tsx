@@ -25,6 +25,9 @@ interface StepDesignPaperProps {
   isPublishing: boolean
 }
 
+/**
+ * 设计试卷
+ */
 export default function StepDesignPaper({
   paperId,
   onPublish,
@@ -116,139 +119,141 @@ export default function StepDesignPaper({
   }
 
   return (
-    <div className="flex h-full gap-4">
-      {/* 左侧：总览 + 题号列表 */}
-      <div className="bg-popover flex w-52 shrink-0 flex-col rounded-lg">
-        <div className="border-b px-4 py-3">
-          <div className="text-muted-foreground text-xs">总计</div>
-          <div className="text-lg font-semibold">
-            {totalCount}
-            <span className="text-muted-foreground ml-1 text-xs font-normal">
-              题
-            </span>
-          </div>
-          <div className="text-lg font-semibold">
-            {totalScore}
-            <span className="text-muted-foreground ml-1 text-xs font-normal">
-              分
-            </span>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3">
-          {totalCount === 0 ? (
-            <p className="text-muted-foreground pt-8 text-center text-sm">
-              暂无题目
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {questions.map((q, i) => (
-                <button
-                  key={q.id}
-                  type="button"
-                  onClick={() => scrollToQuestion(i)}
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded text-sm font-medium transition-colors',
-                    activeIndex === i
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted-foreground/20',
-                  )}
-                >
-                  {i + 1}
-                </button>
-              ))}
+    <div className="">
+      <div className="grid grid-cols-[2fr_8fr] gap-4">
+        {/* 左侧：总览 + 题号列表 */}
+        <div className="bg-popover flex w-full shrink-0 flex-col rounded-lg">
+          <div className="flex items-center gap-2 border-b px-4 py-3">
+            <div className="text-muted-foreground text-xs">总计</div>
+            <div className="text-lg font-semibold">
+              {totalCount}
+              <span className="text-muted-foreground ml-1 text-xs font-normal">
+                题
+              </span>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* 右侧：题目表格 */}
-      <div className="bg-popover flex min-w-0 flex-1 flex-col rounded-lg">
-        <div ref={tableBodyRef} className="flex-1 overflow-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted/50 sticky top-0">
-              <tr>
-                <th className="w-14 px-3 py-2 font-medium">序号</th>
-                <th className="w-20 px-3 py-2 font-medium">题型</th>
-                <th className="px-3 py-2 font-medium">试题内容</th>
-                <th className="w-28 px-3 py-2 font-medium">标准答案</th>
-                <th className="w-24 px-3 py-2 font-medium">分数</th>
-                <th className="w-16 px-3 py-2 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {questions.map((q, i) => (
-                <tr
-                  key={q.id}
-                  ref={(el) => {
-                    rowRefs.current[i] = el
-                  }}
-                  className={cn(
-                    'border-t transition-colors',
-                    activeIndex === i ? 'bg-primary/5' : 'hover:bg-muted/30',
-                  )}
-                >
-                  <td className="px-3 py-2 text-center">{i + 1}</td>
-                  <td className="px-3 py-2">{getTypeLabel(q.type)}</td>
-                  <td className="max-w-xs truncate px-3 py-2">{q.title}</td>
-                  <td className="max-w-[120px] truncate px-3 py-2">
-                    {renderAnswer(q)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      defaultValue={q.score}
-                      className="h-8 w-20"
-                      onBlur={(e) => handleScoreBlur(q.id, e)}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive h-7 px-1"
-                      onClick={() => handleDeleteQuestion(q.id)}
-                    >
-                      删除
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {questions.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="text-muted-foreground py-12 text-center"
+            <div className="text-lg font-semibold">
+              {totalScore}
+              <span className="text-muted-foreground ml-1 text-xs font-normal">
+                分
+              </span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            {totalCount === 0 ? (
+              <p className="text-muted-foreground pt-8 text-center text-sm">
+                暂无题目
+              </p>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {questions.map((q, i) => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => scrollToQuestion(i)}
+                    className={cn(
+                      'flex size-12 items-center justify-center rounded text-sm font-medium transition-colors',
+                      activeIndex === i
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted-foreground/20',
+                    )}
                   >
-                    暂未添加题目，请点击下方按钮添加
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 按钮组 */}
-        <div className="flex items-center justify-between border-t px-4 py-3">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCreateDialog(true)}
-            >
-              新增试题
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowBankDialog(true)}
-            >
-              从题库中选题
+        {/* 右侧：题目表格 */}
+        <div className="bg-popover flex flex-col rounded-lg">
+          <div ref={tableBodyRef} className="flex-1 overflow-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-muted/50 sticky top-0">
+                <tr>
+                  <th className="w-14 px-3 py-2 font-medium">序号</th>
+                  <th className="w-20 px-3 py-2 font-medium">题型</th>
+                  <th className="px-3 py-2 font-medium">试题内容</th>
+                  <th className="w-28 px-3 py-2 font-medium">标准答案</th>
+                  <th className="w-24 px-3 py-2 font-medium">分数</th>
+                  <th className="w-16 px-3 py-2 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {questions.map((q, i) => (
+                  <tr
+                    key={q.id}
+                    ref={(el) => {
+                      rowRefs.current[i] = el
+                    }}
+                    className={cn(
+                      'border-t transition-colors',
+                      activeIndex === i ? 'bg-primary/5' : 'hover:bg-muted/30',
+                    )}
+                  >
+                    <td className="px-3 py-2 text-center">{i + 1}</td>
+                    <td className="px-3 py-2">{getTypeLabel(q.type)}</td>
+                    <td className="max-w-xs truncate px-3 py-2">{q.title}</td>
+                    <td className="max-w-[120px] truncate px-3 py-2">
+                      {renderAnswer(q)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        defaultValue={q.score}
+                        className="h-8 w-20"
+                        onBlur={(e) => handleScoreBlur(q.id, e)}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive h-7 px-1"
+                        onClick={() => handleDeleteQuestion(q.id)}
+                      >
+                        删除
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {questions.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="text-muted-foreground py-12 text-center"
+                    >
+                      暂未添加题目，请点击下方按钮添加
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 按钮组 */}
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCreateDialog(true)}
+              >
+                新增试题
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBankDialog(true)}
+              >
+                从题库中选题
+              </Button>
+            </div>
+            <Button size="sm" onClick={onPublish} disabled={isPublishing}>
+              {isPublishing ? '发布中...' : '发布'}
             </Button>
           </div>
-          <Button size="sm" onClick={onPublish} disabled={isPublishing}>
-            {isPublishing ? '发布中...' : '发布'}
-          </Button>
         </div>
       </div>
 

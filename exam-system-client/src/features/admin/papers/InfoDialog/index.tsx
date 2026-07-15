@@ -133,7 +133,7 @@ export default function PaperInfoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="flex w-[95%] max-w-none flex-col overflow-hidden"
+        className="flex w-[95%] max-w-none flex-col overflow-hidden px-0"
       >
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex flex-row items-center justify-between">
@@ -145,12 +145,13 @@ export default function PaperInfoDialog({
               currentStep={currentStep}
               onStepClick={switchToStep}
             />
+            <div></div>
           </DialogTitle>
         </DialogHeader>
         <DialogDescription className="sr-only">
           {STEPS[currentStep].description}
         </DialogDescription>
-        <div className="flex-1 overflow-auto bg-neutral-800 p-6">
+        <div className="flex-1 overflow-auto bg-neutral-800 p-4">
           {currentStep === 0 ? (
             <StepBasicInfo
               name={name}
