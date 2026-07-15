@@ -29,7 +29,7 @@ public interface Paper {
 	@Nullable
 	String description();
 	
-	String status();
+	PaperStatus status();
 	
 	@Nullable
 	Double totalScore();

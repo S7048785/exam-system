@@ -2,10 +2,9 @@ package com.yyjy.exam.paper.repository;
 
 import com.yyjy.exam.entity.exam.entity.ExamRecordsTable;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
-import com.yyjy.exam.entity.paper.entity.Paper;
-import com.yyjy.exam.entity.paper.entity.PaperTable;
-import com.yyjy.exam.paper.constant.PaperStatus;
+import com.yyjy.exam.entity.paper.entity.*;
 import org.babyfish.jimmer.spring.repository.JRepository;
+import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 
 import java.util.List;
@@ -30,7 +29,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 			query = query.where(paper.name().like("%" + name + "%"));
 		}
 		if (status != null) {
-			query = query.where(paper.status().eq(status.getValue()));
+			query = query.where(paper.status().eq(status));
 		}
 		return query.select(paper.fetch(fetcher)).limit(size, (long) (page - 1) * size).execute();
 	}
@@ -51,5 +50,20 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				        .limit(1)
 				        .execute()
 				        .isEmpty();
+	}
+	
+	default void recalculateTotals(int paperId) {
+		PaperQuestionTable t = PaperQuestionTable.$;
+		var row = sql().createQuery(t)
+				          .where(t.paperId().eq(paperId))
+				          .select(t.count(), t.score().sum())
+				          .fetchFirst();
+		int count = row.get_1().intValue();
+		Double total = row.get_2() != null ? row.get_2() : 0.0;
+		save(PaperDraft.$.produce(draft -> {
+			draft.setId(paperId);
+			draft.setQuestionCount(count);
+			draft.setTotalScore(total);
+		}), SaveMode.UPDATE_ONLY);
 	}
 }

@@ -7,10 +7,12 @@ import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperDraft;
+import com.yyjy.exam.entity.paper.entity.PaperQuestionDraft;
+import com.yyjy.exam.entity.paper.entity.PaperStatus;
+import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
+import com.yyjy.exam.entity.paper.io.req.PaperSaveV2Input;
 import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
-import com.yyjy.exam.paper.constant.PaperConstant;
-import com.yyjy.exam.paper.constant.PaperStatus;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.paper.repository.PaperRepository;
 import com.yyjy.exam.question.repository.QuestionsRepository;
@@ -70,7 +72,7 @@ public class PaperService {
 			draft.setDescription(paperInput.description());
 			draft.setDuration(paperInput.duration());
 			draft.setCategoryId(paperInput.categoryId());
-			draft.setStatus(PaperConstant.STATUS.DRAFT);
+			draft.setStatus(PaperStatus.DRAFT);
 			draft.setQuestionCount(paperInput.questions().size());
 			draft.setTotalScore(totalScore);
 			for (var entry : paperInput.questions().entrySet()) {
@@ -113,7 +115,7 @@ public class PaperService {
 	public void removePaper(int id) {
 		Paper paperDb = paperRepository.findById(id)
 				                .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (!PaperConstant.STATUS.DRAFT.equals(paperDb.status())) {
+		if (!PaperStatus.DRAFT.equals(paperDb.status())) {
 			throw new BusinessException(MessageConstant.PAPER_NOT_DRAFT_STATUS);
 		}
 		
@@ -125,14 +127,99 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public void updateStatus(int id, String status) {
-		if (!PaperConstant.STATUS.STOPPED.equals(status) && !PaperConstant.STATUS.PUBLISHED.equals(status)) {
+	public void updateStatus(int id, PaperStatus status) {
+		if (!PaperStatus.STOPPED.equals(status)) {
 			throw new BusinessException(MessageConstant.PAPER_STATUS_INVALID);
 		}
 		paperRepository.save(PaperDraft.$.produce(draft -> {
 			draft.setId(id);
 			draft.setStatus(status);
 		}), SaveMode.UPDATE_ONLY);
+	}
+	
+	public List<PaperDetail.TargetOf_questions> getPaperQuestions(int id) {
+		PaperDetail detail = paperRepository.findDetailById(id);
+		if (detail == null) throw new BusinessException(MessageConstant.PAPER_NOT_FOUND);
+		return detail.getQuestions();
+	}
+	
+	@Transactional
+	public int addPaperV2(PaperSaveV2Input input) {
+		if (paperRepository.existsByName(input.name())) {
+			throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
+		}
+		long userId = StpUtil.getLoginIdAsLong();
+		Paper paper = paperRepository.save(PaperDraft.$.produce(draft -> {
+			draft.setUserId(userId);
+			draft.setName(input.name());
+			draft.setDescription(input.description());
+			draft.setDuration(input.duration());
+			draft.setCategoryId(input.categoryId());
+			draft.setStatus(PaperStatus.DRAFT);
+			draft.setQuestionCount(0);
+			draft.setTotalScore(0.0);
+		}), SaveMode.INSERT_ONLY);
+		return paper.id();
+	}
+	
+	@Transactional
+	public void publishPaper(int id) {
+		Paper paper = paperRepository.findById(id)
+				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
+		if (!PaperStatus.DRAFT.equals(paper.status())) {
+			throw new BusinessException(MessageConstant.PAPER_NOT_DRAFT_STATUS);
+		}
+		paperRepository.save(PaperDraft.$.produce(draft -> {
+			draft.setId(id);
+			draft.setStatus(PaperStatus.PUBLISHED);
+		}), SaveMode.UPDATE_ONLY);
+	}
+	
+	@Transactional
+	public void addPaperQuestions(int paperId, PaperQuestionAddReq input) {
+		Paper paper = paperRepository.findById(paperId)
+				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
+		if (!PaperStatus.DRAFT.equals(paper.status())) {
+			throw new BusinessException("试卷不是草稿状态，无法添加题目");
+		}
+		
+		for (var item : input.questions()) {
+			var existing = paperQuestionRepo.findByPaperIdAndQuestionId(paperId, item.questionId());
+			
+			if (existing != null) {
+				paperQuestionRepo.save(PaperQuestionDraft.$.produce(draft -> {
+					draft.setId(existing.id());
+					draft.setScore(item.score());
+				}), SaveMode.UPDATE_ONLY);
+			} else {
+				paperQuestionRepo.save(PaperQuestionDraft.$.produce(draft -> {
+					draft.setPaperId(paperId);
+					draft.setQuestionId(item.questionId());
+					draft.setScore(item.score());
+				}), SaveMode.INSERT_ONLY);
+			}
+		}
+		
+		paperRepository.recalculateTotals(paperId);
+	}
+	
+	@Transactional
+	public void removePaperQuestion(int paperId, long questionId) {
+		paperQuestionRepo.deleteByPaperIdAndQuestionId(paperId, questionId);
+		paperRepository.recalculateTotals(paperId);
+	}
+	
+	@Transactional
+	public void updatePaperQuestionScore(int paperId, long questionId, double score) {
+		var existing = paperQuestionRepo.findByPaperIdAndQuestionId(paperId, questionId);
+		if (existing == null) throw new BusinessException("试卷中不存在该题目");
+		
+		paperQuestionRepo.save(PaperQuestionDraft.$.produce(draft -> {
+			draft.setId(existing.id());
+			draft.setScore(score);
+		}), SaveMode.UPDATE_ONLY);
+		
+		paperRepository.recalculateTotals(paperId);
 	}
 	
 	@Transactional
@@ -169,7 +256,7 @@ public class PaperService {
 			draft.setName(dto.getName());
 			draft.setDescription(dto.getDescription());
 			draft.setDuration(dto.getDuration());
-			draft.setStatus(PaperConstant.STATUS.DRAFT);
+			draft.setStatus(PaperStatus.DRAFT);
 			draft.setQuestionCount(finalQuestionCount);
 			draft.setTotalScore(finalTotalScore);
 			for (Map.Entry<Long, Double> entry : questionScores.entrySet()) {

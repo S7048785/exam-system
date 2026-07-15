@@ -6,9 +6,11 @@ import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
+import com.yyjy.exam.entity.paper.entity.PaperStatus;
+import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
+import com.yyjy.exam.entity.paper.io.req.PaperSaveV2Input;
 import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
-import com.yyjy.exam.paper.constant.PaperStatus;
 import com.yyjy.exam.paper.service.PaperService;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
@@ -98,9 +100,72 @@ public class PaperController {
 	@PostMapping("/{id}/status")
 	public R<Void> updatePaperStatus(
 			@PathVariable int id,
-			@RequestParam String status
+			@RequestParam PaperStatus status
 	) {
 		paperService.updateStatus(id, status);
+		return R.ok();
+	}
+	
+	/**
+	 * 新增试卷 v2（不含题目，返回试卷ID）
+	 */
+	@Api
+	@PostMapping("/v2/add")
+	public R<Integer> addPaperV2(@RequestBody PaperSaveV2Input paper) {
+		int id = paperService.addPaperV2(paper);
+		return R.ok(id);
+	}
+	
+	/**
+	 * 发布试卷（DRAFT → PUBLISHED）
+	 */
+	@Api
+	@PostMapping("/{id}/publish")
+	public R<Void> publishPaper(@PathVariable int id) {
+		paperService.publishPaper(id);
+		return R.ok();
+	}
+	
+	/**
+	 * 获取试卷题目列表
+	 */
+	@Api
+	@GetMapping("/{id}/questions")
+	public R<List<PaperDetail.TargetOf_questions>> getPaperQuestions(@PathVariable int id) {
+		return R.ok(paperService.getPaperQuestions(id));
+	}
+	
+	/**
+	 * 批量添加试卷题目（upsert）
+	 */
+	@Api
+	@PostMapping("/{id}/questions")
+	public R<Void> addPaperQuestions(@PathVariable int id, @RequestBody PaperQuestionAddReq input) {
+		paperService.addPaperQuestions(id, input);
+		return R.ok();
+	}
+	
+	/**
+	 * 删除试卷中的一道题目
+	 */
+	@Api
+	@DeleteMapping("/{id}/questions/{questionId}")
+	public R<Void> removePaperQuestion(@PathVariable int id, @PathVariable long questionId) {
+		paperService.removePaperQuestion(id, questionId);
+		return R.ok();
+	}
+	
+	/**
+	 * 更新试卷中题目的分数
+	 */
+	@Api
+	@PutMapping("/{id}/questions/{questionId}/score")
+	public R<Void> updatePaperQuestionScore(
+			@PathVariable int id,
+			@PathVariable long questionId,
+			@RequestParam double score
+	) {
+		paperService.updatePaperQuestionScore(id, questionId, score);
 		return R.ok();
 	}
 	
