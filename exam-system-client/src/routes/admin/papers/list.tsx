@@ -8,7 +8,7 @@ import {
 import type { PaperStatus } from '#/__generated/model/enums'
 import { papersQueryOptions } from '#/features/admin/papers/paperQueries.ts'
 import PaperTable from '#/features/admin/papers/components/PaperTable.tsx'
-import PaperInfoDialog from '#/features/admin/papers/components/PaperInfoDialog.tsx'
+import PaperInfoDialog from '#/features/admin/papers/InfoDialog'
 
 export const Route = createFileRoute('/admin/papers/list')({
   component: PapersPage,
