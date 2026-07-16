@@ -2,6 +2,13 @@ import { useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Button } from '#/components/ui/button.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '#/components/ui/dropdown-menu.tsx'
+import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '#/ApiInstance.ts'
 import { cn } from '#/lib/utils.ts'
@@ -33,7 +40,10 @@ export default function StepDesignPaper({
   onPublish,
   isPublishing,
 }: StepDesignPaperProps) {
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [createConfig, setCreateConfig] = useState<{
+    type: 'CHOICE' | 'JUDGE' | 'TEXT'
+    defaultMulti?: boolean
+  } | null>(null)
   const [showBankDialog, setShowBankDialog] = useState(false)
   const [activeIndex, setActiveIndex] = useState<number | undefined>()
   const tableBodyRef = useRef<HTMLDivElement>(null)
@@ -120,9 +130,9 @@ export default function StepDesignPaper({
 
   return (
     <div className="">
-      <div className="grid grid-cols-[2fr_8fr] gap-4">
+      <div className="flex items-start gap-4">
         {/* 左侧：总览 + 题号列表 */}
-        <div className="bg-popover flex w-full shrink-0 flex-col rounded-lg">
+        <div className="bg-popover flex flex-1 shrink-0 flex-col rounded-lg">
           <div className="flex items-center gap-2 border-b px-4 py-3">
             <div className="text-muted-foreground text-xs">总计</div>
             <div className="text-lg font-semibold">
@@ -138,7 +148,7 @@ export default function StepDesignPaper({
               </span>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="overflow-y-auto p-3">
             {totalCount === 0 ? (
               <p className="text-muted-foreground pt-8 text-center text-sm">
                 暂无题目
@@ -166,8 +176,8 @@ export default function StepDesignPaper({
         </div>
 
         {/* 右侧：题目表格 */}
-        <div className="bg-popover flex flex-col rounded-lg">
-          <div ref={tableBodyRef} className="flex-1 overflow-auto">
+        <div className="bg-popover flex-[4] overflow-y-auto rounded-lg">
+          <div ref={tableBodyRef} className="">
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/50 sticky top-0">
                 <tr>
@@ -235,13 +245,35 @@ export default function StepDesignPaper({
           {/* 按钮组 */}
           <div className="flex items-center justify-between border-t px-4 py-3">
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCreateDialog(true)}
-              >
-                新增试题
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    新增试题
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() =>
+                      setCreateConfig({ type: 'CHOICE', defaultMulti: false })
+                    }
+                  >
+                    单选题
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      setCreateConfig({ type: 'CHOICE', defaultMulti: true })
+                    }
+                  >
+                    多选题
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setCreateConfig({ type: 'TEXT' })}
+                  >
+                    简答题
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="outline"
                 size="sm"
@@ -258,12 +290,18 @@ export default function StepDesignPaper({
       </div>
 
       {/* 子 Dialog */}
-      <CreateQuestionInPaperDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        paperId={paperId}
-        onSuccess={refetchQuestions}
-      />
+      {createConfig && (
+        <CreateQuestionInPaperDialog
+          open={!!createConfig}
+          onOpenChange={(v) => {
+            if (!v) setCreateConfig(null)
+          }}
+          paperId={paperId}
+          onSuccess={refetchQuestions}
+          questionType={createConfig.type}
+          defaultMulti={createConfig.defaultMulti}
+        />
+      )}
       <SelectQuestionFromBankDialog
         open={showBankDialog}
         onOpenChange={setShowBankDialog}

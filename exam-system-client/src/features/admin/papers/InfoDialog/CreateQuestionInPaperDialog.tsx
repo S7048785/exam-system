@@ -19,24 +19,25 @@ import {
 } from '#/components/ui/select.tsx'
 import { toast } from 'sonner'
 import { api } from '#/ApiInstance.ts'
-import type { QuestionSaveInput } from '#/__generated/model/static'
+import ChoiceForm from '#/features/admin/questions/components/drawer/ChoiceForm.tsx'
+import JudgeForm from '#/features/admin/questions/components/drawer/JudgeForm.tsx'
+import TextForm from '#/features/admin/questions/components/drawer/TextForm.tsx'
 
-const QUESTION_TYPES = [
-  { value: 'CHOICE', label: '选择题' },
-  { value: 'JUDGE', label: '判断题' },
-  { value: 'TEXT', label: '简答题' },
-]
-
-interface ChoiceOption {
-  content: string
-  correct: boolean
-}
+type QuestionType = 'CHOICE' | 'JUDGE' | 'TEXT'
 
 interface CreateQuestionInPaperDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   paperId: number
   onSuccess: () => void
+  questionType: QuestionType
+  defaultMulti?: boolean
+}
+
+const TYPE_TITLE: Record<QuestionType, string> = {
+  CHOICE: '选择题',
+  JUDGE: '判断题',
+  TEXT: '简答题',
 }
 
 export default function CreateQuestionInPaperDialog({
@@ -44,44 +45,61 @@ export default function CreateQuestionInPaperDialog({
   onOpenChange,
   paperId,
   onSuccess,
+  questionType,
+  defaultMulti = false,
 }: CreateQuestionInPaperDialogProps) {
   const [title, setTitle] = useState('')
-  const [type, setType] = useState('CHOICE')
   const [difficulty, setDifficulty] = useState('EASY')
   const [score, setScore] = useState(5)
-  const [choices, setChoices] = useState<ChoiceOption[]>([
-    { content: '', correct: false },
-    { content: '', correct: false },
-  ])
-  const [judgeAnswer, setJudgeAnswer] = useState('true')
+
+  const [choiceValue, setChoiceValue] = useState({
+    multi: defaultMulti,
+    analysis: '',
+    choices: [
+      { content: '', correct: false },
+      { content: '', correct: false },
+    ],
+  })
+
+  const [judgeValue, setJudgeValue] = useState({
+    analysis: '',
+    judgeAnswer: 'true',
+  })
+
   const [textAnswer, setTextAnswer] = useState('')
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const body: QuestionSaveInput = {
+      const correctLetters = choiceValue.choices
+        .map((c, i) => (c.correct ? String.fromCharCode(65 + i) : ''))
+        .filter(Boolean)
+        .join(',')
+
+      const body: any = {
         title,
-        type,
+        type: questionType,
         categoryId: 0,
         difficulty,
         score,
-        choices:
-          type === 'CHOICE'
-            ? choices.map((c, i) => ({
-                content: c.content,
-                correct: c.correct || undefined,
-                sort: i + 1,
-              }))
-            : undefined,
-        answers:
-          type === 'JUDGE'
-            ? { answer: judgeAnswer }
-            : type === 'TEXT'
-              ? { answer: textAnswer }
-              : { answer: choices.find((c) => c.correct)?.content ?? '' },
-      } as any
-      const res = await (api as any).questionController.addQuestion({
-        body,
-      })
+      }
+
+      if (questionType === 'CHOICE') {
+        body.choices = choiceValue.choices.map((c, i) => ({
+          content: c.content,
+          correct: c.correct || undefined,
+          sort: i + 1,
+        }))
+        body.answers = { answer: correctLetters }
+        if (choiceValue.multi) body.multi = true
+        if (choiceValue.analysis) body.analysis = choiceValue.analysis
+      } else if (questionType === 'JUDGE') {
+        body.answers = { answer: judgeValue.judgeAnswer }
+        if (judgeValue.analysis) body.analysis = judgeValue.analysis
+      } else {
+        body.answers = { answer: textAnswer }
+      }
+
+      const res = await (api as any).questionController.addQuestion({ body })
       const questionId = res.data?.id
       if (!questionId) throw new Error('创建题目失败')
 
@@ -101,34 +119,18 @@ export default function CreateQuestionInPaperDialog({
 
   const resetForm = () => {
     setTitle('')
-    setType('CHOICE')
     setDifficulty('EASY')
     setScore(5)
-    setChoices([
-      { content: '', correct: false },
-      { content: '', correct: false },
-    ])
-    setJudgeAnswer('true')
+    setChoiceValue({
+      multi: defaultMulti,
+      analysis: '',
+      choices: [
+        { content: '', correct: false },
+        { content: '', correct: false },
+      ],
+    })
+    setJudgeValue({ analysis: '', judgeAnswer: 'true' })
     setTextAnswer('')
-  }
-
-  const addChoice = () => {
-    setChoices([...choices, { content: '', correct: false }])
-  }
-
-  const removeChoice = (index: number) => {
-    if (choices.length <= 2) return
-    setChoices(choices.filter((_, i) => i !== index))
-  }
-
-  const updateChoice = (
-    index: number,
-    field: keyof ChoiceOption,
-    value: string | boolean,
-  ) => {
-    setChoices(
-      choices.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
-    )
   }
 
   const handleSubmit = () => {
@@ -136,19 +138,19 @@ export default function CreateQuestionInPaperDialog({
       toast.error('请输入题目内容')
       return
     }
-    if (type === 'CHOICE') {
-      const valid = choices.every((c) => c.content.trim())
+    if (questionType === 'CHOICE') {
+      const valid = choiceValue.choices.every((c) => c.content.trim())
       if (!valid) {
         toast.error('请填写所有选项内容')
         return
       }
-      const hasCorrect = choices.some((c) => c.correct)
+      const hasCorrect = choiceValue.choices.some((c) => c.correct)
       if (!hasCorrect) {
         toast.error('请至少设置一个正确答案')
         return
       }
     }
-    if (type === 'TEXT' && !textAnswer.trim()) {
+    if (questionType === 'TEXT' && !textAnswer.trim()) {
       toast.error('请输入标准答案')
       return
     }
@@ -157,29 +159,11 @@ export default function CreateQuestionInPaperDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[600px]">
+      <DialogContent className="w-[600px] overflow-y-scroll">
         <DialogHeader>
-          <DialogTitle>新增试题</DialogTitle>
+          <DialogTitle>新增{TYPE_TITLE[questionType]}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>
-              题目类型 <span className="text-destructive">*</span>
-            </Label>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {QUESTION_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-2">
             <Label>
               题目内容 <span className="text-destructive">*</span>
@@ -208,82 +192,6 @@ export default function CreateQuestionInPaperDialog({
             </Select>
           </div>
 
-          {type === 'CHOICE' && (
-            <div className="space-y-2">
-              <Label>
-                选项 <span className="text-destructive">*</span>
-              </Label>
-              {choices.map((choice, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    placeholder={`选项 ${i + 1}`}
-                    value={choice.content}
-                    onChange={(e) => updateChoice(i, 'content', e.target.value)}
-                  />
-                  <label className="flex cursor-pointer items-center gap-1 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={choice.correct}
-                      onChange={(e) =>
-                        updateChoice(i, 'correct', e.target.checked)
-                      }
-                    />
-                    正确
-                  </label>
-                  {choices.length > 2 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive h-8 px-1"
-                      onClick={() => removeChoice(i)}
-                    >
-                      删除
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-1"
-                onClick={addChoice}
-              >
-                + 添加选项
-              </Button>
-            </div>
-          )}
-
-          {type === 'JUDGE' && (
-            <div className="space-y-2">
-              <Label>
-                正确答案 <span className="text-destructive">*</span>
-              </Label>
-              <Select value={judgeAnswer} onValueChange={setJudgeAnswer}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">对</SelectItem>
-                  <SelectItem value="false">错</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {type === 'TEXT' && (
-            <div className="space-y-2">
-              <Label>
-                标准答案 <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                value={textAnswer}
-                onChange={(e) => setTextAnswer(e.target.value)}
-                placeholder="请输入标准答案"
-                rows={2}
-              />
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label>
               分数 <span className="text-destructive">*</span>
@@ -295,6 +203,16 @@ export default function CreateQuestionInPaperDialog({
               onChange={(e) => setScore(Number(e.target.value))}
             />
           </div>
+
+          {questionType === 'CHOICE' && (
+            <ChoiceForm value={choiceValue} onChange={setChoiceValue} />
+          )}
+          {questionType === 'JUDGE' && (
+            <JudgeForm value={judgeValue} onChange={setJudgeValue} />
+          )}
+          {questionType === 'TEXT' && (
+            <TextForm value={textAnswer} onChange={setTextAnswer} />
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button
