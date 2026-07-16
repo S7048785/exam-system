@@ -20,7 +20,7 @@ import { toast } from 'sonner'
 import { api } from '#/ApiInstance.ts'
 import type { QuestionType } from '#/features/admin/papers/constants.ts'
 import { QUESTION_TYPE_MAP } from '#/features/admin/papers/constants.ts'
-import type { QuestionListReq } from '#/__generated/model/static'
+import useDebounce from '#/hooks/useDebounce.ts'
 
 interface SelectQuestionFromBankDialogProps {
   open: boolean
@@ -42,30 +42,42 @@ export default function SelectQuestionFromBankDialog({
   onSuccess,
   existingIds,
 }: SelectQuestionFromBankDialogProps) {
-  const [keyword, setKeyword] = useState('')
-  const [typeFilter, setTypeFilter] = useState<QuestionType | 'ALL'>('CHOICE')
-  const [page, setPage] = useState(1)
   const [selections, updateSelections] = useImmer<
     Record<number, SelectionItem>
   >({})
-  const pageSize = 10
 
-  const filters: QuestionListReq = {
-    page,
-    size: pageSize,
-    keyword: keyword,
-    type: typeFilter,
-  }
-
+  const [filter, setFilter] = useState<{
+    keyword: string
+    type: QuestionType | 'ALL'
+    page: number
+  }>({
+    keyword: '',
+    type: 'ALL',
+    page: 1,
+  })
+  // 对搜索关键词进行防抖，延迟500ms
+  const debouncedSearchTerm = useDebounce(filter, 500)
   const { data, isFetching } = useQuery({
-    queryKey: ['bank-questions', filters],
-    queryFn: () => api.questionController.listQuestions({ req: filters }),
+    queryKey: ['bank-questions', debouncedSearchTerm],
+    queryFn: () =>
+      api.questionController.listQuestions({
+        req: {
+          type:
+            debouncedSearchTerm.type === 'ALL'
+              ? undefined
+              : debouncedSearchTerm.type,
+          page: debouncedSearchTerm.page,
+          keyword: debouncedSearchTerm.keyword,
+        },
+      }),
+    staleTime: 0,
+
     enabled: open,
     select: (d) => d.data,
   })
 
   const pageData = data
-  const records = pageData?.records
+  const records = pageData?.records.filter((q) => !existingIds.includes(q.id))
   const totalPages = pageData?.pages ?? 1
 
   const associateMutation = useMutation({
@@ -79,7 +91,10 @@ export default function SelectQuestionFromBankDialog({
       onSuccess()
       onOpenChange(false)
       updateSelections({})
-      setPage(1)
+      setFilter({
+        ...filter,
+        page: 1,
+      })
     },
     onError: () => toast.error('添加失败'),
   })
@@ -125,19 +140,25 @@ export default function SelectQuestionFromBankDialog({
           <div className="flex-1">
             <Input
               placeholder="搜索题目..."
-              value={keyword}
+              value={filter.keyword}
               onChange={(e) => {
-                setKeyword(e.target.value)
-                setPage(1)
+                setFilter({
+                  ...filter,
+                  keyword: e.target.value,
+                  page: 1,
+                })
               }}
             />
           </div>
           <div className="w-32">
             <Select
-              value={typeFilter}
+              value={filter.type}
               onValueChange={(v: QuestionType | 'ALL') => {
-                setTypeFilter(v)
-                setPage(1)
+                setFilter({
+                  ...filter,
+                  type: v,
+                  page: 1,
+                })
               }}
             >
               <SelectTrigger>
@@ -168,7 +189,6 @@ export default function SelectQuestionFromBankDialog({
             </thead>
             <tbody>
               {records?.map((q) => {
-                const isExisting = existingIds.includes(q.id)
                 const isSelected = q.id in selections
                 const selScore = q.score
                 const typeEntry = QUESTION_TYPE_MAP[q.type]
@@ -183,26 +203,18 @@ export default function SelectQuestionFromBankDialog({
                     <td className="px-3 py-2 text-center">
                       <input
                         type="checkbox"
+                        className="size-4"
                         checked={isSelected}
-                        disabled={isExisting}
                         onChange={() => toggleSelection(q.id)}
                       />
                     </td>
                     <td className="px-3 py-2">{typeLabel}</td>
-                    <td className="max-w-xs truncate px-3 py-2">
-                      {q.title}
-                      {isExisting && (
-                        <span className="text-muted-foreground ml-2 text-xs">
-                          (已添加)
-                        </span>
-                      )}
-                    </td>
+                    <td className="max-w-xs truncate px-3 py-2">{q.title}</td>
                     <td className="px-3 py-2">
                       <Input
                         type="number"
                         min={1}
                         value={selScore}
-                        disabled={isExisting}
                         className="h-8 w-20"
                         onChange={(e) =>
                           updateScore(q.id, Number(e.target.value))
@@ -232,19 +244,29 @@ export default function SelectQuestionFromBankDialog({
             <Button
               variant="outline"
               size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={filter.page <= 1}
+              onClick={() =>
+                setFilter({
+                  ...filter,
+                  page: Math.max(1, filter.page - 1),
+                })
+              }
             >
               上一页
             </Button>
             <span className="text-muted-foreground px-2">
-              {page} / {totalPages}
+              {filter.page} / {totalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              disabled={filter.page >= totalPages}
+              onClick={() =>
+                setFilter({
+                  ...filter,
+                  page: filter.page + 1,
+                })
+              }
             >
               下一页
             </Button>
@@ -260,9 +282,11 @@ export default function SelectQuestionFromBankDialog({
               onClick={() => {
                 onOpenChange(false)
                 updateSelections({})
-                setKeyword('')
-                setTypeFilter('ALL')
-                setPage(1)
+                setFilter({
+                  keyword: '',
+                  type: 'ALL',
+                  page: 1,
+                })
               }}
             >
               取消

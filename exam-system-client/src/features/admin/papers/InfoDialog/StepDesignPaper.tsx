@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   createColumnHelper,
@@ -56,78 +56,74 @@ interface MemoTableProps {
   questions: readonly PaperDetail_TargetOf_questions[]
   activeIndex: number | undefined
   rowRefs: React.MutableRefObject<(HTMLTableRowElement | null)[]>
-  onScoreBlur: (id: number, e: React.FocusEvent<HTMLInputElement>) => void
+  onScoreBlur: (id: number, score: string) => void
   onDelete: (id: number) => void
 }
 
-const MemoTable = memo(function MemoTable({
+const MemoTable = memo(function ({
   questions,
   activeIndex,
   rowRefs,
   onScoreBlur,
   onDelete,
 }: MemoTableProps) {
-  console.log('重渲染')
   const columnHelper = createColumnHelper<PaperDetail_TargetOf_questions>()
 
-  const columns = useMemo(
-    () => [
-      columnHelper.display({
-        id: 'index',
-        header: '序号',
-        cell: ({ row }) => row.index + 1,
-        size: 56,
-      }),
-      columnHelper.accessor('type', {
-        header: '题型',
-        cell: ({ getValue }) => getTypeLabel(getValue()),
-        size: 80,
-      }),
-      columnHelper.accessor('title', {
-        header: '试题内容',
-        cell: ({ getValue }) => (
-          <span className="block max-w-xs truncate">{getValue()}</span>
-        ),
-      }),
-      columnHelper.display({
-        id: 'answer',
-        header: '标准答案',
-        cell: ({ row }) => (
-          <div className="w-[112px] truncate">{renderAnswer(row.original)}</div>
-        ),
-        size: 112,
-      }),
-      columnHelper.accessor('score', {
-        header: '分数',
-        cell: ({ row, getValue }) => (
-          <Input
-            type="number"
-            min={0}
-            defaultValue={getValue()}
-            className="h-8 w-20"
-            onBlur={(e) => onScoreBlur(row.original.id, e)}
-          />
-        ),
-        size: 96,
-      }),
-      columnHelper.display({
-        id: 'actions',
-        header: '操作',
-        cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive h-7 px-1"
-            onClick={() => onDelete(row.original.id)}
-          >
-            删除
-          </Button>
-        ),
-        size: 64,
-      }),
-    ],
-    [onScoreBlur, onDelete],
-  )
+  const columns = [
+    columnHelper.display({
+      id: 'index',
+      header: '序号',
+      cell: ({ row }) => row.index + 1,
+      size: 56,
+    }),
+    columnHelper.accessor('type', {
+      header: '题型',
+      cell: ({ getValue }) => getTypeLabel(getValue()),
+      size: 80,
+    }),
+    columnHelper.accessor('title', {
+      header: '试题内容',
+      cell: ({ getValue }) => (
+        <span className="block max-w-xs truncate">{getValue()}</span>
+      ),
+    }),
+    columnHelper.display({
+      id: 'answer',
+      header: '标准答案',
+      cell: ({ row }) => (
+        <div className="w-[112px] truncate">{renderAnswer(row.original)}</div>
+      ),
+      size: 112,
+    }),
+    columnHelper.accessor('score', {
+      header: '分数',
+      cell: ({ row, getValue }) => (
+        <Input
+          type="number"
+          min={0}
+          defaultValue={getValue()}
+          className="h-8 w-20"
+          onBlur={(e) => onScoreBlur(row.original.id, e.target.value)}
+        />
+      ),
+      size: 96,
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: '操作',
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive h-7 px-1"
+          onClick={() => onDelete(row.original.id)}
+        >
+          删除
+        </Button>
+      ),
+      size: 64,
+    }),
+  ]
 
   const data = useMemo(() => [...questions], [questions])
 
@@ -240,14 +236,15 @@ export default function StepDesignPaper({
     onSuccess: () => refetchQuestions(),
   })
 
-  const handleScoreBlur = useCallback(
-    (questionId: number, e: React.FocusEvent<HTMLInputElement>) => {
-      const newScore = Number(e.target.value)
-      if (Number.isNaN(newScore) || newScore < 0) return
-      updateScoreMutation.mutate({ questionId, score: newScore })
-    },
-    [],
-  )
+  const handleUpdateScore = (id: number, score: string) => {
+    const newScore = Number(score)
+    if (Number.isNaN(newScore) || newScore < 0) return
+    updateScoreMutation.mutate({ questionId: id, score: newScore })
+  }
+
+  const handleDeleteQuestion = (id: number) => {
+    removeQuestionMutation.mutate(id)
+  }
 
   const scrollToQuestion = (index: number) => {
     setActiveIndex(index)
@@ -311,8 +308,8 @@ export default function StepDesignPaper({
               questions={questions}
               activeIndex={activeIndex}
               rowRefs={rowRefs}
-              onScoreBlur={handleScoreBlur}
-              onDelete={removeQuestionMutation.mutate}
+              onScoreBlur={handleUpdateScore}
+              onDelete={handleDeleteQuestion}
             />
           </div>
 
