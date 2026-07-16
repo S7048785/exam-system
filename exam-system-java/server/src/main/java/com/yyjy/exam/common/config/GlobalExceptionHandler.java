@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
 		} else {
 			message = "当前会话未登录";
 		}
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				       .body(new ErrorResponse(message));
 		// 返回给前端
 		//return SaResult.error(message);

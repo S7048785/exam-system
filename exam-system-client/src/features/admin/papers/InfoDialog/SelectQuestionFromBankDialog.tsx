@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useImmer } from 'use-immer'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   Dialog,
@@ -17,6 +18,7 @@ import {
 } from '#/components/ui/select.tsx'
 import { toast } from 'sonner'
 import { api } from '#/ApiInstance.ts'
+import type { QuestionType } from '#/features/admin/papers/constants.ts'
 import { QUESTION_TYPE_MAP } from '#/features/admin/papers/constants.ts'
 import type { QuestionListReq } from '#/__generated/model/static'
 
@@ -41,34 +43,29 @@ export default function SelectQuestionFromBankDialog({
   existingIds,
 }: SelectQuestionFromBankDialogProps) {
   const [keyword, setKeyword] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState<QuestionType | 'ALL'>('CHOICE')
   const [page, setPage] = useState(1)
-  const [selections, setSelections] = useState<Record<number, SelectionItem>>(
-    {},
-  )
+  const [selections, updateSelections] = useImmer<
+    Record<number, SelectionItem>
+  >({})
   const pageSize = 10
 
   const filters: QuestionListReq = {
     page,
     size: pageSize,
-    keyword: keyword || undefined,
-    type: typeFilter || undefined,
+    keyword: keyword,
+    type: typeFilter,
   }
 
   const { data, isFetching } = useQuery({
     queryKey: ['bank-questions', filters],
-    queryFn: () =>
-      (api as any).questionController.listQuestions({ req: filters }),
+    queryFn: () => api.questionController.listQuestions({ req: filters }),
     enabled: open,
+    select: (d) => d.data,
   })
 
-  const pageData = data?.data
-  const records: Array<{
-    id: number
-    title: string
-    type: string
-    difficulty: string
-  }> = pageData?.records ?? []
+  const pageData = data
+  const records = pageData?.records
   const totalPages = pageData?.pages ?? 1
 
   const associateMutation = useMutation({
@@ -81,29 +78,27 @@ export default function SelectQuestionFromBankDialog({
       toast.success(`已添加 ${Object.keys(selections).length} 道题目`)
       onSuccess()
       onOpenChange(false)
-      setSelections({})
-      setKeyword('')
-      setTypeFilter('')
+      updateSelections({})
       setPage(1)
     },
     onError: () => toast.error('添加失败'),
   })
 
   const toggleSelection = (questionId: number) => {
-    setSelections((prev) => {
-      if (questionId in prev) {
-        const next = { ...prev }
-        delete next[questionId]
-        return next
+    updateSelections((draft) => {
+      if (questionId in draft) {
+        delete draft[questionId]
+      } else {
+        draft[questionId] = { questionId, score: 5 }
       }
-      return { ...prev, [questionId]: { questionId, score: 5 } }
     })
   }
 
   const updateScore = (questionId: number, score: number) => {
-    setSelections((prev) => {
-      if (!(questionId in prev)) return prev
-      return { ...prev, [questionId]: { ...prev[questionId], score } }
+    updateSelections((draft) => {
+      if (questionId in draft) {
+        draft[questionId].score = score
+      }
     })
   }
 
@@ -140,7 +135,7 @@ export default function SelectQuestionFromBankDialog({
           <div className="w-32">
             <Select
               value={typeFilter}
-              onValueChange={(v) => {
+              onValueChange={(v: QuestionType | 'ALL') => {
                 setTypeFilter(v)
                 setPage(1)
               }}
@@ -149,7 +144,7 @@ export default function SelectQuestionFromBankDialog({
                 <SelectValue placeholder="全部题型" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">全部题型</SelectItem>
+                <SelectItem value="ALL">全部题型</SelectItem>
                 <SelectItem value="CHOICE">选择题</SelectItem>
                 <SelectItem value="JUDGE">判断题</SelectItem>
                 <SelectItem value="TEXT">简答题</SelectItem>
@@ -172,11 +167,10 @@ export default function SelectQuestionFromBankDialog({
               </tr>
             </thead>
             <tbody>
-              {records.map((q) => {
+              {records?.map((q) => {
                 const isExisting = existingIds.includes(q.id)
                 const isSelected = q.id in selections
-                const selEntry = selections[q.id]
-                const selScore = selEntry.score
+                const selScore = q.score
                 const typeEntry = QUESTION_TYPE_MAP[q.type]
                 const typeLabel = typeEntry.label
                 return (
@@ -218,7 +212,7 @@ export default function SelectQuestionFromBankDialog({
                   </tr>
                 )
               })}
-              {records.length === 0 && (
+              {records && (
                 <tr>
                   <td
                     colSpan={4}
@@ -265,9 +259,9 @@ export default function SelectQuestionFromBankDialog({
               size="sm"
               onClick={() => {
                 onOpenChange(false)
-                setSelections({})
+                updateSelections({})
                 setKeyword('')
-                setTypeFilter('')
+                setTypeFilter('ALL')
                 setPage(1)
               }}
             >

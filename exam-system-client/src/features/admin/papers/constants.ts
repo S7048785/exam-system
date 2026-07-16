@@ -5,6 +5,14 @@ export const PAPER_STATUS = {
   STOPPED: 'STOPPED',
 } as const
 
+export const QUESTION_TYPE = {
+  CHOICE: 'CHOICE',
+  JUDGE: 'JUDGE',
+  PUBLISHED: 'PUBLISHED',
+} as const
+
+export type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE]
+
 export type PaperStatus = (typeof PAPER_STATUS)[keyof typeof PAPER_STATUS]
 
 export const PAPER_STATUS_MAP: Record<
