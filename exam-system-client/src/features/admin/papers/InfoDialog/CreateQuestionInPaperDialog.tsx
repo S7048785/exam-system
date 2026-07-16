@@ -31,7 +31,6 @@ interface CreateQuestionInPaperDialogProps {
   paperId: number
   onSuccess: () => void
   questionType: QuestionType
-  defaultMulti?: boolean
 }
 
 const TYPE_TITLE: Record<QuestionType, string> = {
@@ -46,14 +45,13 @@ export default function CreateQuestionInPaperDialog({
   paperId,
   onSuccess,
   questionType,
-  defaultMulti = false,
 }: CreateQuestionInPaperDialogProps) {
   const [title, setTitle] = useState('')
   const [difficulty, setDifficulty] = useState('EASY')
   const [score, setScore] = useState(5)
 
   const [choiceValue, setChoiceValue] = useState({
-    multi: defaultMulti,
+    multi: false,
     analysis: '',
     choices: [
       { content: '', correct: false },
@@ -122,7 +120,7 @@ export default function CreateQuestionInPaperDialog({
     setDifficulty('EASY')
     setScore(5)
     setChoiceValue({
-      multi: defaultMulti,
+      multi: false,
       analysis: '',
       choices: [
         { content: '', correct: false },

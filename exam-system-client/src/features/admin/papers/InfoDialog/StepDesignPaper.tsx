@@ -1,5 +1,11 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
 import { Button } from '#/components/ui/button.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import {
@@ -17,24 +23,33 @@ import CreateQuestionInPaperDialog from './CreateQuestionInPaperDialog.tsx'
 import SelectQuestionFromBankDialog from './SelectQuestionFromBankDialog.tsx'
 import type { PaperDetail_TargetOf_questions } from '#/__generated/model/static'
 
-interface QuestionItem {
-  id: number
-  title: string
-  type: string
-  choices?: Array<{ content: string; correct?: boolean }>
-  answer?: string
-  score: number
-}
-
 interface StepDesignPaperProps {
   paperId: number
   onPublish: () => void
   isPublishing: boolean
 }
 
-/**
- * 设计试卷
- */
+const getTypeLabel = (type: string) => {
+  const entry = QUESTION_TYPE_MAP[type]
+  return entry.label
+}
+const renderAnswer = (q: PaperDetail_TargetOf_questions) => {
+  if (q.type === 'CHOICE') {
+    const correct = q.choices.filter((c) => c.correct)
+    if (correct.length > 0) {
+      return String(
+        correct
+          .map((c) => String.fromCharCode(q.choices.indexOf(c) + 65))
+          .join(', '),
+      )
+    }
+    return q.answer
+  }
+  if (q.type === 'JUDGE') {
+    return q.answer === 'true' || q.answer === 'T' ? '对' : '错'
+  }
+  return q.answer
+}
 export default function StepDesignPaper({
   paperId,
   onPublish,
@@ -42,22 +57,19 @@ export default function StepDesignPaper({
 }: StepDesignPaperProps) {
   const [createConfig, setCreateConfig] = useState<{
     type: 'CHOICE' | 'JUDGE' | 'TEXT'
-    defaultMulti?: boolean
   } | null>(null)
   const [showBankDialog, setShowBankDialog] = useState(false)
   const [activeIndex, setActiveIndex] = useState<number | undefined>()
-  const tableBodyRef = useRef<HTMLDivElement>(null)
   const rowRefs = useRef<(HTMLTableRowElement | null)[]>([])
 
   const { data: questionsData, refetch: refetchQuestions } = useQuery({
     queryKey: ['paper-questions', paperId],
     queryFn: () => api.paperController.getPaperQuestions({ id: paperId }),
+    select: (d) => d.data,
   })
-  const questions = questionsData?.data || []
+  const questions = questionsData ?? []
   const totalCount = questions.length
   const totalScore = questions.reduce((s, q) => s + q.score, 0)
-
-  rowRefs.current = rowRefs.current.slice(0, questions.length)
 
   const removeQuestionMutation = useMutation({
     mutationFn: (questionId: number) =>
@@ -65,8 +77,8 @@ export default function StepDesignPaper({
         id: paperId,
         questionId,
       }),
-    onSuccess: () => {
-      refetchQuestions()
+    onSuccess: async () => {
+      await refetchQuestions()
       toast.success('题目已移除')
     },
     onError: () => toast.error('移除失败'),
@@ -88,6 +100,82 @@ export default function StepDesignPaper({
     onSuccess: () => refetchQuestions(),
   })
 
+  const columnHelper = createColumnHelper<PaperDetail_TargetOf_questions>()
+
+  const columns = useMemo(
+    () => [
+      columnHelper.display({
+        id: 'index',
+        header: '序号',
+        cell: ({ row }) => row.index + 1,
+        size: 56,
+      }),
+      columnHelper.accessor('type', {
+        header: '题型',
+        cell: ({ getValue }) => getTypeLabel(getValue()),
+        size: 80,
+      }),
+      columnHelper.accessor('title', {
+        header: '试题内容',
+        cell: ({ getValue }) => (
+          <span className="block max-w-xs truncate">{getValue()}</span>
+        ),
+      }),
+      columnHelper.display({
+        id: 'answer',
+        header: '标准答案',
+        cell: ({ row }) => (
+          <div className="w-[112px] truncate">{renderAnswer(row.original)}</div>
+        ),
+        size: 112,
+      }),
+      columnHelper.accessor('score', {
+        header: '分数',
+        cell: ({ row, getValue }) => (
+          <Input
+            type="number"
+            min={0}
+            defaultValue={getValue()}
+            className="h-8 w-20"
+            onBlur={(e) => {
+              const newScore = Number(e.target.value)
+              if (Number.isNaN(newScore) || newScore < 0) return
+              updateScoreMutation.mutate({
+                questionId: row.original.id,
+                score: newScore,
+              })
+            }}
+          />
+        ),
+        size: 96,
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: '操作',
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive h-7 px-1"
+            onClick={() => removeQuestionMutation.mutate(row.original.id)}
+          >
+            删除
+          </Button>
+        ),
+        size: 64,
+      }),
+    ],
+    [],
+  )
+
+  const data = useMemo(() => [...questions], [questions])
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  })
+
   const scrollToQuestion = (index: number) => {
     setActiveIndex(index)
     const row = rowRefs.current[index]
@@ -96,41 +184,9 @@ export default function StepDesignPaper({
     }
   }
 
-  const handleScoreBlur = (
-    questionId: number,
-    e: React.FocusEvent<HTMLInputElement>,
-  ) => {
-    const newScore = Number(e.target.value)
-    if (Number.isNaN(newScore) || newScore < 0) return
-    updateScoreMutation.mutate({ questionId, score: newScore })
-  }
-
-  const handleDeleteQuestion = (questionId: number) => {
-    removeQuestionMutation.mutate(questionId)
-  }
-
-  const getTypeLabel = (type: string) => {
-    const entry = QUESTION_TYPE_MAP[type]
-    return entry.label
-  }
-
-  const renderAnswer = (q: QuestionItem | PaperDetail_TargetOf_questions) => {
-    if (q.type === 'CHOICE' && q.choices) {
-      const correct = q.choices.filter((c) => c.correct)
-      if (correct.length > 0) {
-        return String(correct.map((c) => q.choices!.indexOf(c) + 1).join(', '))
-      }
-      return q.answer ?? ''
-    }
-    if (q.type === 'JUDGE') {
-      return q.answer === 'true' || q.answer === 'T' ? '对' : '错'
-    }
-    return q.answer ?? ''
-  }
-
   return (
-    <div className="">
-      <div className="flex items-start gap-4">
+    <div className="h-full">
+      <div className="flex h-full gap-4">
         {/* 左侧：总览 + 题号列表 */}
         <div className="bg-popover flex flex-1 shrink-0 flex-col rounded-lg">
           <div className="flex items-center gap-2 border-b px-4 py-3">
@@ -175,60 +231,55 @@ export default function StepDesignPaper({
           </div>
         </div>
 
-        {/* 右侧：题目表格 */}
-        <div className="bg-popover flex-[4] overflow-y-auto rounded-lg">
-          <div ref={tableBodyRef} className="">
+        {/* 右侧：题目表格 + 按钮组 */}
+        <div className="bg-popover flex min-w-0 flex-[4] flex-col rounded-lg">
+          <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-muted/50 sticky top-0">
-                <tr>
-                  <th className="w-14 px-3 py-2 font-medium">序号</th>
-                  <th className="w-20 px-3 py-2 font-medium">题型</th>
-                  <th className="px-3 py-2 font-medium">试题内容</th>
-                  <th className="w-28 px-3 py-2 font-medium">标准答案</th>
-                  <th className="w-24 px-3 py-2 font-medium">分数</th>
-                  <th className="w-16 px-3 py-2 font-medium">操作</th>
-                </tr>
+              <thead className="bg-muted sticky top-0">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-3 py-2 font-medium"
+                        style={{ width: header.getSize() }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
               </thead>
               <tbody>
-                {questions.map((q, i) => (
+                {table.getRowModel().rows.map((row) => (
                   <tr
-                    key={q.id}
+                    key={row.id}
                     ref={(el) => {
-                      rowRefs.current[i] = el
+                      rowRefs.current[row.index] = el
                     }}
                     className={cn(
                       'border-t transition-colors',
-                      activeIndex === i ? 'bg-primary/5' : 'hover:bg-muted/30',
+                      activeIndex === row.index
+                        ? 'bg-primary/5'
+                        : 'hover:bg-muted/30',
                     )}
                   >
-                    <td className="px-3 py-2 text-center">{i + 1}</td>
-                    <td className="px-3 py-2">{getTypeLabel(q.type)}</td>
-                    <td className="max-w-xs truncate px-3 py-2">{q.title}</td>
-                    <td className="max-w-[120px] truncate px-3 py-2">
-                      {renderAnswer(q)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        defaultValue={q.score}
-                        className="h-8 w-20"
-                        onBlur={(e) => handleScoreBlur(q.id, e)}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive h-7 px-1"
-                        onClick={() => handleDeleteQuestion(q.id)}
-                      >
-                        删除
-                      </Button>
-                    </td>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-3 py-2">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    ))}
                   </tr>
                 ))}
-                {questions.length === 0 && (
+                {table.getRowModel().rows.length === 0 && (
                   <tr>
                     <td
                       colSpan={6}
@@ -242,8 +293,8 @@ export default function StepDesignPaper({
             </table>
           </div>
 
-          {/* 按钮组 */}
-          <div className="flex items-center justify-between border-t px-4 py-3">
+          {/* 按钮组 — shrink-0 不随表格滚动 */}
+          <div className="flex shrink-0 items-center justify-between border-t px-4 py-3">
             <div className="flex gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -254,18 +305,14 @@ export default function StepDesignPaper({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem
-                    onClick={() =>
-                      setCreateConfig({ type: 'CHOICE', defaultMulti: false })
-                    }
+                    onClick={() => setCreateConfig({ type: 'CHOICE' })}
                   >
-                    单选题
+                    选择题
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() =>
-                      setCreateConfig({ type: 'CHOICE', defaultMulti: true })
-                    }
+                    onClick={() => setCreateConfig({ type: 'JUDGE' })}
                   >
-                    多选题
+                    判断题
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setCreateConfig({ type: 'TEXT' })}
@@ -299,7 +346,6 @@ export default function StepDesignPaper({
           paperId={paperId}
           onSuccess={refetchQuestions}
           questionType={createConfig.type}
-          defaultMulti={createConfig.defaultMulti}
         />
       )}
       <SelectQuestionFromBankDialog

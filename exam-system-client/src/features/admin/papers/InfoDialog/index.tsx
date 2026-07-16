@@ -151,7 +151,7 @@ export default function PaperInfoDialog({
         <DialogDescription className="sr-only">
           {STEPS[currentStep].description}
         </DialogDescription>
-        <div className="bg-neutral-800 p-4">
+        <div className="flex-1 overflow-hidden bg-neutral-800 p-4">
           {currentStep === 0 ? (
             <StepBasicInfo
               name={name}

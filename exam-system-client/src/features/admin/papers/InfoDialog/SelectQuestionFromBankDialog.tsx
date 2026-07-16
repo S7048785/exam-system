@@ -176,10 +176,9 @@ export default function SelectQuestionFromBankDialog({
                 const isExisting = existingIds.includes(q.id)
                 const isSelected = q.id in selections
                 const selEntry = selections[q.id]
-                const selScore = selEntry ? selEntry.score : 5
-                const typeEntry =
-                  QUESTION_TYPE_MAP[q.type as keyof typeof QUESTION_TYPE_MAP]
-                const typeLabel = typeEntry ? typeEntry.label : q.type
+                const selScore = selEntry.score
+                const typeEntry = QUESTION_TYPE_MAP[q.type]
+                const typeLabel = typeEntry.label
                 return (
                   <tr
                     key={q.id}
