@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -22,7 +23,7 @@ public class GlobalExceptionHandler {
 	}
 	
 	@ExceptionHandler
-	public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException() {
+	public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
 		return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
 				       .body(new ErrorResponse("上传文件过大"));
 	}
@@ -43,6 +44,9 @@ public class GlobalExceptionHandler {
 	// 全局异常拦截（拦截项目中的NotLoginException异常）
 	@ExceptionHandler(NotLoginException.class)
 	public ResponseEntity<ErrorResponse> handlerNotLoginException(NotLoginException nle) {
+		
+		// 打印堆栈，以供调试
+		nle.printStackTrace();
 		
 		// 判断场景值，定制化异常信息
 		String message;
