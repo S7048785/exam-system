@@ -8,28 +8,29 @@ import java.time.LocalDateTime;
 
 @Entity
 public interface PaperQuestion {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    int id();
-
-    @ManyToOne
-    Paper paper();
-
-    @ManyToOne
-    @OnDissociate(DissociateAction.DELETE)
-    Questions question();
-
-    double score();
-
-    @Nullable
-    LocalDateTime createTime();
-
-    @Nullable
-    LocalDateTime updateTime();
-
-    @Column(name = "deleted_at")
-    @LogicalDeleted("now")
-    @Nullable
-    LocalDateTime delFlag();
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	int id();
+	
+	@OnDissociate(DissociateAction.DELETE)
+	@ManyToOne
+	Paper paper();
+	
+	@ManyToOne
+	@OnDissociate(DissociateAction.DELETE)
+	Questions question();
+	
+	double score();
+	
+	@Nullable
+	LocalDateTime createTime();
+	
+	@Nullable
+	LocalDateTime updateTime();
+	
+	@Column(name = "deleted_at")
+	@LogicalDeleted("now")
+	@Nullable
+	LocalDateTime delFlag();
 }

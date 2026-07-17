@@ -112,11 +112,6 @@ public class PaperService {
 	
 	@Transactional
 	public void removePaper(int id) {
-		Paper paperDb = paperRepository.findById(id)
-				                .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (!paperDb.published()) {
-			throw new BusinessException(MessageConstant.PAPER_NOT_PUBLISH);
-		}
 		
 		if (paperRepository.hasExamRecords(id)) {
 			throw new BusinessException(MessageConstant.PAPER_ALREADY_IN_EXAM);
