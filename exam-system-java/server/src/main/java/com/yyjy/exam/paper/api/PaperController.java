@@ -5,6 +5,7 @@ import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
 import com.yyjy.exam.entity.paper.entity.Paper;
+import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
@@ -30,7 +31,7 @@ public class PaperController {
 			PaperFetcher.$
 					.name()
 					.description()
-					.categoryId()
+					.category(PaperCategoriesFetcher.$.name())
 					.published()
 					.totalScore()
 					.questionCount()

@@ -13,10 +13,12 @@ import { api } from '#/ApiInstance.ts'
 import StepIndicator from './StepIndicator.tsx'
 import StepBasicInfo from './StepBasicInfo.tsx'
 import StepDesignPaper from './StepDesignPaper.tsx'
+import StepPublishExam from './StepPublishExam.tsx'
 
 const STEPS = [
   { title: '考试信息', description: '编辑试卷基本信息' },
   { title: '设计试卷', description: '选择试卷题目' },
+  { title: '发布考试', description: '发布试卷并获取考试链接' },
 ]
 
 interface PaperInfoDialogProps {
@@ -80,17 +82,9 @@ export default function PaperInfoDialog({
     mutationFn: (input: any) => api.paperController.addPaperV2({ body: input }),
   })
 
-  const publishMutation = useMutation({
-    mutationFn: (id: number) => api.paperController.publishPaper({ id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-      toast.success('试卷发布成功')
-      onOpenChange(false)
-    },
-    onError: () => toast.error('发布失败'),
-  })
-
   const switchToStep = async (index: number) => {
+    let targetPaperId = effectivePaperId
+
     if (index > currentStep) {
       if (currentStep === 0) {
         if (!name.trim()) {
@@ -113,27 +107,55 @@ export default function PaperInfoDialog({
             name,
             description,
             duration,
-            categoryId: categoryId ? Number(categoryId) : undefined,
+            categoryId: categoryId ?? undefined,
           })
           setCreatedPaperId(res.data)
+          targetPaperId = res.data
         } catch {
           return
+        }
+      }
+
+      if (index === 2 && targetPaperId) {
+        const isPublished =
+          mode === 'edit' && detailData?.data.published
+        if (!isPublished) {
+          return
+        }
+        try {
+          const { data: questions } =
+            await api.paperController.getPaperQuestions({
+              id: targetPaperId,
+            })
+          if (!questions.length) {
+            toast.error('请先添加试题')
+            return
+          }
+        } catch {
+          toast.error('查询试题失败')
+          return
+        }
+
+        if (!isPublished) {
+          try {
+            await api.paperController.publishPaper({ id: targetPaperId })
+            queryClient.invalidateQueries({ queryKey: ['listPapers'] })
+            toast.success('试卷发布成功')
+          } catch {
+            toast.error('发布失败')
+            return
+          }
         }
       }
     }
     setCurrentStep(index)
   }
 
-  const handlePublish = () => {
-    if (!effectivePaperId) return
-    publishMutation.mutate(effectivePaperId)
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="flex h-[716px] w-[95%] max-w-none flex-col overflow-hidden p-0"
+        className="flex h-179 w-[95%] max-w-none flex-col overflow-hidden p-0"
       >
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex flex-row items-center justify-between">
@@ -164,11 +186,12 @@ export default function PaperInfoDialog({
               onDescriptionChange={setDescription}
               onDurationChange={setDuration}
             />
+          ) : currentStep === 1 ? (
+            <StepDesignPaper paperId={effectivePaperId!} />
           ) : (
-            <StepDesignPaper
+            <StepPublishExam
               paperId={effectivePaperId!}
-              onPublish={handlePublish}
-              isPublishing={publishMutation.isPending}
+              description={description}
             />
           )}
         </div>

@@ -25,8 +25,6 @@ import type { PaperDetail_TargetOf_questions } from '#/__generated/model/static'
 
 interface StepDesignPaperProps {
   paperId: number
-  onPublish: () => void
-  isPublishing: boolean
 }
 
 const getTypeLabel = (type: string) => {
@@ -186,11 +184,7 @@ const MemoTable = memo(function ({
   )
 })
 
-export default function StepDesignPaper({
-  paperId,
-  onPublish,
-  isPublishing,
-}: StepDesignPaperProps) {
+export default function StepDesignPaper({ paperId }: StepDesignPaperProps) {
   const [createConfig, setCreateConfig] = useState<{
     type: 'CHOICE' | 'JUDGE' | 'TEXT'
   } | null>(null)
@@ -302,7 +296,7 @@ export default function StepDesignPaper({
         </div>
 
         {/* 右侧：题目表格 + 按钮组 */}
-        <div className="bg-popover flex min-w-0 flex-[4] flex-col rounded-lg">
+        <div className="bg-popover flex min-w-0 flex-4 flex-col rounded-lg">
           <div className="min-h-0 flex-1 overflow-auto">
             <MemoTable
               questions={questions}
@@ -349,9 +343,6 @@ export default function StepDesignPaper({
                 从题库中选题
               </Button>
             </div>
-            <Button size="sm" onClick={onPublish} disabled={isPublishing}>
-              {isPublishing ? '发布中...' : '发布'}
-            </Button>
           </div>
         </div>
       </div>

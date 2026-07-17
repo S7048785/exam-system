@@ -1,8 +1,7 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useDeleteMutation } from '#/features/admin/papers/usePaperActions.ts'
-import type { PaperStatus } from '#/__generated/model/enums'
 import { papersQueryOptions } from '#/features/admin/papers/paperQueries.ts'
 import PaperTable from '#/features/admin/papers/components/PaperTable.tsx'
 import PaperInfoDialog from '#/features/admin/papers/InfoDialog'
@@ -20,6 +19,7 @@ export const Route = createFileRoute('/admin/papers/list')({
 })
 
 function PapersPage() {
+  const queryClient = useQueryClient()
   // Dialog 状态
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
@@ -28,17 +28,15 @@ function PapersPage() {
   // 列表筛选条件
   const [filters, setFilters] = useState<{
     name?: string
-    status?: PaperStatus
   }>({
     name: undefined,
-    status: undefined,
   })
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)
 
   // 获取试卷列表
   const { data: listData, refetch } = useSuspenseQuery(
-    papersQueryOptions({ ...filters }),
+    papersQueryOptions(filters),
   )
 
   const papers = listData.data
@@ -48,10 +46,7 @@ function PapersPage() {
   const deleteMutation = useDeleteMutation()
 
   // 筛选变化
-  const handleFiltersChange = (newFilters: {
-    name?: string
-    status?: PaperStatus
-  }) => {
+  const handleFiltersChange = (newFilters: { name?: string }) => {
     setFilters(newFilters)
     setPage(1)
   }
@@ -75,6 +70,13 @@ function PapersPage() {
     setDialogOpen(true)
   }
 
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id)
+    queryClient.invalidateQueries({
+      queryKey: ['listPapers'],
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -84,7 +86,6 @@ function PapersPage() {
       <PaperTable
         filters={{
           name: filters.name,
-          status: filters.status,
         }}
         onAction={{
           refresh: () => refetch(),
@@ -96,7 +97,7 @@ function PapersPage() {
           filterChange: handleFiltersChange,
           add: handleAdd,
           edit: handleEdit,
-          delete: (id) => deleteMutation.mutate(id),
+          delete: handleDelete,
         }}
         pagination={{
           data: papers,

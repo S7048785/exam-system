@@ -7,7 +7,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeftIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { PAPER_STATUS } from '#/features/admin/papers/constants.ts'
 import type { PaperDto } from '#/__generated/model/dto'
 import { ExamStartDialog } from '#/features/exam/list/components/ExamStartDialog.tsx'
 
@@ -20,7 +19,7 @@ export const Route = createFileRoute('/_auth/exam/list')({
   loader: async ({ context, deps: { keyword } }) => {
     return context.queryClient.fetchQuery(
       paperListQueryOptions({
-        status: PAPER_STATUS.PUBLISHED,
+        ongoing: true,
         name: keyword,
       }),
     )
@@ -32,7 +31,7 @@ function ExamListPage() {
   const { keyword } = Route.useSearch()
   const { data } = useSuspenseQuery(
     paperListQueryOptions({
-      status: PAPER_STATUS.PUBLISHED,
+      ongoing: true,
       name: keyword,
     }),
   )

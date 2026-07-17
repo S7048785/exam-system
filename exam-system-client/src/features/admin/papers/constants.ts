@@ -1,30 +1,17 @@
-// 状态常量
-export const PAPER_STATUS = {
-  DRAFT: 'DRAFT',
-  PUBLISHED: 'PUBLISHED',
-  STOPPED: 'STOPPED',
-} as const
+export type PaperPhase = 'ongoing' | 'ended'
 
-export const QUESTION_TYPE = {
-  CHOICE: 'CHOICE',
-  JUDGE: 'JUDGE',
-  PUBLISHED: 'PUBLISHED',
-} as const
+export const PAPER_PHASE_LABEL: Record<PaperPhase, string> = {
+  ongoing: '进行中',
+  ended: '已结束',
+}
 
-export type QuestionType = (typeof QUESTION_TYPE)[keyof typeof QUESTION_TYPE]
+export const PAPER_PHASE_VARIANT: Record<PaperPhase, 'warning' | 'outline'> = {
+  ongoing: 'warning',
+  ended: 'outline',
+}
 
-export type PaperStatus = (typeof PAPER_STATUS)[keyof typeof PAPER_STATUS]
-
-export const PAPER_STATUS_MAP: Record<
-  PaperStatus,
-  {
-    label: string
-    variant: 'default' | 'secondary' | 'outline' | 'destructive'
-  }
-> = {
-  DRAFT: { label: '草稿', variant: 'secondary' },
-  PUBLISHED: { label: '已发布', variant: 'default' },
-  STOPPED: { label: '已停用', variant: 'outline' },
+export function getPaperPhase(end: string): PaperPhase {
+  return Date.now() < new Date(end).getTime() ? 'ongoing' : 'ended'
 }
 
 // 题目类型

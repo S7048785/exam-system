@@ -1,19 +1,18 @@
 import {api} from '#/ApiInstance.ts'
 import {queryOptions} from '@tanstack/react-query'
-import type {PaperStatus} from '#/__generated/model/enums'
 
 /**
  * 查询试卷列表
  */
 export const paperListQueryOptions = (param: {
   name?: string
-  status?: PaperStatus
+  ongoing?: boolean
 }) =>
   queryOptions({
-    queryKey: ['paperList'],
+    queryKey: ['paperList', param],
     queryFn: () =>
       api.paperController.listPapers({
         name: param.name,
-        status: param.status,
+        ongoing: param.ongoing,
       }),
   })

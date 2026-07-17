@@ -10,7 +10,6 @@ import {
 import { PaperFilters } from '#/features/admin/papers/components/PaperFilters.tsx'
 import PaperTableRow from '#/features/admin/papers/components/PaperTableRow.tsx'
 import { PaperTablePagination } from '#/features/admin/papers/components/PaperTablePagination.tsx'
-import type { PaperStatus } from '#/__generated/model/enums'
 
 interface PaperTableProps {
   // 数据与分页状态
@@ -21,7 +20,7 @@ interface PaperTableProps {
     size: number
   }
   // 过滤状态
-  filters: { name?: string; status?: PaperStatus }
+  filters: { name?: string }
   // 操作回调
   onAction: {
     refresh: () => void
@@ -57,15 +56,15 @@ export default function PaperTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[80px]">ID</TableHead>
+              <TableHead className="w-20">ID</TableHead>
               <TableHead>试卷名称</TableHead>
               <TableHead>描述</TableHead>
-              <TableHead className="w-[100px]">时长(分钟)</TableHead>
-              <TableHead className="w-[100px]">状态</TableHead>
-              <TableHead className="w-[100px]">题目数量</TableHead>
-              <TableHead className="w-[100px]">总分</TableHead>
-              <TableHead className="w-[160px]">创建时间</TableHead>
-              <TableHead className="w-[200px]">操作</TableHead>
+              <TableHead className="w-25">时长(分钟)</TableHead>
+              <TableHead className="w-25">状态</TableHead>
+              <TableHead className="w-25">题目数量</TableHead>
+              <TableHead className="w-25">总分</TableHead>
+              <TableHead className="w-25">创建时间</TableHead>
+              <TableHead className="w-25">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -1,6 +1,10 @@
 import { TableCell, TableRow } from '#/components/ui/table.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
-import { PAPER_STATUS_MAP } from '#/features/admin/papers/constants.ts'
+import {
+  getPaperPhase,
+  PAPER_PHASE_LABEL,
+  PAPER_PHASE_VARIANT,
+} from '#/features/admin/papers/constants.ts'
 import { Button } from '#/components/ui/button.tsx'
 import { ChevronDown, Pencil, Trash2 } from 'lucide-react'
 import type { PaperDto } from '#/__generated/model/dto'
@@ -18,19 +22,20 @@ interface Props {
 }
 
 export default function PaperTableRow({ item, onEdit, onDelete }: Props) {
-  const statusInfo =
-    PAPER_STATUS_MAP[item.status as keyof typeof PAPER_STATUS_MAP]
+  const phase = getPaperPhase(item.end)
 
   return (
     <TableRow key={item.id}>
       <TableCell className="font-medium">{item.id}</TableCell>
       <TableCell>{item.name}</TableCell>
-      <TableCell className="max-w-[200px] truncate" title={item.description}>
+      <TableCell className="max-w-50 truncate" title={item.description}>
         {item.description ?? '-'}
       </TableCell>
       <TableCell>{item.duration}</TableCell>
       <TableCell>
-        <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+        <Badge variant={PAPER_PHASE_VARIANT[phase]}>
+          {PAPER_PHASE_LABEL[phase]}
+        </Badge>
       </TableCell>
       <TableCell>{item.questionCount ?? 0}</TableCell>
       <TableCell>{item.totalScore ?? 0}</TableCell>
