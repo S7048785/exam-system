@@ -8,7 +8,6 @@ import com.yyjy.exam.entity.paper.dto.PaperDetail;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperDraft;
 import com.yyjy.exam.entity.paper.entity.PaperQuestionDraft;
-import com.yyjy.exam.entity.paper.entity.PaperStatus;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveV2Input;
@@ -33,8 +32,8 @@ public class PaperService {
 	private final PaperQuestionRepository paperQuestionRepo;
 	private final QuestionsRepository questionsRepository;
 	
-	public List<Paper> listPapersByNameAndStatus(String name, PaperStatus status, int page, int size, Fetcher<Paper> fetcher) {
-		return paperRepository.listByNameAndStatus(name, status, page, size, fetcher);
+	public List<Paper> listPapersByNameAndStatus(String name, Boolean ongoing, int page, int size, Fetcher<Paper> fetcher) {
+		return paperRepository.listByNameAndStatus(name, ongoing, page, size, fetcher);
 	}
 	
 	public PaperDetail getPaper(int id) {
@@ -72,7 +71,7 @@ public class PaperService {
 			draft.setDescription(paperInput.description());
 			draft.setDuration(paperInput.duration());
 			draft.setCategoryId(paperInput.categoryId());
-			draft.setStatus(PaperStatus.DRAFT);
+			draft.setPublished(false);
 			draft.setQuestionCount(paperInput.questions().size());
 			draft.setTotalScore(totalScore);
 			for (var entry : paperInput.questions().entrySet()) {
@@ -115,8 +114,8 @@ public class PaperService {
 	public void removePaper(int id) {
 		Paper paperDb = paperRepository.findById(id)
 				                .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (!PaperStatus.DRAFT.equals(paperDb.status())) {
-			throw new BusinessException(MessageConstant.PAPER_NOT_DRAFT_STATUS);
+		if (!paperDb.published()) {
+			throw new BusinessException(MessageConstant.PAPER_NOT_PUBLISH);
 		}
 		
 		if (paperRepository.hasExamRecords(id)) {
@@ -124,17 +123,6 @@ public class PaperService {
 		}
 		
 		paperRepository.deleteById(id);
-	}
-	
-	@Transactional
-	public void updateStatus(int id, PaperStatus status) {
-		if (!PaperStatus.STOPPED.equals(status)) {
-			throw new BusinessException(MessageConstant.PAPER_STATUS_INVALID);
-		}
-		paperRepository.save(PaperDraft.$.produce(draft -> {
-			draft.setId(id);
-			draft.setStatus(status);
-		}), SaveMode.UPDATE_ONLY);
 	}
 	
 	public List<PaperDetail.TargetOf_questions> getPaperQuestions(int id) {
@@ -155,7 +143,7 @@ public class PaperService {
 			draft.setDescription(input.description());
 			draft.setDuration(input.duration());
 			draft.setCategoryId(input.categoryId());
-			draft.setStatus(PaperStatus.DRAFT);
+			draft.setPublished(false);
 			draft.setQuestionCount(0);
 			draft.setTotalScore(0.0);
 		}), SaveMode.INSERT_ONLY);
@@ -166,22 +154,17 @@ public class PaperService {
 	public void publishPaper(int id) {
 		Paper paper = paperRepository.findById(id)
 				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (!PaperStatus.DRAFT.equals(paper.status())) {
-			throw new BusinessException(MessageConstant.PAPER_NOT_DRAFT_STATUS);
+		if (paper.published()) {
+			throw new BusinessException(MessageConstant.PAPER_IS_PUBLISHED);
 		}
 		paperRepository.save(PaperDraft.$.produce(draft -> {
 			draft.setId(id);
-			draft.setStatus(PaperStatus.PUBLISHED);
+			draft.setPublished(true);
 		}), SaveMode.UPDATE_ONLY);
 	}
 	
 	@Transactional
 	public void addPaperQuestions(int paperId, PaperQuestionAddReq input) {
-		Paper paper = paperRepository.findById(paperId)
-				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (!PaperStatus.DRAFT.equals(paper.status())) {
-			throw new BusinessException("试卷不是草稿状态，无法添加题目");
-		}
 		
 		for (var item : input.questions()) {
 			var existing = paperQuestionRepo.findByPaperIdAndQuestionId(paperId, item.questionId());
@@ -256,7 +239,7 @@ public class PaperService {
 			draft.setName(dto.getName());
 			draft.setDescription(dto.getDescription());
 			draft.setDuration(dto.getDuration());
-			draft.setStatus(PaperStatus.DRAFT);
+			draft.setPublished(false);
 			draft.setQuestionCount(finalQuestionCount);
 			draft.setTotalScore(finalTotalScore);
 			for (Map.Entry<Long, Double> entry : questionScores.entrySet()) {

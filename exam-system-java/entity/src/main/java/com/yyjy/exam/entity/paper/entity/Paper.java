@@ -29,7 +29,8 @@ public interface Paper {
 	@Nullable
 	String description();
 	
-	PaperStatus status();
+	@Column(name = "is_published")
+	boolean published();
 	
 	@Nullable
 	Double totalScore();

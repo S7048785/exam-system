@@ -1,7 +1,7 @@
 export com.yyjy.exam.entity.exam.entity.ExamRecords
     -> package com.yyjy.exam.entity.exam.dto
 
- ExamStartView {
+ExamStartView {
     id
     paper {
         id
@@ -34,7 +34,7 @@ ExamRecordDetail {
         id
         name
         description
-        status
+        published
         totalScore
         questionCount
         duration

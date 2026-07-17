@@ -2,11 +2,15 @@ package com.yyjy.exam.paper.repository;
 
 import com.yyjy.exam.entity.exam.entity.ExamRecordsTable;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
-import com.yyjy.exam.entity.paper.entity.*;
+import com.yyjy.exam.entity.paper.entity.Paper;
+import com.yyjy.exam.entity.paper.entity.PaperDraft;
+import com.yyjy.exam.entity.paper.entity.PaperQuestionTable;
+import com.yyjy.exam.entity.paper.entity.PaperTable;
 import org.babyfish.jimmer.spring.repository.JRepository;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PaperRepository extends JRepository<Paper, Integer> {
@@ -22,16 +26,27 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				       .fetchFirst() > 0;
 	}
 	
-	default List<Paper> listByNameAndStatus(String name, PaperStatus status, int page, int size, Fetcher<Paper> fetcher) {
+	default List<Paper> listByNameAndStatus(String name, Boolean ongoing, int page, int size, Fetcher<Paper> fetcher) {
 		PaperTable paper = PaperTable.$;
 		var query = sql().createQuery(paper);
 		if (name != null && !name.isBlank()) {
 			query = query.where(paper.name().like("%" + name + "%"));
 		}
-		if (status != null) {
-			query = query.where(paper.status().eq(status));
+		if (ongoing != null) {
+			query = query.where(paper.published().eq(ongoing));
 		}
 		return query.select(paper.fetch(fetcher)).limit(size, (long) (page - 1) * size).execute();
+	}
+	
+	default List<Paper> listOngoing() {
+		PaperTable paper = PaperTable.$;
+		var now = LocalDateTime.now();
+		return sql().createQuery(paper)
+				       .where(paper.published().eq(true))
+				       .where(paper.start().le(now))
+				       .where(paper.end().gt(now))
+				       .select(paper)
+				       .execute();
 	}
 	
 	default PaperDetail findDetailById(int id) {

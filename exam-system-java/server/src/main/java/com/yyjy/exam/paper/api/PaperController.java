@@ -6,7 +6,6 @@ import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
-import com.yyjy.exam.entity.paper.entity.PaperStatus;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveV2Input;
@@ -32,10 +31,12 @@ public class PaperController {
 					.name()
 					.description()
 					.categoryId()
-					.status()
+					.published()
 					.totalScore()
 					.questionCount()
 					.duration()
+					.start()
+					.end()
 					.createTime();
 	
 	private final PaperService paperService;
@@ -86,24 +87,11 @@ public class PaperController {
 	@GetMapping("/list")
 	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(
 			@RequestParam(name = "name", required = false) String name,
-			@RequestParam(name = "status", required = false) PaperStatus status,
+			@RequestParam(name = "ongoing", required = false) Boolean ongoing,
 			@RequestParam(name = "page", defaultValue = "1") int page,
 			@RequestParam(name = "size", defaultValue = "10") int size
 	) {
-		return R.ok(paperService.listPapersByNameAndStatus(name, status, page, size, PAPER_ITEM));
-	}
-	
-	/**
-	 * 更新试卷状态
-	 */
-	@Api
-	@PostMapping("/{id}/status")
-	public R<Void> updatePaperStatus(
-			@PathVariable int id,
-			@RequestParam PaperStatus status
-	) {
-		paperService.updateStatus(id, status);
-		return R.ok();
+		return R.ok(paperService.listPapersByNameAndStatus(name, ongoing, page, size, PAPER_ITEM));
 	}
 	
 	/**
@@ -117,7 +105,7 @@ public class PaperController {
 	}
 	
 	/**
-	 * 发布试卷（DRAFT → PUBLISHED）
+	 * 发布试卷（PUBLISHED false -> true）
 	 */
 	@Api
 	@PostMapping("/{id}/publish")
