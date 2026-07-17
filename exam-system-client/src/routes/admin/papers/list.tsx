@@ -1,10 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  useChangeStatus,
-  useDeleteMutation,
-} from '#/features/admin/papers/usePaperActions.ts'
+import { useDeleteMutation } from '#/features/admin/papers/usePaperActions.ts'
 import type { PaperStatus } from '#/__generated/model/enums'
 import { papersQueryOptions } from '#/features/admin/papers/paperQueries.ts'
 import PaperTable from '#/features/admin/papers/components/PaperTable.tsx'
@@ -46,9 +43,6 @@ function PapersPage() {
 
   const papers = listData.data
   const total = listData.data.length
-
-  // 更新试卷状态
-  const changeStatusMutation = useChangeStatus()
 
   // 删除试卷
   const deleteMutation = useDeleteMutation()
@@ -103,7 +97,6 @@ function PapersPage() {
           add: handleAdd,
           edit: handleEdit,
           delete: (id) => deleteMutation.mutate(id),
-          changeStatus: (param) => changeStatusMutation.mutate(param),
         }}
         pagination={{
           data: papers,

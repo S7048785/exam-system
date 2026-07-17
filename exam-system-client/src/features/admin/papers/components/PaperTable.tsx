@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import type { PaperControllerOptions } from '#/__generated/services/PaperController.ts'
 import { PaperFilters } from '#/features/admin/papers/components/PaperFilters.tsx'
 import PaperTableRow from '#/features/admin/papers/components/PaperTableRow.tsx'
 import { PaperTablePagination } from '#/features/admin/papers/components/PaperTablePagination.tsx'
@@ -32,7 +31,6 @@ interface PaperTableProps {
     add: () => void
     edit: (id: number) => void
     delete: (id: number) => void
-    changeStatus: (param: PaperControllerOptions['updatePaperStatus']) => void
   }
 }
 
@@ -88,7 +86,6 @@ export default function PaperTable({
                     item={paper}
                     onEdit={onAction.edit}
                     onDelete={onAction.delete}
-                    onStatusChange={onAction.changeStatus}
                   />
                 )
               })
