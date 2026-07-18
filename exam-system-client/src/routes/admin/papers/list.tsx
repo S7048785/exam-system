@@ -1,10 +1,11 @@
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useDeleteMutation } from '#/features/admin/papers/usePaperActions.ts'
 import { papersQueryOptions } from '#/features/admin/papers/paperQueries.ts'
-import PaperTable from '#/features/admin/papers/components/PaperTable.tsx'
-import PaperInfoDialog from '#/features/admin/papers/InfoDialog'
+import PaperInfoDialog from '#/features/admin/papers/list/EditDialog'
+import { PaperFilters } from '#/features/admin/papers/list/PaperFilters.tsx'
+import { PaperPagination } from '#/features/admin/papers/list/PaperPagination.tsx'
+import PaperList from '#/features/admin/papers/list/body/PaperList.tsx'
 
 export const Route = createFileRoute('/admin/papers/list')({
   component: PapersPage,
@@ -19,20 +20,16 @@ export const Route = createFileRoute('/admin/papers/list')({
 })
 
 function PapersPage() {
-  const queryClient = useQueryClient()
-  // Dialog 状态
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
-  const [editPaperId, setEditPaperId] = useState<number>()
-
   // 列表筛选条件
   const [filters, setFilters] = useState<{
     name?: string
   }>({
     name: undefined,
   })
-  const [page, setPage] = useState(1)
-  const [size, setSize] = useState(10)
+  const [pageCondition, setPageCondition] = useState({
+    page: 1,
+    size: 10,
+  })
 
   // 获取试卷列表
   const { data: listData, refetch } = useSuspenseQuery(
@@ -42,39 +39,15 @@ function PapersPage() {
   const papers = listData.data
   const total = listData.data.length
 
-  // 删除试卷
-  const deleteMutation = useDeleteMutation()
-
   // 筛选变化
   const handleFiltersChange = (newFilters: { name?: string }) => {
     setFilters(newFilters)
-    setPage(1)
+    setPageCondition({ ...pageCondition, page: 1 })
   }
 
   // 分页变化
   const handlePageChange = (newPage: number) => {
-    setPage(newPage)
-  }
-
-  // 新增
-  const handleAdd = () => {
-    setDialogMode('create')
-    setEditPaperId(undefined)
-    setDialogOpen(true)
-  }
-
-  // 编辑
-  const handleEdit = (id: number) => {
-    setDialogMode('edit')
-    setEditPaperId(id)
-    setDialogOpen(true)
-  }
-
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id)
-    queryClient.invalidateQueries({
-      queryKey: ['listPapers'],
-    })
+    setPageCondition({ ...pageCondition, page: newPage })
   }
 
   return (
@@ -83,36 +56,26 @@ function PapersPage() {
         <h1 className="text-2xl font-bold">试卷管理</h1>
         <p className="text-muted-foreground">管理所有试卷信息</p>
       </div>
-      <PaperTable
-        filters={{
-          name: filters.name,
-        }}
-        onAction={{
-          refresh: () => refetch(),
-          sizeChange: (newSize: number) => {
-            setSize(newSize)
-            setPage(1)
-          },
-          pageChange: handlePageChange,
-          filterChange: handleFiltersChange,
-          add: handleAdd,
-          edit: handleEdit,
-          delete: handleDelete,
-        }}
-        pagination={{
-          data: papers,
-          total,
-          page,
-          size,
+      <PaperFilters
+        values={filters}
+        onChange={handleFiltersChange}
+        onRefresh={refetch}
+      />
+
+      <PaperList papers={papers} />
+
+      <PaperPagination
+        size={pageCondition.size}
+        page={pageCondition.page}
+        total={total}
+        onPageChange={handlePageChange}
+        totalPages={total}
+        onSizeChange={(newSize: number) => {
+          setPageCondition({ ...pageCondition, size: newSize, page: 1 })
         }}
       />
 
-      <PaperInfoDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        mode={dialogMode}
-        paperId={editPaperId}
-      />
+      <PaperInfoDialog />
     </div>
   )
 }

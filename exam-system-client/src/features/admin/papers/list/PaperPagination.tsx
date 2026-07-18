@@ -16,7 +16,7 @@ interface Props {
   onSizeChange: (size: number) => void
 }
 
-export function PaperTablePagination({
+export function PaperPagination({
   size,
   onSizeChange,
   onPageChange,
@@ -35,7 +35,7 @@ export function PaperTablePagination({
           value={size.toString()}
           onValueChange={(val) => onSizeChange(Number(val))}
         >
-          <SelectTrigger className="w-[100px]">
+          <SelectTrigger className="w-25">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
