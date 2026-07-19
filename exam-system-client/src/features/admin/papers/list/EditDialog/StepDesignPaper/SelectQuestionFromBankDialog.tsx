@@ -18,9 +18,9 @@ import {
 } from '#/components/ui/select.tsx'
 import { toast } from 'sonner'
 import { api } from '#/ApiInstance.ts'
-import type { QuestionType } from '#/features/admin/papers/constants.ts'
 import { QUESTION_TYPE_MAP } from '#/features/admin/papers/constants.ts'
 import useDebounce from '#/hooks/useDebounce.ts'
+import type { QuestionType } from '#/types/questoin.ts'
 
 interface SelectQuestionFromBankDialogProps {
   open: boolean
@@ -130,7 +130,7 @@ export default function SelectQuestionFromBankDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex w-[800px] max-w-none flex-col overflow-hidden">
+      <DialogContent className="flex w-200 max-w-none flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>从题库中选题</DialogTitle>
         </DialogHeader>

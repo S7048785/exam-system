@@ -3,5 +3,5 @@ import { queryOptions } from '@tanstack/react-query'
 
 export const categoryTreeOptions = queryOptions({
   queryKey: ['categoryTree'],
-  queryFn: () => api.categoryController.tree(),
+  queryFn: () => api.questionCategoryController.tree(),
 })

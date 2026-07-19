@@ -28,7 +28,6 @@ export default function PaperList({ papers }: Props) {
         <PaperRow
           key={item.id}
           item={item}
-          onEdit={editPaper}
           onDelete={handleDelete}
         />
       ))}

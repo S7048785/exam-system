@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
-import type { CategoriesTree } from '#/__generated/model/static'
 import {
   Drawer,
   DrawerContent,
@@ -14,15 +13,16 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { toast } from 'sonner'
 import { useIsMobile } from '#/hooks/use-mobile.ts'
+import type { QuestionsCategoriesTree } from '#/__generated/model/static/index.ts'
 
 interface CategoryDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   mode: 'add' | 'edit'
   parentId: number
-  category: CategoriesTree | null
+  category: QuestionsCategoriesTree | null
   onSubmit: (values: { name: string; sort: number }) => void
-  categories: readonly CategoriesTree[]
+  categories: readonly QuestionsCategoriesTree[]
 }
 
 export default function CategoryDrawer({
@@ -71,7 +71,7 @@ export default function CategoryDrawer({
   const getParentName = () => {
     if (parentId === 0) return '顶级分类'
     const findParent = (
-      cats: readonly CategoriesTree[],
+      cats: readonly QuestionsCategoriesTree[],
       id: number,
     ): string | null => {
       for (const cat of cats) {
@@ -152,7 +152,7 @@ export default function CategoryDrawer({
                       ? '顶级分类'
                       : (() => {
                           const findParent = (
-                            cats: readonly CategoriesTree[],
+                            cats: readonly QuestionsCategoriesTree[],
                             id: number,
                           ): string | null => {
                             for (const cat of cats) {

@@ -1,7 +1,6 @@
 import { api } from '#/ApiInstance.ts'
 import useUserStore from '#/stores/user.ts'
 import ThemeToggle from '#/components/ThemeToggle.tsx'
-import { ExternalLink } from 'lucide-react'
 import { Button } from '#/components/ui/button.tsx'
 import { Link } from '@tanstack/react-router'
 
@@ -52,14 +51,6 @@ export default function Header() {
           >
             About
           </Link>
-          {user?.role === 'admin' && (
-            <>
-              <Link to="/admin/banners" className="nav-link gap-1">
-                管理员后台
-                <ExternalLink size={16} className="mb-0.5" />
-              </Link>
-            </>
-          )}
           {user ? (
             <>
               <Link to="/exam/list" className="nav-link">

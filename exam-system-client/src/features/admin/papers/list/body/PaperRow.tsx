@@ -22,26 +22,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu.tsx'
-import { toast } from 'sonner'
+import { usePaperListStore } from '#/stores/paper-list.ts'
+
 interface Props {
   item: PaperDto['PaperController/PAPER_ITEM']
-  onEdit: (id: number) => void
   onDelete: (id: number) => void
 }
 
-const BASE_URL = import.meta.env.BASE_URL
-export default function PaperRow({ item, onEdit, onDelete }: Props) {
+export default function PaperRow({ item, onDelete }: Props) {
+  const editPaperAtStep = usePaperListStore((state) => state.editPaperAtStep)
   const phase = getPaperPhase(item.end)
 
-  const onCopyUrl = () => {
-    if (!item.published) {
-      toast.warning('请先发布考试')
-      return
-    }
-    navigator.clipboard.writeText(`${BASE_URL}/exam/${item.id}`).then(() => {
-      toast.success('复制成功')
-    })
-  }
   return (
     <div className="bg-muted space-y-2 border px-4 py-4 shadow">
       <div className="flex items-center justify-between">
@@ -58,16 +49,19 @@ export default function PaperRow({ item, onEdit, onDelete }: Props) {
                 variant="ghost"
                 size="sm"
                 className="h-4 p-0"
-                onClick={() => onEdit(item.id)}
               >
                 编辑
                 <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="">
-              <DropdownMenuItem onClick={() => onEdit(item.id)}>
+              <DropdownMenuItem onClick={() => editPaperAtStep(item.id, 0)}>
                 <Pencil className="" />
                 编辑试卷
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => editPaperAtStep(item.id, 1)}>
+                <Pencil className="" />
+                设计试卷
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDelete(item.id)}>
                 <Trash2 className="" />
@@ -98,7 +92,7 @@ export default function PaperRow({ item, onEdit, onDelete }: Props) {
           <span className="text-end">
             创建于 {item.createTime && formatDate(item.createTime)}
           </span>
-          <button onClick={onCopyUrl}>
+          <button onClick={() => editPaperAtStep(item.id, 2)} className="cursor-pointer" title="查看考试链接">
             {item.published ? <Link size="14" /> : <File size="14" />}
           </button>
         </div>

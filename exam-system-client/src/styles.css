@@ -254,6 +254,9 @@ cap-widget::part(attribution) {
 	--radius-2xl: calc(var(--radius) * 1.8);
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
 
 	--sea-ink: #173a40;
 	--sea-ink-soft: #416166;
@@ -283,13 +286,13 @@ cap-widget::part(attribution) {
 	--primary: oklch(0.424 0.199 265.638);
 	--primary-foreground: oklch(0.97 0.014 254.604);
 	--secondary-foreground: oklch(0.97 0.005 56.369);
-	--muted: oklch(0.97 0 0);
+	--muted: #f3f5f7;
 	--muted-foreground: oklch(0.556 0 0);
 	--accent: oklch(0.97 0 0);
 	--accent-foreground: oklch(0.205 0 0);
 	--destructive: oklch(0.577 0.245 27.325);
 	--border: oklch(0.922 0 0);
-	--input: oklch(0.97 0 0);
+	--input: oklch(0.94 0 0);
 	--ring: oklch(0.708 0 0);
 	--chart-1: oklch(0.477 0.048 238.25);
 	--chart-2: oklch(0.482 0.05 54.902);
@@ -301,11 +304,10 @@ cap-widget::part(attribution) {
 	--sidebar-foreground: oklch(0.145 0 0);
 	--sidebar-primary: oklch(0.546 0.245 262.881);
 	--sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-	--sidebar-accent: oklch(0.97 0 0);
+	--sidebar-accent: #e8eaeb;
 	--sidebar-accent-foreground: oklch(0.205 0 0);
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
-
 	--neutral-1: #f9f8f5; /* 页底 / 最浅填充 */
 	--neutral-2: #f0efeb; /* 卡片底 */
 	--neutral-3: #e3e1db; /* 微填充 / hover */

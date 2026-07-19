@@ -1,5 +1,5 @@
 import { useForm } from '@tanstack/react-form'
-import type { CategoriesTree } from '#/__generated/model/static'
+import type { QuestionsCategoriesTree } from '#/__generated/model/static'
 import { DIFFICULTY_OPTIONS, TYPE_OPTIONS } from './constants.ts'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -16,7 +16,7 @@ import { DialogFooter } from '#/components/ui/dialog'
 import { toast } from 'sonner'
 
 interface Step1ParamsProps {
-  categories: readonly CategoriesTree[]
+  categories: readonly QuestionsCategoriesTree[]
   isGenerating: boolean
   onCancel: () => void
   onStartGenerate: (values: {
@@ -29,10 +29,10 @@ interface Step1ParamsProps {
 }
 
 function flattenCategories(
-  categories: readonly CategoriesTree[],
+  categories: readonly QuestionsCategoriesTree[],
   level: number = 0,
-): Array<CategoriesTree & { level: number }> {
-  const result: Array<CategoriesTree & { level: number }> = []
+): Array<QuestionsCategoriesTree & { level: number }> {
+  const result: Array<QuestionsCategoriesTree & { level: number }> = []
   for (const category of categories) {
     result.push({ ...category, level })
     if (category.children && category.children.length > 0) {
