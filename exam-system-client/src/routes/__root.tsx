@@ -5,7 +5,7 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import '@pitininja/cap-react-widget/dist/index.css'
-import appCss from '../styles.css?url'
+import appCss from '../styles/styles.css?url'
 
 import { TooltipProvider } from '#/components/ui/tooltip'
 import type { QueryClient } from '@tanstack/react-query'

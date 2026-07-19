@@ -41,7 +41,7 @@ bun run api              # 从后端 /api/ts.zip 下载 API 类型到 src/__gene
 
 ### 样式与 UI
 
-- **Tailwind v4**：CSS-first 配置在 `src/styles.css`（`@import 'tailwindcss'`），**`tailwind.config.js` 是 v3 死代码，不要使用
+- **Tailwind v4**：CSS-first 配置在 `src/styles/styles.css`（`@import 'tailwindcss'`），**`tailwind.config.js` 是 v3 死代码，不要使用
   **。
 - **shadcn/ui**：组件在 `src/components/ui/`，使用 `#/components/ui/*` 导入。
 - **`cn()` 工具函数**：在 `src/lib/constants.ts` 中，合并 class 时优先使用。

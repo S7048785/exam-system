@@ -72,7 +72,7 @@ export default function PaperRow({ item, onDelete }: Props) {
         </div>
       </div>
       <div className="w-full border"></div>
-      <div className="flex items-center justify-between py-2 text-sm">
+      <div className="flex items-center justify-between text-sm">
         <div className="flex items-center">
           <div className="inline-flex items-center">
             <Badge variant={PAPER_PHASE_VARIANT[phase]}>
@@ -86,7 +86,7 @@ export default function PaperRow({ item, onDelete }: Props) {
           <DotIcon />
           <div>总分: {item.totalScore ?? 0}</div>
           <DotIcon />
-          <div>分类</div>
+          <div>{item.category.name}</div>
         </div>
         <div className="inline-flex items-center gap-2 text-xs">
           <span className="text-end">

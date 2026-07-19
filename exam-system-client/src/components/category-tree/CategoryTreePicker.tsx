@@ -147,7 +147,7 @@ export default function CategoryTreePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className="w-(--radix-popover-trigger-width) p-0"
         align="start"
       >
         <div className="max-h-[50vh] overflow-y-auto p-1">

@@ -32,12 +32,12 @@ export const Route = createFileRoute('/admin/questions')({
     // 提前预取分类（静态，几乎不影响性能）
     await context.queryClient.ensureQueryData(categoryTreeQueryOptions)
     // 提前预取题目列表（使用当前 search 参数）
-    // context.queryClient.ensureQueryData(
-    //   questionsQueryOptions({
-    //     page: 1,
-    //     size: 10,
-    //   }),
-    // )
+    await context.queryClient.ensureQueryData(
+      questionsQueryOptions({
+        page: 1,
+        size: 10,
+      }),
+    )
   },
   pendingComponent: () => {
     return <div>加载中</div>

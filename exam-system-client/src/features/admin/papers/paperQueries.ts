@@ -2,17 +2,15 @@ import { queryOptions } from '@tanstack/react-query'
 import { api } from '#/ApiInstance.ts'
 import type {
   PaperAiSaveDto,
+  PaperListQuery,
   PaperSaveInput,
   PaperUpdateInput,
 } from '#/__generated/model/static'
-import type { PaperControllerOptions } from '#/__generated/services/PaperController'
 
-export const papersQueryOptions = (
-  filters: PaperControllerOptions['listPapers'],
-) =>
+export const papersQueryOptions = (filters: PaperListQuery) =>
   queryOptions({
     queryKey: ['listPapers', filters],
-    queryFn: () => api.paperController.listPapers(filters),
+    queryFn: () => api.paperController.listPapers({query:filters }),
     staleTime: 30 * 1000,
   })
 

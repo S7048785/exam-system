@@ -1,7 +1,6 @@
 ﻿import type { PaperDto } from '#/__generated/model/dto/PaperDto.ts'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDeleteMutation } from '../../usePaperActions'
-import { usePaperListStore } from '#/stores/paper-list.ts'
 import PaperRow from './PaperRow'
 
 interface Props {
@@ -9,8 +8,6 @@ interface Props {
 }
 export default function PaperList({ papers }: Props) {
   const queryClient = useQueryClient()
-
-  const editPaper = usePaperListStore((state) => state.editPaper)
 
   // 删除试卷
   const deleteMutation = useDeleteMutation()

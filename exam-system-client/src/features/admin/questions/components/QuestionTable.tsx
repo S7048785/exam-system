@@ -188,25 +188,24 @@ export default function QuestionTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-muted-foreground text-sm">
-            第 {page} / {totalPages} 页，每页{' '}
+            第 {page} / {totalPages} 页
+          </div>
+          <div className="flex items-center gap-2">
             <Select
-              value={size.toString()}
-              onValueChange={(val) => onPageSizeChange(Number(val))}
+                value={size.toString()}
+                onValueChange={(val) => onPageSizeChange(Number(val))}
             >
               <SelectTrigger className="h-8 w-20">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {[10, 20, 50, 100].map((s) => (
-                  <SelectItem key={s} value={s.toString()}>
-                    {s}
-                  </SelectItem>
+                    <SelectItem key={s} value={s.toString()}>
+                      {s}
+                    </SelectItem>
                 ))}
               </SelectContent>
-            </Select>{' '}
-            条
-          </div>
-          <div className="flex items-center gap-2">
+            </Select>
             <Button
               variant="outline"
               size="sm"
