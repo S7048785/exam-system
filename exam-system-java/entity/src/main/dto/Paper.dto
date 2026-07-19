@@ -27,3 +27,12 @@ PaperDetail {
     }
     createTime
 }
+
+specification PaperListQuery {
+    like(name)
+    associatedIdEq(category) as categoryId
+    published
+    ongoing: Boolean?
+    page: Int?
+    size: Int?
+}

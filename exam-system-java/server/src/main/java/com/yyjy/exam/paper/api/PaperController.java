@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
+import com.yyjy.exam.entity.paper.dto.PaperListQuery;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
@@ -86,13 +87,8 @@ public class PaperController {
 	 */
 	@Api
 	@GetMapping("/list")
-	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(
-			@RequestParam(name = "name", required = false) String name,
-			@RequestParam(name = "ongoing", required = false) Boolean ongoing,
-			@RequestParam(name = "page", defaultValue = "1") int page,
-			@RequestParam(name = "size", defaultValue = "10") int size
-	) {
-		return R.ok(paperService.listPapersByNameAndStatus(name, ongoing, page, size, PAPER_ITEM));
+	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(PaperListQuery query) {
+		return R.ok(paperService.listPapersByNameAndStatus(query, PAPER_ITEM));
 	}
 	
 	/**
