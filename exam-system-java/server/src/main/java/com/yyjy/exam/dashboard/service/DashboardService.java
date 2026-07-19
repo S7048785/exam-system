@@ -17,6 +17,9 @@ import org.babyfish.jimmer.sql.JSqlClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,22 +29,42 @@ public class DashboardService {
 	private final JSqlClient sqlClient;
 	private final RedisUtil redisUtil;
 	
+	// 推荐使用专用线程池，避免耗尽 ForkJoinPool 公共资源
+	private final ExecutorService executor = Executors.newFixedThreadPool(5);
+	
 	public DashboardStats getStats() {
-		// 1. Try Redis cache first
+		// 1. 尝试从缓存获取
 		String cached = redisUtil.get(CacheConstant.DASHBOARD_STATS_KEY);
 		if (StrUtil.isNotBlank(cached)) {
 			return JSONUtil.toBean(cached, DashboardStats.class);
 		}
 		
-		// 2. Cache miss — query DB sequentially
-		//    (simple COUNT(*) queries, each <1ms, sequential is fine)
-		long userCount = countUsers();
-		long questionCount = countQuestions();
-		long paperCount = countPapers();
-		long examRecordCount = countExamRecords();
-		List<DashboardStats.RecentExamRecord> recentRecords = getRecentExamRecords(10);
+		// 2. 并发执行所有查询
+		CompletableFuture<Long> userCountFuture =
+				CompletableFuture.supplyAsync(this::countUsers, executor);
+		CompletableFuture<Long> questionCountFuture =
+				CompletableFuture.supplyAsync(this::countQuestions, executor);
+		CompletableFuture<Long> paperCountFuture =
+				CompletableFuture.supplyAsync(this::countPapers, executor);
+		CompletableFuture<Long> examRecordCountFuture =
+				CompletableFuture.supplyAsync(this::countExamRecords, executor);
+		CompletableFuture<List<DashboardStats.RecentExamRecord>> recentRecordsFuture =
+				CompletableFuture.supplyAsync(() -> getRecentExamRecords(10), executor);
 		
+		// 等待所有任务完成
+		CompletableFuture.allOf(
+				userCountFuture, questionCountFuture, paperCountFuture,
+				examRecordCountFuture, recentRecordsFuture
+		).join();
 		
+		// 收集结果（join() 不会抛出受检异常，但实际应处理 ExecutionException）
+		long userCount = userCountFuture.join();
+		long questionCount = questionCountFuture.join();
+		long paperCount = paperCountFuture.join();
+		long examRecordCount = examRecordCountFuture.join();
+		List<DashboardStats.RecentExamRecord> recentRecords = recentRecordsFuture.join();
+		
+		// 3. 组装结果并缓存
 		DashboardStats stats = DashboardStats.builder()
 				                       .userCount(userCount)
 				                       .questionCount(questionCount)
@@ -49,12 +72,10 @@ public class DashboardService {
 				                       .examRecordCount(examRecordCount)
 				                       .recentExamRecords(recentRecords)
 				                       .build();
-		
-		// 3. Store in Redis for 60s
 		redisUtil.set(CacheConstant.DASHBOARD_STATS_KEY, JSONUtil.toJsonStr(stats), CACHE_TTL);
-		
 		return stats;
 	}
+	
 	
 	private long countUsers() {
 		var u = UsersTable.$;

@@ -5,9 +5,11 @@ import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
+import com.yyjy.exam.entity.paper.dto.PaperListQuery;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperDraft;
 import com.yyjy.exam.entity.paper.entity.PaperQuestionDraft;
+import com.yyjy.exam.entity.paper.entity.PaperTable;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveV2Input;
@@ -22,6 +24,7 @@ import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -32,8 +35,25 @@ public class PaperService {
 	private final PaperQuestionRepository paperQuestionRepo;
 	private final QuestionsRepository questionsRepository;
 	
-	public List<Paper> listPapersByNameAndStatus(String name, Boolean ongoing, int page, int size, Fetcher<Paper> fetcher) {
-		return paperRepository.listByNameAndStatus(name, ongoing, page, size, fetcher);
+	public List<Paper> listPapersByNameAndStatus(PaperListQuery conditions, Fetcher<Paper> fetcher) {
+		PaperTable paper = PaperTable.$;
+		
+		int page = Objects.requireNonNullElse(conditions.getPage(), 1);
+		int size = Objects.requireNonNullElse(conditions.getSize(), 10);
+		
+		var query = paperRepository.sql().createQuery(paper);
+		
+		if (Boolean.TRUE.equals(conditions.getOngoing())) {
+			query.where(paper.end().ge(LocalDateTime.now()));
+			
+		} else if (Boolean.FALSE.equals(conditions.getOngoing())) {
+			query.where(paper.end().lt(LocalDateTime.now()));
+		}
+		
+		return query
+				       .select(paper.fetch(fetcher))
+				       .limit(size, (long) (page - 1) * size)
+				       .execute();
 	}
 	
 	public PaperDetail getPaper(int id) {
