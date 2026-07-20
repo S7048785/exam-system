@@ -3,6 +3,7 @@ package com.yyjy.exam.exam.service;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.exam.entity.*;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
+import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
 import com.yyjy.exam.exam.repository.ExamRecordsRepository;
 import com.yyjy.exam.question.constant.QuestionConstant;
@@ -41,17 +42,19 @@ public class ExamRecordService {
 				                       .where(table.paperId().eq(paperId))
 				                       .select(table)
 				                       .fetchFirstOrNull();
-		
+		var paperEntity = sqlClient.findById(Paper.class, paperId);
+		if (paperEntity == null || !paperEntity.published()) {
+			throw new BusinessException("试卷不存在或未发布");
+		}
+		var now = LocalDateTime.now();
 		if (existing != null) {
-			
-			if (existing.status() == ExamRecordStatus.ONGOING) {
-				throw new BusinessException("考试已开始");
-			} else {
+			if (paperEntity.end().isBefore(now)) {
 				throw new BusinessException("考试已结束");
 			}
+			// TODO: 试卷是否开启用户多次考试功能
+			throw new BusinessException("不允许多次考试");
 		}
 		
-		var now = LocalDateTime.now();
 		return examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
 			draft.setPaperId(paperId);
 			draft.setStudentName(studentName);
@@ -169,15 +172,15 @@ public class ExamRecordService {
 	}
 	
 	private void aiEvaluation(List<AnswerRecord> answerRecords) {
-		List<com.yyjy.exam.entity.exam.io.req.QuestionTextGradingReq> requests = answerRecords.stream()
-				                                                                         .map(ar -> new com.yyjy.exam.entity.exam.io.req.QuestionTextGradingReq(
-						                                                                         ar.id(),
-						                                                                         ar.question().title(),
-						                                                                         ar.question().questionAnswers().answer(),
-						                                                                         ar.question().score(),
-						                                                                         ar.userAnswer()
-				                                                                         ))
-				                                                                         .toList();
+		var requests = answerRecords.stream()
+				               .map(ar -> new com.yyjy.exam.entity.exam.io.req.QuestionTextGradingReq(
+						               ar.id(),
+						               ar.question().title(),
+						               ar.question().questionAnswers().answer(),
+						               ar.question().score(),
+						               ar.userAnswer()
+				               ))
+				               .toList();
 		examBulkGradingService.batchGrading(requests);
 	}
 }

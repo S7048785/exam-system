@@ -110,7 +110,7 @@ export default function QuestionTable({
                       </span>
                     </TableCell>
 
-                    <TableCell>{question.score || '-'}</TableCell>
+                    <TableCell>{question.score}</TableCell>
 
                     <TableCell>
                       {question.categoryId ? (

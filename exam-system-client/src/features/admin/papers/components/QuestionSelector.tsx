@@ -76,7 +76,7 @@ export default function QuestionSelector({
       const newMap = new Map(selectedQuestions)
       filteredQuestions.forEach((q) => {
         if (!newMap.has(q.id)) {
-          newMap.set(q.id, { score: q.score ?? 5 })
+          newMap.set(q.id, { score: q.score })
         }
       })
       onSelectionChange(newMap)
@@ -91,7 +91,7 @@ export default function QuestionSelector({
   const handleSelect = (question: QuestionsPageView, checked: boolean) => {
     const newMap = new Map(selectedQuestions)
     if (checked) {
-      newMap.set(question.id, { score: question.score ?? 5 })
+      newMap.set(question.id, { score: question.score })
     } else {
       newMap.delete(question.id)
     }
@@ -247,8 +247,7 @@ export default function QuestionSelector({
                         className="h-8 w-[80px]"
                         value={
                           selectedQuestions.get(question.id)?.score ??
-                          question.score ??
-                          5
+                          question.score
                         }
                         onChange={(e) =>
                           handleScoreChange(question.id, Number(e.target.value))

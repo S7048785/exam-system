@@ -73,7 +73,7 @@ export default function Step2Preview({ data }: Step2PreviewProps) {
                       {difficultyInfo.label}
                     </span>
                   </TableCell>
-                  <TableCell>{question.score || '-'}</TableCell>
+                  <TableCell>{question.score}</TableCell>
                   <TableCell>
                     {renderChoicesAndAnswer(
                       question.type,
