@@ -55,7 +55,8 @@ mvnw.cmd test -pl server                          # 运行测试
 
 - Jimmer Java API 的 `in()`/`notIn()` 是小写，不是 `valueIn`/`valueNotIn`
 - `PaperSaveInput.questions` 类型是 `Map<String, Integer>`，不是 `Map<Long, Double>`
-- `common/annotation/`、`common/aspect/`、`notice` 模块均为空/未实现
+- `common` 模块包含 `constant/`、`convention/`、`exception/`、`property/`、`util/`；`config/` 和 `auth/` 留在 server 模块
+- `notice` 模块未实现
 
 ## 前端架构要点
 
