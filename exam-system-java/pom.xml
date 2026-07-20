@@ -23,6 +23,7 @@
     </developers>
     <modules>
         <module>entity</module>
+        <module>common</module>
         <module>server</module>
     </modules>
     <scm>

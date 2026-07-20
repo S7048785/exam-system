@@ -23,6 +23,11 @@
             <artifactId>entity</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.yyjy</groupId>
+            <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Jimmer -->
         <dependency>

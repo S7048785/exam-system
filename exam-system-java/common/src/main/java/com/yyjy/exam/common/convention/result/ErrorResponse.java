@@ -1,7 +1,5 @@
 package com.yyjy.exam.common.convention.result;
 
-//import lombok.Builder;
-
 /**
  * @author Nyxcirea
  * @date 2026/7/2
