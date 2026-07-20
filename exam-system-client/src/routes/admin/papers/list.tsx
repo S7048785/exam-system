@@ -1,6 +1,5 @@
 import {
   useQuery,
-  useQueryClient,
 } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
@@ -14,6 +13,7 @@ import type { PaperListQuery } from '#/__generated/model/static'
 import {usePaperListStore} from "#/stores/paper-list.ts";
 import {Button} from "#/components/ui/button.tsx";
 import {Plus} from "lucide-react";
+import Loading from "#/components/Loading.tsx";
 
 export const Route = createFileRoute('/admin/papers/list')({
   component: PapersPage,
@@ -41,9 +41,6 @@ function CreatePaper() {
 }
 
 function PapersPage() {
-  const q = useQueryClient()
-
-
   // 列表筛选条件
   const [filters, setFilters] = useState<PageListFilterType>({
     name: '',
@@ -101,9 +98,7 @@ function PapersPage() {
         <CreatePaper />
       </div>
       {
-        isPending ? <div className="relative h-100">
-          <div className="loading-2 space-y-4 absolute left-1/2 top-1/2 -translate-x-2/3 -translate-y-1/2 "></div>
-        </div> : listData?.data.at(0) ? <>
+        isPending ? <Loading /> : listData?.data.at(0) ? <>
           <PaperList papers={listData.data} />
 
           <PaperPagination

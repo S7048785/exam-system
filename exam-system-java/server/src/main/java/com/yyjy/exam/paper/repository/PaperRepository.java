@@ -9,9 +9,6 @@ import com.yyjy.exam.entity.paper.entity.PaperTable;
 import org.babyfish.jimmer.spring.repository.JRepository;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 public interface PaperRepository extends JRepository<Paper, Integer> {
 	
 	boolean existsByName(String name);
@@ -23,17 +20,6 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				       .where(t.id().ne(id))
 				       .select(t.count())
 				       .fetchFirst() > 0;
-	}
-	
-	default List<Paper> listOngoing() {
-		PaperTable paper = PaperTable.$;
-		var now = LocalDateTime.now();
-		return sql().createQuery(paper)
-				       .where(paper.published().eq(true))
-				       .where(paper.start().le(now))
-				       .where(paper.end().gt(now))
-				       .select(paper)
-				       .execute();
 	}
 	
 	default PaperDetail findDetailById(int id) {

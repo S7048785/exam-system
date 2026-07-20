@@ -3,12 +3,13 @@ import { Button } from '#/components/ui/button.tsx'
 import { Input } from '#/components/ui/input'
 import ExamPaperList from '#/features/exam/list/components/ExamPaperList.tsx'
 import { paperListQueryOptions } from '#/features/exam/list/examQueries.ts'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeftIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { PaperDto } from '#/__generated/model/dto'
 import { ExamStartDialog } from '#/features/exam/list/components/ExamStartDialog.tsx'
+import Loading from "#/components/Loading.tsx";
 
 export const Route = createFileRoute('/_auth/exam/list')({
   component: ExamListPage,
@@ -17,10 +18,10 @@ export const Route = createFileRoute('/_auth/exam/list')({
   }),
   loaderDeps: ({ search: { keyword } }) => ({ keyword }),
   loader: async ({ context, deps: { keyword } }) => {
-    return context.queryClient.fetchQuery(
+    return context.queryClient.ensureQueryData(
       paperListQueryOptions({
         ongoing: true,
-        name: keyword,
+        name: keyword ?? "",
       }),
     )
   },
@@ -29,10 +30,10 @@ export const Route = createFileRoute('/_auth/exam/list')({
 function ExamListPage() {
   const { history, navigate } = useRouter()
   const { keyword } = Route.useSearch()
-  const { data } = useSuspenseQuery(
+  const { data, isPending, isError } = useQuery(
     paperListQueryOptions({
       ongoing: true,
-      name: keyword,
+      name: keyword ?? "",
     }),
   )
 
@@ -53,11 +54,19 @@ function ExamListPage() {
       setSelectedPaper(null)
       return
     }
-    setSelectedPaper(data.data[index])
+    setSelectedPaper(data![index])
   }
   const closeDialog = () => {
     toggleDialog(null)
   }
+  // 在组件内部，渲染之前先计算要显示的内容
+  const renderPaperList = () => {
+    if (isPending) return <Loading />;
+    if (isError) return <div>加载失败</div>;
+    if (data?.length) return <ExamPaperList data={data} onOpenChange={toggleDialog} />;
+    return <div>暂无数据</div>;
+  };
+
   return (
     <div className="mx-4 space-y-8 pt-10 md:mx-auto md:w-[80vw]">
       <div className="flex items-center gap-2">
@@ -78,7 +87,8 @@ function ExamListPage() {
         />
         <Button>Search</Button>
       </form>
-      <ExamPaperList data={data.data} onOpenChange={toggleDialog} />
+      {renderPaperList()}
+
       <ExamStartDialog
         open={selectedPaper !== null}
         data={selectedPaper}
