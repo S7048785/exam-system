@@ -10,11 +10,12 @@ import appCss from '../styles/styles.css?url'
 import { TooltipProvider } from '#/components/ui/tooltip'
 import type { QueryClient } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
-import { serverApi } from '#/api.server.ts'
 import type { UserInfo } from '#/stores/user.ts'
 import { createServerFn } from '@tanstack/react-start'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { api } from '#/ApiInstance.ts'
+import { ClientOnly } from '#/components/ClientOnly.tsx'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -26,7 +27,7 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   // We need to auth on the server so we have access to secure cookies
   try {
-    const user = await serverApi.userController.getUserInfo()
+    const user = await api.userController.getUserInfo()
     return user.data
   } catch (error) {
     console.error(error)
@@ -88,10 +89,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Toaster />
         <Scripts />
         {import.meta.env.DEV && (
-          <>
+          <ClientOnly>
             <ReactQueryDevtools buttonPosition="top-right" />
             <TanStackRouterDevtools position="bottom-right" />
-          </>
+          </ClientOnly>
         )}
       </body>
     </html>
