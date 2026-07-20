@@ -159,7 +159,7 @@ create table questions
     multi       tinyint(1) default 0                 null,
     category_id bigint                               not null,
     difficulty  varchar(10)                          not null,
-    score       int        default 5                 null,
+    score       int        default 1                 not null,
     analysis    text                                 null,
     create_time timestamp  default CURRENT_TIMESTAMP null comment '创建时间',
     update_time timestamp  default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',

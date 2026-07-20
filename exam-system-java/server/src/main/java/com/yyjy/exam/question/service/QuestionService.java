@@ -322,7 +322,7 @@ public class QuestionService {
 				       .multiple("否")
 				       .categoryId("1")
 				       .difficulty("MEDIUM")
-				       .score("5")
+				       .score("1")
 				       .choiceA("依赖注入")
 				       .choiceB("面向切面编程")
 				       .choiceC("事务管理")

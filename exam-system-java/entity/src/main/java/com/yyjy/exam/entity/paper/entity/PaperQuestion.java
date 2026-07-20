@@ -21,7 +21,7 @@ public interface PaperQuestion {
 	@OnDissociate(DissociateAction.DELETE)
 	Questions question();
 	
-	double score();
+	int score();
 	
 	@Nullable
 	LocalDateTime createTime();

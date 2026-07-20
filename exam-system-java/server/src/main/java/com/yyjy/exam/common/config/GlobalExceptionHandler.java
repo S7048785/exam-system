@@ -35,18 +35,12 @@ public class GlobalExceptionHandler {
 				       .body(new ErrorResponse("服务器内部错误"));
 	}
 	
-	//@ExceptionHandler
-	//public ResponseEntity<ErrorResponse> handleException(NotLoginException ex) {
-	//	log.error("用户未登录: {}", ex.getMessage(), ex);
-	//	return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-	//			       .body(new ErrorResponse("用户未登录"));
-	//}
 	// 全局异常拦截（拦截项目中的NotLoginException异常）
 	@ExceptionHandler(NotLoginException.class)
 	public ResponseEntity<ErrorResponse> handlerNotLoginException(NotLoginException nle) {
 		
 		// 打印堆栈，以供调试
-		nle.printStackTrace();
+		//nle.printStackTrace();
 		
 		// 判断场景值，定制化异常信息
 		String message;

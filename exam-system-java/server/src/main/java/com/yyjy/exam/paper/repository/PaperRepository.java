@@ -47,7 +47,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				          .select(t.count(), t.score().sum())
 				          .fetchFirst();
 		int count = row.get_1().intValue();
-		Double total = row.get_2() != null ? row.get_2() : 0.0;
+		int total = row.get_2() != null ? row.get_2() : 0;
 		save(PaperDraft.$.produce(draft -> {
 			draft.setId(paperId);
 			draft.setQuestionCount(count);

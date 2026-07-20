@@ -32,11 +32,10 @@ public interface Paper {
 	@Column(name = "is_published")
 	boolean published();
 	
-	@Nullable
-	Double totalScore();
+	int totalScore();
 	
 	@Nullable
-	Double PassingScore();
+	Integer PassingScore();
 	
 	@Nullable
 	Integer questionCount();

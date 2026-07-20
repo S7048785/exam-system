@@ -30,8 +30,7 @@ public interface Questions {
 	
 	String difficulty();
 	
-	@Nullable
-	Integer score();
+	int score();
 	
 	@Nullable
 	String analysis();

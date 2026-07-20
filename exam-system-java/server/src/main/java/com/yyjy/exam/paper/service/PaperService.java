@@ -12,7 +12,6 @@ import com.yyjy.exam.entity.paper.entity.PaperQuestionDraft;
 import com.yyjy.exam.entity.paper.entity.PaperTable;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
-import com.yyjy.exam.entity.paper.io.req.PaperSaveV2Input;
 import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.paper.repository.PaperRepository;
@@ -77,35 +76,6 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public void addPaper(PaperSaveInput paperInput) {
-		if (paperInput.questions().isEmpty()) {
-			throw new BusinessException(MessageConstant.PAPER_QUESTION_EMPTY);
-		}
-		
-		double totalScore = paperInput.questions().values().stream().mapToDouble(Integer::doubleValue).sum();
-		
-		var userId = StpUtil.getLoginIdAsLong();
-		paperRepository.save(PaperDraft.$.produce(draft -> {
-			draft.setUserId(userId);
-			draft.setName(paperInput.name());
-			draft.setDescription(paperInput.description());
-			draft.setDuration(paperInput.duration());
-			draft.setCategoryId(paperInput.categoryId());
-			draft.setPublished(false);
-			draft.setQuestionCount(paperInput.questions().size());
-			draft.setTotalScore(totalScore);
-			for (var entry : paperInput.questions().entrySet()) {
-				long questionId = Long.parseLong(entry.getKey());
-				double score = entry.getValue().doubleValue();
-				draft.addIntoPaperQuestions(pq -> {
-					pq.setQuestionId(questionId);
-					pq.setScore(score);
-				});
-			}
-		}), SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
-	}
-	
-	@Transactional
 	public void updatePaper(PaperUpdateInput paperInput) {
 		if (paperRepository.existsByNameAndIdNot(paperInput.name(), paperInput.id())) {
 			throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
@@ -121,7 +91,7 @@ public class PaperService {
 			draft.setCategoryId(paperInput.categoryId());
 			for (Map.Entry<String, Integer> entry : paperInput.questions().entrySet()) {
 				long questionId = Long.parseLong(entry.getKey());
-				double score = entry.getValue().doubleValue();
+				int score = entry.getValue();
 				draft.addIntoPaperQuestions(pq -> {
 					pq.setQuestionId(questionId);
 					pq.setScore(score);
@@ -147,7 +117,7 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public int addPaperV2(PaperSaveV2Input input) {
+	public int addPaper(PaperSaveInput input) {
 		if (paperRepository.existsByName(input.name())) {
 			throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
 		}
@@ -160,7 +130,7 @@ public class PaperService {
 			draft.setCategoryId(input.categoryId());
 			draft.setPublished(false);
 			draft.setQuestionCount(0);
-			draft.setTotalScore(0.0);
+			draft.setTotalScore(0);
 		}), SaveMode.INSERT_ONLY);
 		return paper.id();
 	}
@@ -208,7 +178,7 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public void updatePaperQuestionScore(int paperId, long questionId, double score) {
+	public void updatePaperQuestionScore(int paperId, long questionId, int score) {
 		var existing = paperQuestionRepo.findByPaperIdAndQuestionId(paperId, questionId);
 		if (existing == null) throw new BusinessException("试卷中不存在该题目");
 		
@@ -226,9 +196,9 @@ public class PaperService {
 			throw new BusinessException(MessageConstant.PAPER_RULE_EMPTY);
 		}
 		
-		Map<Long, Double> questionScores = new LinkedHashMap<>();
+		Map<Long, Integer> questionScores = new LinkedHashMap<>();
 		int questionCount = 0;
-		double totalScore = 0.0;
+		int totalScore = 0;
 		
 		for (PaperAiSaveDto.Rule rule : dto.getRules()) {
 			if (rule.getCount() <= 0) continue;
@@ -241,15 +211,15 @@ public class PaperService {
 			Collections.shuffle(allIds);
 			
 			for (int i = 0; i < realCount; i++) {
-				questionScores.put(allIds.get(i), (double) rule.getScore());
+				questionScores.put(allIds.get(i), rule.getScore());
 			}
 			
 			questionCount += realCount;
-			totalScore += realCount * (double) rule.getScore();
+			totalScore += realCount * rule.getScore();
 		}
 		
 		int finalQuestionCount = questionCount;
-		double finalTotalScore = totalScore;
+		int finalTotalScore = totalScore;
 		return paperRepository.save(PaperDraft.$.produce(draft -> {
 			draft.setName(dto.getName());
 			draft.setDescription(dto.getDescription());
@@ -257,7 +227,7 @@ public class PaperService {
 			draft.setPublished(false);
 			draft.setQuestionCount(finalQuestionCount);
 			draft.setTotalScore(finalTotalScore);
-			for (Map.Entry<Long, Double> entry : questionScores.entrySet()) {
+			for (Map.Entry<Long, Integer> entry : questionScores.entrySet()) {
 				draft.addIntoPaperQuestions(pq -> {
 					pq.setQuestionId(entry.getKey());
 					pq.setScore(entry.getValue());

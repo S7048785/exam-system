@@ -10,7 +10,6 @@ import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperSaveInput;
-import com.yyjy.exam.entity.paper.io.req.PaperSaveV2Input;
 import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
 import com.yyjy.exam.paper.service.PaperService;
 import lombok.RequiredArgsConstructor;
@@ -43,15 +42,6 @@ public class PaperController {
 	
 	private final PaperService paperService;
 	
-	/**
-	 * 新增试卷
-	 */
-	@Api
-	@PostMapping("/add")
-	public R<Void> addPaper(@RequestBody PaperSaveInput paper) {
-		paperService.addPaper(paper);
-		return R.ok();
-	}
 	
 	/**
 	 * 更新试卷
@@ -96,8 +86,8 @@ public class PaperController {
 	 */
 	@Api
 	@PostMapping("/v2/add")
-	public R<Integer> addPaperV2(@RequestBody PaperSaveV2Input paper) {
-		int id = paperService.addPaperV2(paper);
+	public R<Integer> addPaperV2(@RequestBody PaperSaveInput paper) {
+		int id = paperService.addPaper(paper);
 		return R.ok(id);
 	}
 	
@@ -148,7 +138,7 @@ public class PaperController {
 	public R<Void> updatePaperQuestionScore(
 			@PathVariable int id,
 			@PathVariable long questionId,
-			@RequestParam double score
+			@RequestParam int score
 	) {
 		paperService.updatePaperQuestionScore(id, questionId, score);
 		return R.ok();
