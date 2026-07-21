@@ -16,10 +16,7 @@ public interface Questions {
 	
 	String title();
 	
-	String type();
-	
-	@Nullable
-	Boolean multi();
+	QuestionType type();
 	
 	@JoinColumn(name = "category_id")
 	@ManyToOne

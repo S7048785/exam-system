@@ -7,31 +7,28 @@ import java.time.LocalDateTime;
 
 @Entity
 public interface QuestionAnswers {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    long id();
-
-    @OneToOne
-    @OnDissociate(DissociateAction.DELETE)
-    Questions question();
-
-    @IdView
-    long questionId();
-
-    String answer();
-
-    @Nullable
-    String keywords();
-
-    @Nullable
-    LocalDateTime createTime();
-
-    @Nullable
-    LocalDateTime updateTime();
-
-    @Column(name = "deleted_at")
-    @LogicalDeleted("now")
-    @Nullable
-    LocalDateTime delFlag();
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	long id();
+	
+	@OneToOne
+	@OnDissociate(DissociateAction.DELETE)
+	Questions question();
+	
+	@IdView
+	long questionId();
+	
+	String answer();
+	
+	@Nullable
+	LocalDateTime createTime();
+	
+	@Nullable
+	LocalDateTime updateTime();
+	
+	@Column(name = "deleted_at")
+	@LogicalDeleted("now")
+	@Nullable
+	LocalDateTime delFlag();
 }
