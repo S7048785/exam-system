@@ -70,7 +70,7 @@ export default function UserDrawer({
       realName: '',
       password: '',
       role: 'user',
-      status: 'active',
+      status: 'ACTIVE',
     },
     validators: {
       onChange: schema,
@@ -89,7 +89,7 @@ export default function UserDrawer({
           realName: user.realName,
           password: '',
           role: user.role || 'user',
-          status: user.status || 'active',
+          status: (user.status as string) || 'ACTIVE',
         })
       } else {
         form.reset({
@@ -97,7 +97,7 @@ export default function UserDrawer({
           realName: '',
           password: '',
           role: 'user',
-          status: 'active',
+          status: 'ACTIVE',
         })
       }
     }
@@ -242,8 +242,8 @@ export default function UserDrawer({
                       <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">正常</SelectItem>
-                      <SelectItem value="disabled">禁用</SelectItem>
+                      <SelectItem value="ACTIVE">正常</SelectItem>
+                      <SelectItem value="INACTIVE">禁用</SelectItem>
                     </SelectContent>
                   </Select>
                   {field.state.meta.errors.length > 0 && (

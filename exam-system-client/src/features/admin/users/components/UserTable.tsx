@@ -44,8 +44,8 @@ const ROLE_MAP: Record<
 }
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  active: { label: '正常', className: 'text-green-600 bg-green-50' },
-  disabled: { label: '禁用', className: 'text-red-600 bg-red-50' },
+  ACTIVE: { label: '正常', className: 'text-green-600 bg-green-50' },
+  INACTIVE: { label: '禁用', className: 'text-red-600 bg-red-50' },
 }
 
 export default function UserTable({

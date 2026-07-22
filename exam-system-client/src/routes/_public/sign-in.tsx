@@ -22,6 +22,8 @@ function SigninPage() {
     setUser(user)
     if (user.role === 'admin') {
       navigate({ to: '/admin/questions' })
+    } else {
+      navigate({ to: '/' })
     }
   }
   return (
@@ -40,7 +42,7 @@ function SigninPage() {
         </div>
         <div className="border-border bg-card border p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-6">
-            <LoginForm onLoginSuccess={onLoginSuccess}/>
+            <LoginForm onLoginSuccess={onLoginSuccess} />
           </div>
           <p className="text-muted-foreground mt-6 text-center text-sm">
             没有账号？{' '}

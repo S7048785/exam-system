@@ -4,5 +4,5 @@ import org.babyfish.jimmer.sql.EnumType;
 
 @EnumType(EnumType.Strategy.NAME)
 public enum UserStatus {
-	ACTIVE, INACTIVE;
+	ACTIVE, INACTIVE
 }
