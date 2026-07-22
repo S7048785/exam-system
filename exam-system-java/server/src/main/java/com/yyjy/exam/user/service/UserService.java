@@ -33,9 +33,7 @@ public class UserService {
 			throw new BusinessException("用户名或密码错误");
 		}
 		
-		var userRes = Immutables.createUsers(userDb, draft -> {
-			DraftObjects.unload(draft, UsersTable.PASSWORD);
-		});
+		var userRes = Immutables.createUsers(userDb, draft -> DraftObjects.unload(draft, UsersTable.PASSWORD));
 		
 		
 		StpUtil.login(userDb.id());

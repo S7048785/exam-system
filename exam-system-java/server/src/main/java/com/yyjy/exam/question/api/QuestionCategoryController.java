@@ -69,11 +69,6 @@ public class QuestionCategoryController {
 		return R.ok();
 	}
 	
-	@GetMapping("/{id}")
-	public R<Void> getCategory(@PathVariable long id) {
-		return R.ok();
-	}
-	
 	@GetMapping("/list")
 	public R<List<@FetchBy("CATEGORY_INFO") QuestionsCategories>> listCategories() {
 		return R.ok(categoriesRepository.findAllWithFetcher(CATEGORY_INFO));

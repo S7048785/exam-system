@@ -96,9 +96,6 @@ public class ExamRecordService {
 	
 	/**
 	 * 批改试卷
-	 *
-	 * @param examRecordId
-	 * @return
 	 */
 	@Transactional
 	public void gradeExam(int examRecordId) {
@@ -163,8 +160,7 @@ public class ExamRecordService {
 	private void gradeJudgeQuestion(AnswerRecord ar) {
 		String correctAnswer = ar.question().questionAnswers() != null
 				                       ? Objects.requireNonNull(ar.question().questionAnswers()).answer() : null;
-		int score = ar.userAnswer().equals(correctAnswer) ? ar.question().score() : 0;
-		final int s = score;
+		final int s = ar.userAnswer().equals(correctAnswer) ? ar.question().score() : 0;
 		answerRecordRepo.save(AnswerRecordDraft.$.produce(draft -> {
 			draft.setId(ar.id());
 			draft.setScore(s);

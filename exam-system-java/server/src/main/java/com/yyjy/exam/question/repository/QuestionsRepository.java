@@ -45,14 +45,6 @@ public interface QuestionsRepository extends JRepository<Questions, Long> {
 				       .execute();
 	}
 	
-	default List<String> titleIsRepeat(List<String> titles) {
-		QuestionsTable t = QuestionsTable.$;
-		return sql().createQuery(t)
-				       .where(t.title().in(titles))
-				       .select(t.title())
-				       .execute();
-	}
-	
 	default List<Long> findIdsByTypeAndCategoryIds(QuestionType type, List<Long> categoryIds) {
 		QuestionsTable t = QuestionsTable.$;
 		return sql().createQuery(t)
