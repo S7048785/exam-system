@@ -166,7 +166,8 @@ export default function SelectQuestionFromBankDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">全部题型</SelectItem>
-                <SelectItem value="CHOICE">选择题</SelectItem>
+                <SelectItem value="SINGLE_CHOICE">单选题</SelectItem>
+                <SelectItem value="MULTIPLE_CHOICE">多选题</SelectItem>
                 <SelectItem value="JUDGE">判断题</SelectItem>
                 <SelectItem value="TEXT">简答题</SelectItem>
               </SelectContent>

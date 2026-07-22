@@ -1,5 +1,5 @@
-import {api} from '#/ApiInstance.ts'
-import {queryOptions} from '@tanstack/react-query'
+import { api } from '#/ApiInstance.ts'
+import { queryOptions } from '@tanstack/react-query'
 
 /**
  * 查询试卷列表
@@ -11,11 +11,11 @@ export const paperListQueryOptions = (param: {
   queryOptions({
     queryKey: ['paperList', param],
     queryFn: () =>
-        api.paperController.listPapers({
+      api.paperController.listPapers({
         query: {
           name: param.name,
           ongoing: param.ongoing,
-        }
+        },
       }),
-    select: data => data.data
+    select: (data) => data.data,
   })

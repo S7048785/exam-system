@@ -1,6 +1,4 @@
-import {
-  useQuery,
-} from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { api } from '#/ApiInstance.ts'
@@ -10,10 +8,10 @@ import { PaperFilters } from '#/features/admin/papers/list/PaperFilters.tsx'
 import { PaperPagination } from '#/features/admin/papers/list/PaperPagination.tsx'
 import PaperList from '#/features/admin/papers/list/body/PaperList.tsx'
 import type { PaperListQuery } from '#/__generated/model/static'
-import {usePaperListStore} from "#/stores/paper-list.ts";
-import {Button} from "#/components/ui/button.tsx";
-import {Plus} from "lucide-react";
-import Loading from "#/components/Loading.tsx";
+import { usePaperListStore } from '#/stores/paper-list.ts'
+import { Button } from '#/components/ui/button.tsx'
+import { Plus } from 'lucide-react'
+import Loading from '#/components/Loading.tsx'
 
 export const Route = createFileRoute('/admin/papers/list')({
   component: PapersPage,
@@ -34,10 +32,12 @@ export type PageListFilterType = Omit<PaperListQuery, 'page' & 'size'>
 
 function CreatePaper() {
   const addPaper = usePaperListStore((state) => state.addPaper)
-  return <Button onClick={addPaper} className="gap-1.5">
-    <Plus className="h-4 w-4" />
-    新增试卷
-  </Button>
+  return (
+    <Button onClick={addPaper} className="gap-1.5">
+      <Plus className="h-4 w-4" />
+      新增试卷
+    </Button>
+  )
 }
 
 function PapersPage() {
@@ -64,7 +64,9 @@ function PapersPage() {
     () => ({ ...filters, ...pageCondition }),
     [filters, pageCondition],
   )
-  const { data: listData, isPending } = useQuery(papersQueryOptions(queryParams))
+  const { data: listData, isPending } = useQuery(
+    papersQueryOptions(queryParams),
+  )
 
   const handleRefresh = () => {
     setPageCondition((state) => ({ ...state, page: 1 }))
@@ -88,40 +90,41 @@ function PapersPage() {
         <h1 className="text-2xl font-bold">试卷管理</h1>
         <p className="text-muted-foreground">管理所有试卷信息</p>
       </div>
-      <div className="flex justify-between items-end">
+      <div className="flex items-end justify-between">
         <PaperFilters
-            values={filters}
-            onChange={handleFiltersChange}
-            onRefresh={handleRefresh}
-            categoryTree={categoryTree}
+          values={filters}
+          onChange={handleFiltersChange}
+          onRefresh={handleRefresh}
+          categoryTree={categoryTree}
         />
         <CreatePaper />
       </div>
-      {
-        isPending ? <Loading /> : listData?.data.at(0) ? <>
+      {isPending ? (
+        <Loading />
+      ) : listData?.data.at(0) ? (
+        <>
           <PaperList papers={listData.data} />
 
           <PaperPagination
-              size={pageCondition.size}
-              page={pageCondition.page}
-              total={listData.data.length}
-              onPageChange={handlePageChange}
-              totalPages={listData.data.length}
-              onSizeChange={(newSize: number) => {
-                setPageCondition({ ...pageCondition, size: newSize, page: 1 })
-              }}
+            size={pageCondition.size}
+            page={pageCondition.page}
+            total={listData.data.length}
+            onPageChange={handlePageChange}
+            totalPages={listData.data.length}
+            onSizeChange={(newSize: number) => {
+              setPageCondition({ ...pageCondition, size: newSize, page: 1 })
+            }}
           />
-
-        </> :
-            <div className="relative h-100">
-          <div className="space-y-4 absolute left-1/2 top-1/2 -translate-x-2/3 -translate-y-1/2 text-center">
+        </>
+      ) : (
+        <div className="relative h-100">
+          <div className="absolute top-1/2 left-1/2 -translate-x-2/3 -translate-y-1/2 space-y-4 text-center">
             <p>无符合条件的试卷</p>
             <p>点击创建按钮，去组织发布考试</p>
             <CreatePaper />
           </div>
         </div>
-
-      }
+      )}
 
       <PaperInfoDialog />
     </div>

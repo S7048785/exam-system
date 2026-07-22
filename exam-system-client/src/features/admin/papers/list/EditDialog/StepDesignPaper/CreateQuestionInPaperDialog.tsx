@@ -23,7 +23,7 @@ import ChoiceForm from '#/features/admin/questions/components/drawer/ChoiceForm.
 import JudgeForm from '#/features/admin/questions/components/drawer/JudgeForm.tsx'
 import TextForm from '#/features/admin/questions/components/drawer/TextForm.tsx'
 
-type QuestionType = 'CHOICE' | 'JUDGE' | 'TEXT'
+type QuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'JUDGE' | 'TEXT'
 
 interface CreateQuestionInPaperDialogProps {
   open: boolean
@@ -34,7 +34,8 @@ interface CreateQuestionInPaperDialogProps {
 }
 
 const TYPE_TITLE: Record<QuestionType, string> = {
-  CHOICE: '选择题',
+  SINGLE_CHOICE: '单选题',
+  MULTIPLE_CHOICE: '多选题',
   JUDGE: '判断题',
   TEXT: '简答题',
 }
@@ -51,7 +52,6 @@ export default function CreateQuestionInPaperDialog({
   const [score, setScore] = useState(5)
 
   const [choiceValue, setChoiceValue] = useState({
-    multi: false,
     analysis: '',
     choices: [
       { content: '', correct: false },
@@ -68,11 +68,6 @@ export default function CreateQuestionInPaperDialog({
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const correctLetters = choiceValue.choices
-        .map((c, i) => (c.correct ? String.fromCharCode(65 + i) : ''))
-        .filter(Boolean)
-        .join(',')
-
       const body: any = {
         title,
         type: questionType,
@@ -81,20 +76,23 @@ export default function CreateQuestionInPaperDialog({
         score,
       }
 
-      if (questionType === 'CHOICE') {
-        body.choices = choiceValue.choices.map((c, i) => ({
-          content: c.content,
-          correct: c.correct || undefined,
-          sort: i + 1,
-        }))
-        body.answers = { answer: correctLetters }
-        if (choiceValue.multi) body.multi = true
+      if (
+        questionType === 'SINGLE_CHOICE' ||
+        questionType === 'MULTIPLE_CHOICE'
+      ) {
+        body.extra = {
+          choices: choiceValue.choices.map((c, i) => ({
+            content: c.content,
+            correct: c.correct || undefined,
+            sort: i + 1,
+          })),
+        }
         if (choiceValue.analysis) body.analysis = choiceValue.analysis
       } else if (questionType === 'JUDGE') {
-        body.answers = { answer: judgeValue.judgeAnswer }
+        body.extra = { answer: judgeValue.judgeAnswer }
         if (judgeValue.analysis) body.analysis = judgeValue.analysis
       } else {
-        body.answers = { answer: textAnswer }
+        body.extra = { answer: textAnswer }
       }
 
       const res = await (api as any).questionController.addQuestion({ body })
@@ -120,7 +118,6 @@ export default function CreateQuestionInPaperDialog({
     setDifficulty('EASY')
     setScore(5)
     setChoiceValue({
-      multi: false,
       analysis: '',
       choices: [
         { content: '', correct: false },
@@ -136,7 +133,10 @@ export default function CreateQuestionInPaperDialog({
       toast.error('请输入题目内容')
       return
     }
-    if (questionType === 'CHOICE') {
+    if (
+      questionType === 'SINGLE_CHOICE' ||
+      questionType === 'MULTIPLE_CHOICE'
+    ) {
       const valid = choiceValue.choices.every((c) => c.content.trim())
       if (!valid) {
         toast.error('请填写所有选项内容')
@@ -202,8 +202,13 @@ export default function CreateQuestionInPaperDialog({
             />
           </div>
 
-          {questionType === 'CHOICE' && (
-            <ChoiceForm value={choiceValue} onChange={setChoiceValue} />
+          {(questionType === 'SINGLE_CHOICE' ||
+            questionType === 'MULTIPLE_CHOICE') && (
+            <ChoiceForm
+              value={choiceValue}
+              onChange={setChoiceValue}
+              allowMultiple={questionType === 'MULTIPLE_CHOICE'}
+            />
           )}
           {questionType === 'JUDGE' && (
             <JudgeForm value={judgeValue} onChange={setJudgeValue} />

@@ -11,8 +11,7 @@ import {
 import { Plus, X } from 'lucide-react'
 import CategoryTreePicker from '#/components/category-tree/CategoryTreePicker.tsx'
 import type { TreeNode } from '#/components/category-tree/CategoryTreePicker.tsx'
-import type {PageListFilterType} from "#/routes/admin/papers/list.tsx";
-
+import type { PageListFilterType } from '#/routes/admin/papers/list.tsx'
 
 interface PaperFiltersProps {
   values: PageListFilterType
@@ -27,7 +26,6 @@ export function PaperFilters({
   onRefresh,
   categoryTree,
 }: PaperFiltersProps) {
-
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
@@ -65,7 +63,10 @@ export function PaperFilters({
         <Select
           value={values.ongoing === undefined ? 'ALL' : String(values.ongoing)}
           onValueChange={(v) =>
-            onChange({ ...values, ongoing: v === 'ALL' ? undefined : v === 'true' })
+            onChange({
+              ...values,
+              ongoing: v === 'ALL' ? undefined : v === 'true',
+            })
           }
         >
           <SelectTrigger className="w-32">
@@ -82,7 +83,6 @@ export function PaperFilters({
         <Plus className="h-4 w-4" />
         刷新
       </Button>
-
     </div>
   )
 }

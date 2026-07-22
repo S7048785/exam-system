@@ -84,13 +84,12 @@ export default function AiGenerateDialog({
       const importInputs: QuestionImportInput[] = data.map((item) => ({
         title: item.title,
         type: item.type,
-        multi: item.multi,
         categoryId: categoryIdForImport!,
         difficulty: item.difficulty,
         score: item.score,
         analysis: item.analysis,
         choices:
-          item.type === 'CHOICE'
+          item.type === 'SINGLE_CHOICE' || item.type === 'MULTIPLE_CHOICE'
             ? item.choices.map((choice, index) => ({
                 content: choice,
                 correct: item.answer.includes(
@@ -100,7 +99,6 @@ export default function AiGenerateDialog({
               }))
             : [],
         answer: item.answer,
-        keywords: '',
       }))
 
       return api.questionController.importQuestions({ body: importInputs })

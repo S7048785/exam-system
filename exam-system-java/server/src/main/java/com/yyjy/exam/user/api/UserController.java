@@ -40,9 +40,9 @@ public class UserController {
 	// ========== 公开端点 ==========
 	
 	@PostMapping("/login")
-	public R<Void> loginUser(@RequestBody UserLoginReq user) {
-		userService.login(user.email(), user.password());
-		return R.ok();
+	public R<@FetchBy("USER_INFO") Users> loginUser(@RequestBody UserLoginReq user) {
+		var userRes = userService.login(user.email(), user.password(), USER_INFO);
+		return R.ok(userRes);
 	}
 	
 	@PostMapping("/register")

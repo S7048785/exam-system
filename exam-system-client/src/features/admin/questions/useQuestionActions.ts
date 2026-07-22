@@ -1,9 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '#/ApiInstance.ts'
-import type {
-  QuestionSaveInput,
-  QuestionUpdateInput,
-} from '#/__generated/model/static'
+import type { QuestionUpdateInput } from '#/__generated/model/static'
+import type { QuestionSaveReq } from '#/types/question-save.ts'
 import { toast } from 'sonner'
 
 const useBaseQuestionMutation = <TVariables>(
@@ -32,8 +30,8 @@ const useBaseQuestionMutation = <TVariables>(
 
 export const useAddQuestion = (onSuccess?: () => void) =>
   useBaseQuestionMutation(
-    (input: QuestionSaveInput) =>
-      api.questionController.addQuestion({ body: input }),
+    (input: QuestionSaveReq) =>
+      api.questionController.addQuestion({ body: input as any }),
     '题目添加成功',
     onSuccess,
   )

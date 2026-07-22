@@ -45,11 +45,7 @@ export default function PaperRow({ item, onDelete }: Props) {
           <DotIcon />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-4 p-0"
-              >
+              <Button variant="ghost" size="sm" className="h-4 p-0">
                 编辑
                 <ChevronDown />
               </Button>
@@ -92,7 +88,11 @@ export default function PaperRow({ item, onDelete }: Props) {
           <span className="text-end">
             创建于 {item.createTime && formatDate(item.createTime)}
           </span>
-          <button onClick={() => editPaperAtStep(item.id, 2)} className="cursor-pointer" title="查看考试链接">
+          <button
+            onClick={() => editPaperAtStep(item.id, 2)}
+            className="cursor-pointer"
+            title="查看考试链接"
+          >
             {item.published ? <Link size="14" /> : <File size="14" />}
           </button>
         </div>

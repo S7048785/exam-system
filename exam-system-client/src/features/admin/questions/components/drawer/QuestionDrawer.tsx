@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import type {
-  QuestionSaveInput,
   QuestionsPageView,
   QuestionUpdateInput,
 } from '#/__generated/model/static'
+import type { ChoiceDto, QuestionSaveReq } from '#/types/question-save.ts'
 import {
   Drawer,
   DrawerContent,
@@ -39,7 +39,7 @@ interface QuestionDrawerProps {
   onOpenChange: (open: boolean) => void
   mode: 'add' | 'edit'
   question: QuestionsPageView | null
-  onSubmit: (values: QuestionSaveInput | QuestionUpdateInput) => void
+  onSubmit: (values: QuestionSaveReq | QuestionUpdateInput) => void
 }
 
 export default function QuestionDrawer({
@@ -57,7 +57,6 @@ export default function QuestionDrawer({
 
   // 各题型特有数据
   const [choiceData, setChoiceData] = useState({
-    multi: false,
     analysis: '',
     choices: [
       { content: '', correct: false },
@@ -74,14 +73,13 @@ export default function QuestionDrawer({
 
   const form = useForm({
     defaultValues: {
-      type: question?.type || 'CHOICE',
+      type: question?.type || 'SINGLE_CHOICE',
       title: question?.title || '',
       difficulty: question?.difficulty || ('MEDIUM' as Difficulty),
-      score: question?.score,
-      multi: question?.multi || false,
+      score: question?.score ?? 1,
       categoryId: question?.categoryId || undefined,
       analysis: question?.analysis || '',
-      answers: question?.answers,
+      answers: question?.answers ?? '',
     },
     onSubmit: async ({ value }) => {
       if (!value.title.trim()) {
@@ -94,12 +92,13 @@ export default function QuestionDrawer({
       }
       const baseData = {
         title: value.title.trim(),
-        type: value.type,
         difficulty: value.difficulty,
-        score: value.score,
+        score: value.score!,
+        categoryId: value.categoryId!,
+        analysis: value.analysis.trim(),
       }
 
-      if (value.type === 'CHOICE') {
+      if (value.type === 'SINGLE_CHOICE' || value.type === 'MULTIPLE_CHOICE') {
         const filledChoices = choiceData.choices.filter((c) => c.content.trim())
         if (filledChoices.length < 2) {
           toast.error('选择题至少需要两个选项')
@@ -111,51 +110,16 @@ export default function QuestionDrawer({
           return
         }
 
-        const correctAnswers = filledChoices
-          .map((c, i) => (c.correct ? String.fromCharCode(65 + i) : ''))
-          .filter(Boolean)
-          .join(',')
-
-        const input: QuestionSaveInput | QuestionUpdateInput = {
-          ...baseData,
-          id: question?.id,
-          multi: value.multi,
-          categoryId: value.categoryId,
-          analysis: value.analysis.trim(),
-          choices: filledChoices.map((c, i) => ({
-            content: c.content.trim(),
-            correct: c.correct,
-            sort: i,
-          })),
-          answers: { id: question?.answers.id, answer: correctAnswers },
-        }
-        console.log('update', input)
-        onSubmit(input)
+        const choices = filledChoices.map((c, i) => ({
+          content: c.content.trim(),
+          correct: c.correct,
+          sort: i,
+        }))
+        onSubmit({ ...baseData, type: value.type, extra: { choices } })
       } else if (value.type === 'JUDGE') {
-        if (!value.categoryId) {
-          toast.error('请选择分类')
-          return
-        }
-        const input: QuestionSaveInput | QuestionUpdateInput = {
-          choices: [],
-          ...baseData,
-          id: question!.id,
-          categoryId: value.categoryId,
-          analysis: value.analysis.trim(),
-          answers: { id: question?.answers.id, answer: judgeData.judgeAnswer },
-        }
-        onSubmit(input)
+        onSubmit({ ...baseData, type: 'JUDGE', extra: { answer: judgeData.judgeAnswer } })
       } else {
-        // TEXT
-        const input: QuestionSaveInput | QuestionUpdateInput = {
-          analysis: '',
-          choices: [],
-          ...baseData,
-          id: question!.id,
-          categoryId: value.categoryId,
-          answers: { id: question?.answers.id, answer: textAnswer.trim() },
-        }
-        onSubmit(input)
+        onSubmit({ ...baseData, type: 'TEXT', extra: { answer: textAnswer.trim() || undefined } })
       }
     },
   })
@@ -172,21 +136,18 @@ export default function QuestionDrawer({
           answers: question.answers,
           analysis: question.analysis || '',
           categoryId: question.categoryId || undefined,
-          multi: question.multi || false,
         })
       } else {
         form.reset({
-          type: 'CHOICE',
+          type: 'SINGLE_CHOICE',
           title: '',
           difficulty: 'MEDIUM',
           score: 1,
           analysis: '',
-          answers: undefined,
+          answers: '',
           categoryId: undefined,
-          multi: false,
         })
         setChoiceData({
-          multi: false,
           analysis: '',
           choices: [
             { content: '', correct: false },
@@ -304,11 +265,12 @@ export default function QuestionDrawer({
               {(type) => (
                 <>
                   {/* 选择题特有字段 */}
-                  {type === 'CHOICE' && (
+                  {(type === 'SINGLE_CHOICE' || type === 'MULTIPLE_CHOICE') && (
                     <ChoiceForm
                       value={choiceData}
                       onChange={setChoiceData}
                       editData={mode === 'edit' ? question : null}
+                      allowMultiple={type === 'MULTIPLE_CHOICE'}
                     />
                   )}
 

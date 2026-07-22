@@ -22,7 +22,11 @@ interface PaperCategoryDrawerProps {
   mode: 'add' | 'edit'
   parentId: number
   category: PaperCategoriesTree | null
-  onSubmit: (values: { name: string; sort: number; description: string }) => void
+  onSubmit: (values: {
+    name: string
+    sort: number
+    description: string
+  }) => void
   categories: readonly PaperCategoriesTree[]
 }
 
@@ -101,7 +105,9 @@ export default function PaperCategoryDrawer({
     >
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>{mode === 'add' ? '新增试卷分类' : '编辑试卷分类'}</DrawerTitle>
+          <DrawerTitle>
+            {mode === 'add' ? '新增试卷分类' : '编辑试卷分类'}
+          </DrawerTitle>
           <DrawerDescription>
             {mode === 'add'
               ? `将为「${getParentName()}」添加子分类`

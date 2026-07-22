@@ -1,9 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '#/ApiInstance.ts'
-import type {
-  UserSaveInput,
-  UserUpdateInput,
-} from '#/__generated/model/static'
+import type { UserSaveInput, UserUpdateInput } from '#/__generated/model/static'
 import { toast } from 'sonner'
 
 const useBaseUserMutation = <TVariables>(
@@ -32,16 +29,14 @@ const useBaseUserMutation = <TVariables>(
 
 export const useAddUser = (onSuccess?: () => void) =>
   useBaseUserMutation(
-    (input: UserSaveInput) =>
-      api.userController.addUser({ body: input }),
+    (input: UserSaveInput) => api.userController.addUser({ body: input }),
     '用户添加成功',
     onSuccess,
   )
 
 export const useUpdateUser = (onSuccess?: () => void) =>
   useBaseUserMutation(
-    (input: UserUpdateInput) =>
-      api.userController.updateUser({ body: input }),
+    (input: UserUpdateInput) => api.userController.updateUser({ body: input }),
     '用户更新成功',
     onSuccess,
   )

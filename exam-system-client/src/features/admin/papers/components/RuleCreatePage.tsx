@@ -21,7 +21,8 @@ import { useImmer } from 'use-immer'
 
 // 1. 定义题型名称映射，方便维护
 const TYPE_LABELS: Record<string, string> = {
-  CHOICE: '选择题',
+  SINGLE_CHOICE: '单选题',
+  MULTIPLE_CHOICE: '多选题',
   JUDGE: '判断题',
   TEXT: '简答题',
 }
@@ -35,7 +36,7 @@ interface Rule {
 
 export default function RuleCreatePage() {
   const [rules, setRules] = useImmer<Rule[]>([
-    { type: 'CHOICE', categoryIds: [], count: 5, score: 5 },
+    { type: 'SINGLE_CHOICE', categoryIds: [], count: 5, score: 5 },
     { type: 'JUDGE', categoryIds: [], count: 5, score: 5 },
     { type: 'TEXT', categoryIds: [], count: 2, score: 10 },
   ])

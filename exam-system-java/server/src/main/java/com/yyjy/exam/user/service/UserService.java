@@ -2,14 +2,19 @@ package com.yyjy.exam.user.service;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.exception.BusinessException;
+import com.yyjy.exam.entity.Immutables;
 import com.yyjy.exam.entity.user.entity.Users;
-import com.yyjy.exam.entity.user.entity.UsersDraft;
+import com.yyjy.exam.entity.user.entity.UsersTable;
 import com.yyjy.exam.user.repository.UsersRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.babyfish.jimmer.DraftObjects;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+
+@Slf4j
 @Service
 public class UserService {
 	
@@ -19,13 +24,22 @@ public class UserService {
 		this.usersRepository = usersRepository;
 	}
 	
-	public void login(String email, String password) {
-		Users userDb = usersRepository.findByEmail(email)
+	public Users login(String email, String password, Fetcher<Users> fetcher) {
+		var fetcher2 = fetcher.add("password");
+		
+		Users userDb = usersRepository.findByEmail(email, fetcher2)
 				               .orElseThrow(() -> new BusinessException("用户名或密码错误"));
 		if (!new BCryptPasswordEncoder().matches(password, userDb.password())) {
 			throw new BusinessException("用户名或密码错误");
 		}
+		
+		var userRes = Immutables.createUsers(userDb, draft -> {
+			DraftObjects.unload(draft, UsersTable.PASSWORD);
+		});
+		
+		
 		StpUtil.login(userDb.id());
+		return userRes;
 	}
 	
 	public void registerUser(String email, String realName, String password) {
@@ -33,7 +47,7 @@ public class UserService {
 			throw new BusinessException("邮箱号已存在");
 		}
 		String hashedPassword = new BCryptPasswordEncoder().encode(password);
-		usersRepository.save(UsersDraft.$.produce(draft -> {
+		usersRepository.save(Immutables.createUsers(draft -> {
 			draft.setEmail(email);
 			draft.setPassword(hashedPassword);
 			draft.setRealName(realName);
@@ -49,7 +63,7 @@ public class UserService {
 			return null;
 		}
 		return usersRepository.findById(userId, fetcher)
-				             .orElseThrow(() -> new BusinessException("用户不存在"));
+				       .orElseThrow(() -> new BusinessException("用户不存在"));
 	}
 	
 	

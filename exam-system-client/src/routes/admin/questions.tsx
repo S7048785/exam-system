@@ -2,10 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import type {
   QuestionListReq,
-  QuestionSaveInput,
   QuestionsPageView,
   QuestionUpdateInput,
 } from '#/__generated/model/static'
+import type { QuestionSaveReq } from '#/types/question-save.ts'
 import { useMemo, useState } from 'react'
 import {
   categoryTreeQueryOptions,
@@ -100,9 +100,9 @@ function QuestionsPage() {
     setDrawerOpen(true)
   }
 
-  const handleSubmit = (values: QuestionSaveInput | QuestionUpdateInput) => {
+  const handleSubmit = (values: QuestionSaveReq | QuestionUpdateInput) => {
     if (drawerMode === 'add') {
-      addMutation.mutate(values as QuestionSaveInput)
+      addMutation.mutate(values as QuestionSaveReq)
     } else {
       updateMutation.mutate(values as QuestionUpdateInput)
     }

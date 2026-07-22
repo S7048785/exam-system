@@ -79,7 +79,11 @@ export default function PaperCategoriesPage() {
   }
 
   // 提交表单
-  const handleSubmit = (values: { name: string; sort: number; description: string }) => {
+  const handleSubmit = (values: {
+    name: string
+    sort: number
+    description: string
+  }) => {
     if (drawerMode === 'add') {
       addMutation.mutate({
         name: values.name,

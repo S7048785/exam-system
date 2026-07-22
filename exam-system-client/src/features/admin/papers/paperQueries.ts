@@ -10,7 +10,7 @@ import type {
 export const papersQueryOptions = (filters: PaperListQuery) =>
   queryOptions({
     queryKey: ['listPapers', filters],
-    queryFn: () => api.paperController.listPapers({query:filters }),
+    queryFn: () => api.paperController.listPapers({ query: filters }),
     staleTime: 30 * 1000,
   })
 

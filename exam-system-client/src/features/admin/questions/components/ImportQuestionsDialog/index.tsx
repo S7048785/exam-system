@@ -68,14 +68,12 @@ export default function ImportQuestionsDialog({
       const importInputs: QuestionImportInput[] = data.map((item) => ({
         title: item.title,
         type: item.type,
-        multi: item.multi,
         categoryId: item.categoryId,
         difficulty: item.difficulty,
         score: item.score,
         analysis: item.analysis,
         choices: item.choices as QuestionImportInput['choices'],
         answer: item.answer ?? null,
-        keywords: item.keywords,
       }))
 
       return api.questionController.importQuestions({ body: importInputs })

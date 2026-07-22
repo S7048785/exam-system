@@ -1,5 +1,4 @@
-﻿
-function format(datetimeStr: string) {
+﻿function format(datetimeStr: string) {
   const date = new Date(datetimeStr)
 
   // 检查日期是否有效

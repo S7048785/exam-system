@@ -53,7 +53,7 @@ export default function Step1Params({
   const form = useForm({
     defaultValues: {
       count: 10,
-      type: 'CHOICE',
+      type: 'SINGLE_CHOICE',
       difficulty: 'MEDIUM',
       categoryId: null as number | null,
       includeMultiple: false,
@@ -123,7 +123,7 @@ export default function Step1Params({
         <form.Subscribe selector={(state) => state.values.type}>
           {(type) => (
             <>
-              {type == 'CHOICE' && (
+              {type == 'SINGLE_CHOICE' && (
                 <form.Field
                   name="includeMultiple"
                   children={(field) => (

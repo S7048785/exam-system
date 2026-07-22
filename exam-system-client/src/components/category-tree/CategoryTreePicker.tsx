@@ -1,8 +1,12 @@
-import {useState} from 'react'
-import {Button} from '#/components/ui/button'
-import {Popover, PopoverContent, PopoverTrigger,} from '#/components/ui/popover'
-import {ChevronDown, ChevronRight, File, Folder} from 'lucide-react'
-import {cn} from '#/lib/utils.ts'
+import { useState } from 'react'
+import { Button } from '#/components/ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '#/components/ui/popover'
+import { ChevronDown, ChevronRight, File, Folder } from 'lucide-react'
+import { cn } from '#/lib/utils.ts'
 
 /** 通用树节点接口 — PaperCategoriesTree 和 QuestionsCategoriesTree 都符合 */
 export interface TreeNode {

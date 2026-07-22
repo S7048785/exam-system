@@ -19,7 +19,8 @@ export const QUESTION_TYPE_MAP: Record<
   string,
   { label: string; variant: 'default' | 'secondary' | 'outline' }
 > = {
-  CHOICE: { label: '选择题', variant: 'default' },
+  SINGLE_CHOICE: { label: '单选题', variant: 'default' },
+  MULTIPLE_CHOICE: { label: '多选题', variant: 'default' },
   JUDGE: { label: '判断题', variant: 'secondary' },
   TEXT: { label: '简答题', variant: 'outline' },
 }

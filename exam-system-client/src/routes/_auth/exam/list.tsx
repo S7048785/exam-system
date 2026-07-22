@@ -9,7 +9,7 @@ import { ArrowLeftIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { PaperDto } from '#/__generated/model/dto'
 import { ExamStartDialog } from '#/features/exam/list/components/ExamStartDialog.tsx'
-import Loading from "#/components/Loading.tsx";
+import Loading from '#/components/Loading.tsx'
 
 export const Route = createFileRoute('/_auth/exam/list')({
   component: ExamListPage,
@@ -21,7 +21,7 @@ export const Route = createFileRoute('/_auth/exam/list')({
     return context.queryClient.ensureQueryData(
       paperListQueryOptions({
         ongoing: true,
-        name: keyword ?? "",
+        name: keyword ?? '',
       }),
     )
   },
@@ -33,7 +33,7 @@ function ExamListPage() {
   const { data, isPending, isError } = useQuery(
     paperListQueryOptions({
       ongoing: true,
-      name: keyword ?? "",
+      name: keyword ?? '',
     }),
   )
 
@@ -61,11 +61,12 @@ function ExamListPage() {
   }
   // 在组件内部，渲染之前先计算要显示的内容
   const renderPaperList = () => {
-    if (isPending) return <Loading />;
-    if (isError) return <div>加载失败</div>;
-    if (data?.length) return <ExamPaperList data={data} onOpenChange={toggleDialog} />;
-    return <div>暂无数据</div>;
-  };
+    if (isPending) return <Loading />
+    if (isError) return <div>加载失败</div>
+    if (data?.length)
+      return <ExamPaperList data={data} onOpenChange={toggleDialog} />
+    return <div>暂无数据</div>
+  }
 
   return (
     <div className="mx-4 space-y-8 pt-10 md:mx-auto md:w-[80vw]">

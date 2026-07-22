@@ -8,7 +8,7 @@ export const STEPS = [
 export type Step = (typeof STEPS)[number]['id']
 
 export const TYPE_OPTIONS = [
-  { value: 'CHOICE', label: '选择题' },
+  { value: 'SINGLE_CHOICE', label: '选择题' },
   { value: 'JUDGE', label: '判断题' },
   { value: 'TEXT', label: '简答题' },
 ] as const

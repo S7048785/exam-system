@@ -192,17 +192,17 @@ export default function QuestionTable({
           </div>
           <div className="flex items-center gap-2">
             <Select
-                value={size.toString()}
-                onValueChange={(val) => onPageSizeChange(Number(val))}
+              value={size.toString()}
+              onValueChange={(val) => onPageSizeChange(Number(val))}
             >
               <SelectTrigger className="h-8 w-20">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {[10, 20, 50, 100].map((s) => (
-                    <SelectItem key={s} value={s.toString()}>
-                      {s}
-                    </SelectItem>
+                  <SelectItem key={s} value={s.toString()}>
+                    {s}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

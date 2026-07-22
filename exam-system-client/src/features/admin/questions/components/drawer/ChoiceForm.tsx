@@ -9,12 +9,12 @@ import { Plus, Trash2 } from 'lucide-react'
 
 interface ChoiceFormProps {
   value: {
-    multi: boolean
     analysis: string
     choices: Array<{ content: string; correct: boolean }>
   }
   onChange: (value: ChoiceFormProps['value']) => void
   editData?: QuestionsPageView | null
+  allowMultiple: boolean
 }
 
 // 选项行组件
@@ -78,6 +78,7 @@ export default function ChoiceForm({
   value,
   onChange,
   editData,
+  allowMultiple,
 }: ChoiceFormProps) {
   // 初始化/回填数据
   useEffect(() => {
@@ -98,24 +99,11 @@ export default function ChoiceForm({
         c.correct = correctLetters.includes(String.fromCharCode(65 + i))
       })
       onChange({
-        multi: editData.multi || false,
         analysis: editData.analysis || '',
         choices,
       })
     }
   }, [editData])
-
-  const handleMultiChange = (checked: boolean) => {
-    const newValue = { ...value, multi: checked }
-    // 切换为单选题时，只保留第一个正确答案
-    if (!checked) {
-      newValue.choices = value.choices.map((c, i) => {
-        if (i === 0 && c.correct) return c
-        return { ...c, correct: false }
-      })
-    }
-    onChange(newValue)
-  }
 
   const handleChoiceChange = (
     index: number,
@@ -124,7 +112,7 @@ export default function ChoiceForm({
     const newChoices = [...value.choices]
     newChoices[index] = choice
     // 单选题只保留一个正确答案
-    if (!value.multi && choice.correct) {
+    if (!allowMultiple && choice.correct) {
       newChoices.forEach((c, i) => {
         if (i !== index) c.correct = false
       })
@@ -152,18 +140,6 @@ export default function ChoiceForm({
 
   return (
     <div className="space-y-4">
-      {/* 是否多选题 */}
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="multi"
-          checked={value.multi}
-          onCheckedChange={handleMultiChange}
-        />
-        <Label htmlFor="multi" className="cursor-pointer select-none">
-          多选题
-        </Label>
-      </div>
-
       {/* 题目解析 */}
       <div className="space-y-2">
         <Label htmlFor="analysis">题目解析</Label>
@@ -204,7 +180,7 @@ export default function ChoiceForm({
           </Button>
         )}
         <p className="text-muted-foreground text-xs">
-          {value.multi
+          {allowMultiple
             ? '多选题：可勾选多个正确答案'
             : '单选题：只可勾选一个正确答案'}
         </p>

@@ -38,11 +38,7 @@ export default function StepIndicator({
           >
             {index + 1}
           </div>
-          <div
-            className={cn(
-              index > currentStep && 'text-muted-foreground',
-            )}
-          >
+          <div className={cn(index > currentStep && 'text-muted-foreground')}>
             {step.title}
           </div>
         </button>

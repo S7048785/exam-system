@@ -1,17 +1,17 @@
-.loading-2  {
-	position: relative;
-	width: 100px;
-	height: 100px;
-	border: 2px solid var(--muted);
-	border-left-color: var(--primary);
-	border-radius: 100%;
-	animation: loading-2 infinite 0.75s linear;
+.loading-2 {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border: 2px solid var(--muted);
+  border-left-color: var(--primary);
+  border-radius: 100%;
+  animation: loading-2 infinite 0.75s linear;
 }
-@keyframes loading-2  {
-	0%  {
-		transform: rotate(0);
-	}
-	100%  {
-		transform: rotate(360deg);
-	}
+@keyframes loading-2 {
+  0% {
+    transform: rotate(0);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

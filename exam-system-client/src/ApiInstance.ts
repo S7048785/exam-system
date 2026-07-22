@@ -4,9 +4,8 @@ import { redirect } from '@tanstack/react-router'
 // 浏览器端走 Vite proxy (/api → localhost:8101)，使用相对路径
 // 服务端 SSR 阶段直接连接后端
 export const api = new Api(async ({ uri, method, headers, body }) => {
-
   const BASE_URL =
-      typeof window !== 'undefined' ? '' : import.meta.env.VITE_API_URL
+    typeof window !== 'undefined' ? '' : import.meta.env.VITE_API_URL
 
   let cookie: string = ''
   if (BASE_URL) {
@@ -32,8 +31,8 @@ export const api = new Api(async ({ uri, method, headers, body }) => {
 
   if (!response.ok) {
     console.error(await response.text())
-    console.error("url: ",uri)
-    console.error("status: ",response.status)
+    console.error('url: ', uri)
+    console.error('status: ', response.status)
     switch (response.status) {
       case 401:
         throw redirect({ to: '/sign-in' })

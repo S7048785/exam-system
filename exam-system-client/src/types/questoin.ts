@@ -1,6 +1,7 @@
 // 题目类型
 export const QUESTION_TYPES = [
-  { value: 'CHOICE', label: '选择题' },
+  { value: 'SINGLE_CHOICE', label: '单选题' },
+  { value: 'MULTIPLE_CHOICE', label: '多选题' },
   { value: 'JUDGE', label: '判断题' },
   { value: 'TEXT', label: '简答题' },
 ] as const
@@ -22,7 +23,8 @@ export const TYPE_MAP: Record<
   string,
   { label: string; variant: 'default' | 'secondary' | 'outline' }
 > = {
-  CHOICE: { label: '选择题', variant: 'default' },
+  SINGLE_CHOICE: { label: '单选题', variant: 'default' },
+  MULTIPLE_CHOICE: { label: '多选题', variant: 'default' },
   JUDGE: { label: '判断题', variant: 'secondary' },
   TEXT: { label: '简答题', variant: 'outline' },
 }

@@ -22,11 +22,7 @@ export default function PaperList({ papers }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {papers.map((item) => (
-        <PaperRow
-          key={item.id}
-          item={item}
-          onDelete={handleDelete}
-        />
+        <PaperRow key={item.id} item={item} onDelete={handleDelete} />
       ))}
     </div>
   )

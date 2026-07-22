@@ -1,16 +1,13 @@
-﻿import { api } from '#/ApiInstance.ts'
-import { Button } from '#/components/ui/button.tsx'
+﻿import { Button } from '#/components/ui/button.tsx'
 import { Checkbox } from '#/components/ui/checkbox'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { useLoginAction } from '#/features/login/useUserActions.ts'
-import useUserStore from '#/stores/user.ts'
 import { useForm } from '@tanstack/react-form'
 import { Lock, User } from 'lucide-react'
 import { useId, useState } from 'react'
 import z from 'zod'
 import { toast } from 'sonner'
-import { useNavigate } from '@tanstack/react-router'
 
 const userSchema = z.object({
   email: z.string().min(4, '用户名长度不能小于4位字符'),
@@ -31,14 +28,16 @@ function getSavedCredentials(): { email: string; password: string } | null {
   }
 }
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onLoginSuccess: () => Promise<void>
+}
+
+export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const saved = getSavedCredentials()
 
   const id = useId()
-  const navigate = useNavigate()
 
   const loginMutation = useLoginAction()
-  const setUser = useUserStore((s) => s.setUser)
   const [rememberMe, setRememberMe] = useState(!!saved)
 
   const form = useForm({
@@ -75,17 +74,10 @@ export default function LoginForm() {
             } else {
               localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY)
             }
-
-            const res = await api.userController.getUserInfo()
-            setUser(res.data)
-            if (res.data.role === 'admin') {
-              navigate({ to: '/admin/questions' })
-            }
+            onLoginSuccess()
           },
         },
       )
-      // 使所有路由的 loader 数据失效，强制它们在下次渲染时重新执行。
-      // await router.invalidate()
     },
   })
 

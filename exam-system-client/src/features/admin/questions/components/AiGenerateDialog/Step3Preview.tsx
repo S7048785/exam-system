@@ -15,7 +15,8 @@ const TYPE_MAP: Record<
   string,
   { label: string; variant: 'default' | 'secondary' | 'outline' }
 > = {
-  CHOICE: { label: '选择题', variant: 'default' },
+  SINGLE_CHOICE: { label: '单选题', variant: 'default' },
+  MULTIPLE_CHOICE: { label: '多选题', variant: 'default' },
   JUDGE: { label: '判断题', variant: 'secondary' },
   TEXT: { label: '简答题', variant: 'outline' },
 }
@@ -80,7 +81,7 @@ export default function Step3Preview({
                   >
                     {difficultyInfo.label}
                   </span>
-                  {question.multi && (
+                  {question.type === 'MULTIPLE_CHOICE' && (
                     <Badge variant="outline" className="text-xs">
                       多选
                     </Badge>
@@ -91,7 +92,8 @@ export default function Step3Preview({
                 <div className="text-sm font-medium">{question.title}</div>
 
                 {/* 选项（如果是选择题） */}
-                {question.choices.length > 0 && (
+                {(question.type === 'SINGLE_CHOICE' ||
+                  question.type === 'MULTIPLE_CHOICE') && (
                   <div className="space-y-1.5 pl-4">
                     {question.choices.map((choice, choiceIndex) => (
                       <div
