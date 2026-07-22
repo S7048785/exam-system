@@ -47,29 +47,36 @@ public class QuestionService {
 	private final JSqlClient sqlClient;
 	
 	@Transactional
-	public Questions save(QuestionSaveRequest request) {
-		if (questionsRepository.existsByTypeAndTitle(request.getQuestionType(), request.getTitle())) {
+	public Questions save(QuestionSaveReq req) {
+		if (questionsRepository.existsByTypeAndTitle(req.getType(), req.getTitle())) {
 			throw new BusinessException(MessageConstant.QUESTION_EXIST);
 		}
 		
-		if (!questionsRepository.existsById(request.getCategoryId())) {
+		if (!questionsRepository.existsById(req.getCategoryId())) {
 			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST);
 		}
 		
 		var builder = new QuestionSaveInput.Builder()
-				              .title(request.getTitle())
-				              .type(request.getQuestionType())
-				              .categoryId(request.getCategoryId())
-				              .difficulty(request.getDifficulty())
-				              .score(request.getScore())
-				              .analysis(request.getAnalysis());
+				              .title(req.getTitle())
+				              .type(req.getType())
+				              .categoryId(req.getCategoryId())
+				              .difficulty(req.getDifficulty())
+				              .score(req.getScore())
+				              .analysis(req.getAnalysis());
 		
-		switch (request) {
-			case SingleChoiceQuestionSaveRequest sc -> processChoice(builder, sc.getChoices(), false);
-			case MultipleChoiceQuestionSaveRequest mc -> processChoice(builder, mc.getChoices(), true);
-			case JudgeQuestionSaveRequest j -> processJudge(builder, j);
-			case TextQuestionSaveRequest t -> processText(builder, t);
-			default -> {
+		if (req.getExtra() instanceof SingleChoiceExtra sc) {
+			processChoice(builder, sc.getChoices(), false);
+		} else if (req.getExtra() instanceof MultipleChoiceExtra mc) {
+			processChoice(builder, mc.getChoices(), true);
+		} else if (req.getExtra() instanceof JudgeExtra j) {
+			var answers = new QuestionSaveInput.TargetOf_answers();
+			answers.setAnswer(j.getAnswer());
+			builder.answers(answers);
+		} else if (req.getExtra() instanceof TextExtra t) {
+			if (t.getAnswer() != null) {
+				var answers = new QuestionSaveInput.TargetOf_answers();
+				answers.setAnswer(t.getAnswer());
+				builder.answers(answers);
 			}
 		}
 		
@@ -105,20 +112,6 @@ public class QuestionService {
 		var answers = new QuestionSaveInput.TargetOf_answers();
 		answers.setAnswer(answerStr.toString());
 		builder.answers(answers);
-	}
-	
-	private void processJudge(QuestionSaveInput.Builder builder, JudgeQuestionSaveRequest request) {
-		var answers = new QuestionSaveInput.TargetOf_answers();
-		answers.setAnswer(request.getAnswer());
-		builder.answers(answers);
-	}
-	
-	private void processText(QuestionSaveInput.Builder builder, TextQuestionSaveRequest request) {
-		if (request.getAnswer() != null) {
-			var answers = new QuestionSaveInput.TargetOf_answers();
-			answers.setAnswer(request.getAnswer());
-			builder.answers(answers);
-		}
 	}
 	
 	@Transactional

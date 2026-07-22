@@ -9,7 +9,7 @@ import com.yyjy.exam.entity.question.dto.QuestionsPageView;
 import com.yyjy.exam.entity.question.entity.Questions;
 import com.yyjy.exam.entity.question.io.req.QuestionGenerateReq;
 import com.yyjy.exam.entity.question.io.req.QuestionListReq;
-import com.yyjy.exam.entity.question.io.req.QuestionSaveRequest;
+import com.yyjy.exam.entity.question.io.req.QuestionSaveReq;
 import com.yyjy.exam.entity.question.io.res.QuestionGenerateDto;
 import com.yyjy.exam.entity.question.io.res.QuestionPageRes;
 import com.yyjy.exam.question.service.QuestionService;
@@ -34,7 +34,7 @@ public class QuestionController {
 	 * 新增题目
 	 */
 	@PostMapping("/add")
-	public R<Questions> addQuestion(@RequestBody @Valid QuestionSaveRequest question) {
+	public R<Questions> addQuestion(@RequestBody @Valid QuestionSaveReq question) {
 		return R.ok(questionService.save(question));
 	}
 	

@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public final class JudgeQuestionSaveRequest extends QuestionSaveRequest {
+public class JudgeExtra extends QuestionExtra {
     @NotNull
     @Pattern(regexp = "^(true|false)$", message = "判断题答案只能为 true 或 false")
     private String answer;

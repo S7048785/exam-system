@@ -9,7 +9,7 @@ import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public final class MultipleChoiceQuestionSaveRequest extends QuestionSaveRequest {
+public class MultipleChoiceExtra extends QuestionExtra {
     @NotEmpty
     @Valid
     private List<ChoiceDto> choices;

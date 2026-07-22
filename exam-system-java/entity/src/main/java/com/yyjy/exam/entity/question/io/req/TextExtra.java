@@ -5,6 +5,6 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public final class TextQuestionSaveRequest extends QuestionSaveRequest {
+public class TextExtra extends QuestionExtra {
     private String answer;
 }
