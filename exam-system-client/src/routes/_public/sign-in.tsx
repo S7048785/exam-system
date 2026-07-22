@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import LoginForm from '#/features/login/LoginForm.tsx'
 import ThemeToggle from '#/components/ThemeToggle.tsx'
 import { redirectIfAuthenticated } from '#/features/login/redirect-if-auth.ts'
-import useUserStore from "#/stores/user.ts";
-import {api} from "#/ApiInstance.ts";
+import useUserStore from '#/stores/user.ts'
+import type { UsersDto } from '#/__generated/model/dto'
 
 export const Route = createFileRoute('/_public/sign-in')({
   component: SigninPage,
@@ -18,11 +18,9 @@ function SigninPage() {
 
   const navigate = useNavigate()
 
-  const onLoginSuccess = async () => {
-
-    const res = await api.userController.getUserInfo()
-    setUser(res.data)
-    if (res.data.role === 'admin') {
+  const onLoginSuccess = async (user: UsersDto['UserController/USER_INFO']) => {
+    setUser(user)
+    if (user.role === 'admin') {
       navigate({ to: '/admin/questions' })
     }
   }

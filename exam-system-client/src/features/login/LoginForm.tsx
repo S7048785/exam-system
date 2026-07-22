@@ -8,6 +8,7 @@ import { Lock, User } from 'lucide-react'
 import { useId, useState } from 'react'
 import z from 'zod'
 import { toast } from 'sonner'
+import type { UsersDto } from '#/__generated/model/dto'
 
 const userSchema = z.object({
   email: z.string().min(4, '用户名长度不能小于4位字符'),
@@ -29,7 +30,7 @@ function getSavedCredentials(): { email: string; password: string } | null {
 }
 
 interface LoginFormProps {
-  onLoginSuccess: () => Promise<void>
+  onLoginSuccess: (user: UsersDto['UserController/USER_INFO']) => Promise<void>
 }
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
@@ -39,6 +40,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
   const loginMutation = useLoginAction()
   const [rememberMe, setRememberMe] = useState(!!saved)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm({
     defaultValues: {
@@ -49,6 +51,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       onChange: userSchema,
     },
     onSubmit: async ({ value }) => {
+      setIsSubmitting(true)
       loginMutation.mutate(
         {
           email: value.email,
@@ -56,11 +59,12 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         },
         {
           onError: (error: any) => {
+            setIsSubmitting(false)
             toast.error(error.message || '网络错误')
             form.resetField('password')
             return
           },
-          onSuccess: async () => {
+          onSuccess: async (data) => {
             toast.success('登录成功')
 
             if (rememberMe) {
@@ -74,7 +78,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
             } else {
               localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY)
             }
-            onLoginSuccess()
+            if (data.data) {
+              await onLoginSuccess(data.data)
+            }
           },
         },
       )
@@ -152,9 +158,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           className="w-full py-6"
           type="submit"
           size="lg"
-          disabled={loginMutation.isPending}
+          disabled={isSubmitting}
         >
-          {loginMutation.isPending ? '登录中...' : '登录'}
+          {isSubmitting ? '登录中...' : '登录'}
         </Button>
       </div>
     </form>
