@@ -3,6 +3,7 @@ package com.yyjy.exam.user.service;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.user.dto.UserSaveInput;
 import com.yyjy.exam.entity.user.dto.UserUpdateInput;
+import com.yyjy.exam.entity.user.entity.UserStatus;
 import com.yyjy.exam.entity.user.entity.Users;
 import com.yyjy.exam.user.repository.UsersRepository;
 import org.babyfish.jimmer.sql.JSqlClient;
@@ -50,7 +51,7 @@ class AdminUserServiceTest {
         when(input.getRealName()).thenReturn("Test User");
         when(input.getPassword()).thenReturn("plainPassword");
         when(input.getRole()).thenReturn("user");
-        when(input.getStatus()).thenReturn("active");
+        when(input.getStatus()).thenReturn(UserStatus.INACTIVE);
 
         service.save(input);
 
@@ -68,7 +69,7 @@ class AdminUserServiceTest {
         when(input.getRealName()).thenReturn("Encode Test");
         when(input.getPassword()).thenReturn("myPassword123");
         when(input.getRole()).thenReturn("user");
-        when(input.getStatus()).thenReturn("active");
+        when(input.getStatus()).thenReturn(UserStatus.INACTIVE);
 
         service.save(input);
 
@@ -104,7 +105,7 @@ class AdminUserServiceTest {
         when(input.getRealName()).thenReturn("New Name");
         when(input.getPassword()).thenReturn("newPassword");
         when(input.getRole()).thenReturn("admin");
-        when(input.getStatus()).thenReturn("active");
+        when(input.getStatus()).thenReturn(UserStatus.INACTIVE);
 
         service.update(input);
 
@@ -118,7 +119,7 @@ class AdminUserServiceTest {
         when(existing.email()).thenReturn("keep@example.com");
         when(existing.realName()).thenReturn("Keep Name");
         when(existing.role()).thenReturn("user");
-        when(existing.status()).thenReturn("active");
+        when(existing.status()).thenReturn(UserStatus.INACTIVE);
         when(usersRepository.findById(1L)).thenReturn(Optional.of(existing));
 
         UserUpdateInput input = mock(UserUpdateInput.class);

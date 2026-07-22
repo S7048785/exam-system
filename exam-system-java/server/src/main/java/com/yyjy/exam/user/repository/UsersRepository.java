@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface UsersRepository extends JRepository<Users, Long> {
 	
 	Optional<Users> findByEmail(String email);
+
+	Optional<Users> findByUuid(String uuid);
 	
 	default Optional<Users> findByEmail(String email, Fetcher<Users> fetcher) {
 		var userT = UsersTable.$;

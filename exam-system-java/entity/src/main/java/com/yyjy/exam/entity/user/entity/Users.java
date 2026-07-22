@@ -7,32 +7,35 @@ import java.time.LocalDateTime;
 
 @Entity
 public interface Users {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    long id();
-
-    @Key
-    String email();
-
-    String password();
-
-    String realName();
-
-    @Nullable
-    String role();
-
-    @Nullable
-    String status();
-
-    @Nullable
-    LocalDateTime createTime();
-
-    @Nullable
-    LocalDateTime updateTime();
-
-    @Column(name = "deleted_at")
-    @LogicalDeleted("now")
-    @Nullable
-    LocalDateTime delFlag();
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	long id();
+	
+	@Key
+	String email();
+	
+	String password();
+	
+	String realName();
+	
+	@Nullable
+	String role();
+	
+	@Nullable
+	UserStatus status();
+	
+	@Nullable
+	String uuid();
+	
+	@Nullable
+	LocalDateTime createTime();
+	
+	@Nullable
+	LocalDateTime updateTime();
+	
+	@Column(name = "deleted_at")
+	@LogicalDeleted("now")
+	@Nullable
+	LocalDateTime delFlag();
 }

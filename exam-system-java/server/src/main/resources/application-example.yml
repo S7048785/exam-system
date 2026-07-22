@@ -32,6 +32,7 @@ exam:
     username: USERNAME
     password: PASSWORD
     from: FROM
+    confirm-url: CONFIRM-URL
 
 jimmer:
   client:
