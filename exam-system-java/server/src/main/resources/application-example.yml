@@ -8,7 +8,6 @@ exam:
     password: PASSWORD
   front:
     ip:
-      - http://localhost:3000
       - http://localhost:5173
   exclude:
     path:
@@ -33,6 +32,7 @@ exam:
     password: PASSWORD
     from: FROM
     confirm-url: CONFIRM-URL
+    front-url: FRONT_URL # 邮件注册链接重定向地址
 
 jimmer:
   client:

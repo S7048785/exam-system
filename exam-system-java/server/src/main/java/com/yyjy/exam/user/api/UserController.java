@@ -11,13 +11,17 @@ import com.yyjy.exam.entity.user.entity.Users;
 import com.yyjy.exam.entity.user.entity.UsersFetcher;
 import com.yyjy.exam.entity.user.io.req.UserLoginReq;
 import com.yyjy.exam.entity.user.io.req.UserRegisterReq;
+import com.yyjy.exam.common.property.MailProperties;
 import com.yyjy.exam.user.service.AdminUserService;
 import com.yyjy.exam.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -31,6 +35,7 @@ public class UserController {
                     .realName()
                     .role();
     private final UserService userService;
+    private final MailProperties mailProperties;
     private final AdminUserService adminUserService;
 
     // ========== 公开端点 ==========
@@ -54,8 +59,17 @@ public class UserController {
     }
 
     @GetMapping("/confirm")
-    public String confirmUser(@RequestParam String id) {
-        return userService.confirmUser(id);
+    public ResponseEntity<Void> confirmUser(@RequestParam String id) {
+        try {
+            userService.confirmUser(id);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(mailProperties.frontUrl()))
+                    .build();
+        } catch (BusinessException e) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(mailProperties.frontUrl()))
+                    .build();
+        }
     }
 
     @GetMapping("/info")

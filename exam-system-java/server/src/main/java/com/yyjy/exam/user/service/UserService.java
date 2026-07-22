@@ -75,17 +75,13 @@ public class UserService {
 		emailService.sendVerificationLink(email, uuid);
 	}
 	
-	public String confirmUser(String uuid) {
+	public void confirmUser(String uuid) {
 		Users user = usersRepository.findByUuid(uuid)
-				             .orElseThrow(() -> new BusinessException("验证链接无效"));
-		
-		if (user.status() == UserStatus.ACTIVE) {
-			return "该账号已验证，请直接登录";
+				.orElseThrow(() -> new BusinessException("验证链接无效"));
+
+		if (user.status() != UserStatus.ACTIVE) {
+			usersRepository.save(Immutables.createUsers(user, draft -> draft.setStatus(UserStatus.ACTIVE)));
 		}
-		
-		usersRepository.save(Immutables.createUsers(user, draft -> draft.setStatus(UserStatus.ACTIVE)));
-		
-		return "验证成功，允许登录";
 	}
 	
 	@Nullable
