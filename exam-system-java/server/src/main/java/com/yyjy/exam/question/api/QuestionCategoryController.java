@@ -11,7 +11,6 @@ import com.yyjy.exam.entity.question.entity.QuestionsCategoriesFetcher;
 import com.yyjy.exam.question.repository.CategoriesRepository;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
-import org.babyfish.jimmer.client.meta.Api;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.exception.SaveException;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @SaCheckRole("admin")
-@Api()
 @RestController
 @RequestMapping("/question-category")
 @RequiredArgsConstructor
@@ -35,7 +33,6 @@ public class QuestionCategoryController {
 					.questionCount();
 	private final CategoriesRepository categoriesRepository;
 	
-	@Api
 	@PostMapping("/add")
 	public R<Void> addCategory(@RequestBody QuestionsCategorySaveInput category) {
 		if (categoriesRepository.existsByParentIdAndName(category.getParentId(), category.getName())) {
@@ -45,7 +42,6 @@ public class QuestionCategoryController {
 		return R.ok();
 	}
 	
-	@Api
 	@PutMapping("/update")
 	public R<Void> updateCategory(@RequestBody QuestionsCategoryUpdateInput category) {
 		if (categoriesRepository.existsByParentIdAndName(category.getParentId(), category.getName())) {
@@ -55,7 +51,6 @@ public class QuestionCategoryController {
 		return R.ok();
 	}
 	
-	@Api
 	@DeleteMapping("/remove/{id}")
 	public R<Void> removeCategory(@PathVariable long id) {
 		if (categoriesRepository.existsByParentId(id)) {
@@ -74,19 +69,16 @@ public class QuestionCategoryController {
 		return R.ok();
 	}
 	
-	@Api
 	@GetMapping("/{id}")
 	public R<Void> getCategory(@PathVariable long id) {
 		return R.ok();
 	}
 	
-	@Api
 	@GetMapping("/list")
 	public R<List<@FetchBy("CATEGORY_INFO") QuestionsCategories>> listCategories() {
 		return R.ok(categoriesRepository.findAllWithFetcher(CATEGORY_INFO));
 	}
 	
-	@Api
 	@GetMapping("/tree")
 	public R<List<QuestionsCategoriesTree>> tree() {
 		return R.ok(categoriesRepository.findTree());

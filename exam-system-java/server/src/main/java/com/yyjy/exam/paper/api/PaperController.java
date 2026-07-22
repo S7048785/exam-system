@@ -14,14 +14,12 @@ import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
 import com.yyjy.exam.paper.service.PaperService;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
-import org.babyfish.jimmer.client.meta.Api;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @SaCheckRole("admin")
-@Api
 @RestController
 @RequestMapping("/paper")
 @RequiredArgsConstructor
@@ -46,7 +44,6 @@ public class PaperController {
 	/**
 	 * 更新试卷
 	 */
-	@Api
 	@PutMapping("/update")
 	public R<Void> updatePaper(@RequestBody PaperUpdateInput paper) {
 		paperService.updatePaper(paper);
@@ -56,7 +53,6 @@ public class PaperController {
 	/**
 	 * 删除试卷
 	 */
-	@Api
 	@DeleteMapping("/remove/{id}")
 	public R<Void> removePaper(@PathVariable int id) {
 		paperService.removePaper(id);
@@ -66,7 +62,6 @@ public class PaperController {
 	/**
 	 * 获取试卷详情
 	 */
-	@Api
 	@GetMapping("/{id}")
 	public R<PaperDetail> getPaper(@PathVariable int id) {
 		return R.ok(paperService.getPaper(id));
@@ -75,7 +70,6 @@ public class PaperController {
 	/**
 	 * 获取试卷列表
 	 */
-	@Api
 	@GetMapping("/list")
 	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(PaperListQuery query) {
 		
@@ -85,7 +79,6 @@ public class PaperController {
 	/**
 	 * 新增试卷 v2（不含题目，返回试卷ID）
 	 */
-	@Api
 	@PostMapping("/v2/add")
 	public R<Integer> addPaperV2(@RequestBody PaperSaveInput paper) {
 		int id = paperService.addPaper(paper);
@@ -95,7 +88,6 @@ public class PaperController {
 	/**
 	 * 发布试卷（PUBLISHED false -> true）
 	 */
-	@Api
 	@PostMapping("/{id}/publish")
 	public R<Void> publishPaper(@PathVariable int id) {
 		paperService.publishPaper(id);
@@ -105,7 +97,6 @@ public class PaperController {
 	/**
 	 * 获取试卷题目列表
 	 */
-	@Api
 	@GetMapping("/{id}/questions")
 	public R<List<PaperDetail.TargetOf_questions>> getPaperQuestions(@PathVariable int id) {
 		return R.ok(paperService.getPaperQuestions(id));
@@ -114,7 +105,6 @@ public class PaperController {
 	/**
 	 * 批量添加试卷题目（upsert）
 	 */
-	@Api
 	@PostMapping("/{id}/questions")
 	public R<Void> addPaperQuestions(@PathVariable int id, @RequestBody PaperQuestionAddReq input) {
 		paperService.addPaperQuestions(id, input);
@@ -124,7 +114,6 @@ public class PaperController {
 	/**
 	 * 删除试卷中的一道题目
 	 */
-	@Api
 	@DeleteMapping("/{id}/questions/{questionId}")
 	public R<Void> removePaperQuestion(@PathVariable int id, @PathVariable long questionId) {
 		paperService.removePaperQuestion(id, questionId);
@@ -134,7 +123,6 @@ public class PaperController {
 	/**
 	 * 更新试卷中题目的分数
 	 */
-	@Api
 	@PutMapping("/{id}/questions/{questionId}/score")
 	public R<Void> updatePaperQuestionScore(
 			@PathVariable int id,
@@ -148,7 +136,6 @@ public class PaperController {
 	/**
 	 * AI智能组卷
 	 */
-	@Api
 	@PostMapping("/ai")
 	public R<Paper> aiPaper(@RequestBody PaperAiSaveDto dto) {
 		return R.ok(paperService.aiCreatePaper(dto));

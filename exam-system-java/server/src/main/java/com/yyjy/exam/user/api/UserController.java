@@ -17,18 +17,16 @@ import com.yyjy.exam.user.service.EmailService;
 import com.yyjy.exam.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
-import org.babyfish.jimmer.client.meta.Api;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Api
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/user")
 public class UserController {
-
+	
 	public static final Fetcher<Users> USER_INFO =
 			UsersFetcher.$
 					.email()
@@ -38,17 +36,15 @@ public class UserController {
 	private final CaptchaService captchaService;
 	private final EmailService emailService;
 	private final AdminUserService adminUserService;
-
+	
 	// ========== 公开端点 ==========
-
-	@Api
+	
 	@PostMapping("/login")
 	public R<Void> loginUser(@RequestBody UserLoginReq user) {
 		userService.login(user.email(), user.password());
 		return R.ok();
 	}
-
-	@Api
+	
 	@PostMapping("/register")
 	public R<Void> registerUser(@RequestBody UserRegisterReq user) {
 		if (!emailService.verifyCaptcha(user.email(), user.captcha())) {
@@ -57,23 +53,20 @@ public class UserController {
 		userService.registerUser(user.email(), user.realName(), user.password());
 		return R.ok();
 	}
-
-	@Api
+	
 	@PostMapping("/logout")
 	public R<Void> logout() {
 		StpUtil.logout();
 		return R.ok();
 	}
-
-	@Api
+	
 	@PostMapping("/send-captcha")
 	public R<Void> sendCaptcha(@RequestParam String email, @RequestParam String captcha) {
 		captchaService.verifyCaptcha(captcha);
 		emailService.generateAndSendCaptcha(email);
 		return R.ok();
 	}
-
-	@Api
+	
 	@GetMapping("/info")
 	public R<@FetchBy("USER_INFO") Users> getUserInfo() {
 		var user = userService.getUserInfo(USER_INFO);
@@ -82,11 +75,10 @@ public class UserController {
 		}
 		return R.ok(user);
 	}
-
+	
 	// ========== 管理员端点 ==========
-
+	
 	@SaCheckRole("admin")
-	@Api
 	@GetMapping("/admin/list")
 	public R<List<UserPageView>> listUsers(
 			@RequestParam(required = false) String keyword,
@@ -95,33 +87,29 @@ public class UserController {
 	) {
 		return R.ok(adminUserService.list(keyword, page, size));
 	}
-
+	
 	@SaCheckRole("admin")
-	@Api
 	@PostMapping("/admin/add")
 	public R<Void> addUser(@RequestBody UserSaveInput input) {
 		adminUserService.save(input);
 		return R.ok();
 	}
-
+	
 	@SaCheckRole("admin")
-	@Api
 	@PutMapping("/admin/update")
 	public R<Void> updateUser(@RequestBody UserUpdateInput input) {
 		adminUserService.update(input);
 		return R.ok();
 	}
-
+	
 	@SaCheckRole("admin")
-	@Api
 	@DeleteMapping("/admin/remove/{id}")
 	public R<Void> removeUser(@PathVariable long id) {
 		adminUserService.remove(id);
 		return R.ok();
 	}
-
+	
 	@SaCheckRole("admin")
-	@Api
 	@GetMapping("/admin/{id}")
 	public R<UserPageView> getUser(@PathVariable long id) {
 		UserPageView user = adminUserService.getById(id);

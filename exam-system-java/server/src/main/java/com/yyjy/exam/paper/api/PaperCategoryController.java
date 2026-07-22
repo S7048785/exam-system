@@ -11,7 +11,6 @@ import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.paper.repository.PaperCategoriesRepository;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
-import org.babyfish.jimmer.client.meta.Api;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.exception.SaveException;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @SaCheckRole("admin")
-@Api
 @RestController
 @RequestMapping("/paper-category")
 @RequiredArgsConstructor
@@ -36,7 +34,6 @@ public class PaperCategoryController {
 	
 	private final PaperCategoriesRepository paperCategoriesRepository;
 	
-	@Api
 	@PostMapping("/add")
 	public R<Void> addCategory(@RequestBody PaperCategorySaveInput category) {
 		if (paperCategoriesRepository.existsByParentIdAndName(category.getParentId(), category.getName())) {
@@ -46,7 +43,6 @@ public class PaperCategoryController {
 		return R.ok();
 	}
 	
-	@Api
 	@PutMapping("/update")
 	public R<Void> updateCategory(@RequestBody PaperCategoryUpdateInput category) {
 		if (paperCategoriesRepository.existsByParentIdAndName(category.getParentId(), category.getName())) {
@@ -56,7 +52,6 @@ public class PaperCategoryController {
 		return R.ok();
 	}
 	
-	@Api
 	@DeleteMapping("/remove/{id}")
 	public R<Void> removeCategory(@PathVariable long id) {
 		if (paperCategoriesRepository.existsByParentId(id)) {
@@ -75,13 +70,11 @@ public class PaperCategoryController {
 		return R.ok();
 	}
 	
-	@Api
 	@GetMapping("/list")
 	public R<List<@FetchBy("CATEGORY_INFO") PaperCategories>> listCategories() {
 		return R.ok(paperCategoriesRepository.findAllWithFetcher(CATEGORY_INFO));
 	}
 	
-	@Api
 	@GetMapping("/tree")
 	public R<List<PaperCategoriesTree>> tree() {
 		return R.ok(paperCategoriesRepository.findTree());

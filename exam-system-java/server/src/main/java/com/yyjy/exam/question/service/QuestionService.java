@@ -64,14 +64,13 @@ public class QuestionService {
 				              .score(request.getScore())
 				              .analysis(request.getAnalysis());
 		
-		if (request instanceof SingleChoiceQuestionSaveRequest sc) {
-			processChoice(builder, sc.getChoices(), false);
-		} else if (request instanceof MultipleChoiceQuestionSaveRequest mc) {
-			processChoice(builder, mc.getChoices(), true);
-		} else if (request instanceof JudgeQuestionSaveRequest j) {
-			processJudge(builder, j);
-		} else if (request instanceof TextQuestionSaveRequest t) {
-			processText(builder, t);
+		switch (request) {
+			case SingleChoiceQuestionSaveRequest sc -> processChoice(builder, sc.getChoices(), false);
+			case MultipleChoiceQuestionSaveRequest mc -> processChoice(builder, mc.getChoices(), true);
+			case JudgeQuestionSaveRequest j -> processJudge(builder, j);
+			case TextQuestionSaveRequest t -> processText(builder, t);
+			default -> {
+			}
 		}
 		
 		return questionsRepository.save(builder.build(), SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);

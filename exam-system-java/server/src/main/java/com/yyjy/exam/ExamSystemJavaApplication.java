@@ -9,17 +9,17 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-//@EnableImplicitApi
+@EnableImplicitApi
 @SpringBootApplication
 @EnableConfigurationProperties({
-        FrontProperties.class,
-        ExcludeProperties.class,
-        CapProperties.class,
-        MailProperties.class
+		FrontProperties.class,
+		ExcludeProperties.class,
+		CapProperties.class,
+		MailProperties.class
 })
 public class ExamSystemJavaApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(ExamSystemJavaApplication.class, args);
-    }
+	
+	public static void main(String[] args) {
+		SpringApplication.run(ExamSystemJavaApplication.class, args);
+	}
 }
