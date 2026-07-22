@@ -25,7 +25,7 @@ public interface Questions {
 	@IdView
 	long categoryId();
 	
-	String difficulty();
+	QuestionDifficulty difficulty();
 	
 	int score();
 	

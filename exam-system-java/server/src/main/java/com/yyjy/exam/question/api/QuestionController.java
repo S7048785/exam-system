@@ -4,12 +4,12 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.question.dto.*;
 import com.yyjy.exam.entity.question.entity.Questions;
-import com.yyjy.exam.entity.question.io.req.QuestionGenerateReq;
-import com.yyjy.exam.entity.question.io.req.QuestionListReq;
+import com.yyjy.exam.entity.question.io.req.*;
 import com.yyjy.exam.entity.question.io.res.QuestionGenerateDto;
 import com.yyjy.exam.entity.question.io.res.QuestionPageRes;
 import com.yyjy.exam.question.service.QuestionService;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.meta.Api;
 import org.springframework.validation.annotation.Validated;
@@ -32,7 +32,7 @@ public class QuestionController {
 	 */
 	@Api
 	@PostMapping("/add")
-	public R<Questions> addQuestion(@RequestBody QuestionSaveInput question) {
+	public R<Questions> addQuestion(@RequestBody @Valid QuestionSaveRequest question) {
 		return R.ok(questionService.save(question));
 	}
 	

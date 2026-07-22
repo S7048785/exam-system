@@ -7,7 +7,6 @@ QuestionsPageView {
     id
     title
     type
-    multi
     categoryId
     difficulty
     score
@@ -31,7 +30,6 @@ QuestionsPageView {
 input QuestionSaveInput {
     title
     type
-    multi
     categoryId
     difficulty
     score
@@ -67,7 +65,6 @@ input QuestionUpdateInput {
 QuestionImportView {
     title
     type
-    multi
     categoryId
     difficulty
     score
@@ -79,14 +76,12 @@ QuestionImportView {
     }
     flat(questionAnswers) {
         answer
-        keywords
     }
 }
 
 input QuestionImportInput {
     title
     type
-    multi
     categoryId
     difficulty
     score
@@ -98,6 +93,5 @@ input QuestionImportInput {
     }
     flat(questionAnswers) {
         answer
-        keywords
     }
 }

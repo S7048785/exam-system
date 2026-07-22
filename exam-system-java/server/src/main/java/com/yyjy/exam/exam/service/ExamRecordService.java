@@ -4,9 +4,9 @@ import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.exam.entity.*;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.paper.entity.Paper;
+import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
 import com.yyjy.exam.exam.repository.ExamRecordsRepository;
-import com.yyjy.exam.question.constant.QuestionConstant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.babyfish.jimmer.sql.JSqlClient;
@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Slf4j
@@ -114,16 +115,16 @@ public class ExamRecordService {
 		List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecord.id());
 		
 		for (AnswerRecord ar : answerRecords) {
-			String type = ar.question().type();
-			if (QuestionConstant.TYPE.CHOICE.equals(type)) {
+			var type = ar.question().type();
+			if (QuestionType.SINGLE_CHOICE.equals(type)) {
 				gradeChoiceQuestion(ar);
-			} else if (QuestionConstant.TYPE.JUDGE.equals(type)) {
+			} else if (QuestionType.JUDGE.equals(type)) {
 				gradeJudgeQuestion(ar);
 			}
 		}
 		
 		List<AnswerRecord> textAnswerRecords = answerRecords.stream()
-				                                       .filter(ar -> QuestionConstant.TYPE.TEXT.equals(ar.question().type()))
+				                                       .filter(ar -> QuestionType.TEXT.equals(ar.question().type()))
 				                                       .toList();
 		if (!textAnswerRecords.isEmpty()) {
 			aiEvaluation(textAnswerRecords);
@@ -138,10 +139,10 @@ public class ExamRecordService {
 	private void gradeChoiceQuestion(AnswerRecord ar) {
 		String userAnswer = ar.userAnswer();
 		String correctAnswer = ar.question().questionAnswers() != null
-				                       ? ar.question().questionAnswers().answer() : null;
+				                       ? Objects.requireNonNull(ar.question().questionAnswers()).answer() : null;
 		int userScore = 0;
 		
-		if (Boolean.TRUE.equals(ar.question().multi())) {
+		if (QuestionType.JUDGE.equals(ar.question().type())) {
 			if (correctAnswer != null) {
 				Set<String> userSet = new HashSet<>(List.of(userAnswer.split(",")));
 				Set<String> correctSet = new HashSet<>(List.of(correctAnswer.split(",")));
@@ -161,7 +162,7 @@ public class ExamRecordService {
 	
 	private void gradeJudgeQuestion(AnswerRecord ar) {
 		String correctAnswer = ar.question().questionAnswers() != null
-				                       ? ar.question().questionAnswers().answer() : null;
+				                       ? Objects.requireNonNull(ar.question().questionAnswers()).answer() : null;
 		int score = ar.userAnswer().equals(correctAnswer) ? ar.question().score() : 0;
 		final int s = score;
 		answerRecordRepo.save(AnswerRecordDraft.$.produce(draft -> {
@@ -176,7 +177,7 @@ public class ExamRecordService {
 				               .map(ar -> new com.yyjy.exam.entity.exam.io.req.QuestionTextGradingReq(
 						               ar.id(),
 						               ar.question().title(),
-						               ar.question().questionAnswers().answer(),
+						               Objects.requireNonNull(ar.question().questionAnswers()).answer(),
 						               ar.question().score(),
 						               ar.userAnswer()
 				               ))

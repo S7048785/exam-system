@@ -3,8 +3,9 @@ package com.yyjy.exam.question.common;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.event.AnalysisEventListener;
 import com.yyjy.exam.entity.question.dto.QuestionImportView;
+import com.yyjy.exam.entity.question.entity.QuestionDifficulty;
+import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.question.bo.QuestionExcelTemplateBo;
-import com.yyjy.exam.question.constant.QuestionConstant;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,15 +25,14 @@ public class QuestionExcelListener extends AnalysisEventListener<QuestionExcelTe
 		
 		QuestionImportView question = new QuestionImportView();
 		question.setTitle(data.getContent());
-		question.setType(data.getType());
-		question.setMulti("是".equals(data.getMultiple()));
+		question.setType(QuestionType.valueOf(data.getType()));
 		question.setCategoryId(Long.parseLong(data.getCategoryId()));
-		question.setDifficulty(data.getDifficulty());
+		question.setDifficulty(QuestionDifficulty.valueOf(data.getDifficulty()));
 		question.setScore(parseIntOrDefault(data.getScore()));
 		question.setAnalysis(data.getAnalysis());
 		question.setAnswer(data.getAnswer());
 		
-		if (QuestionConstant.TYPE.CHOICE.equals(data.getType())) {
+		if (QuestionType.SINGLE_CHOICE.toString().equals(data.getType()) || QuestionType.MULTIPLE_CHOICE.toString().equals(data.getType())) {
 			String[] choiceContents = {data.getChoiceA(), data.getChoiceB(), data.getChoiceC(), data.getChoiceD()};
 			String answer = data.getAnswer();
 			List<QuestionImportView.TargetOf_choices> choicesList = new ArrayList<>();
@@ -84,21 +84,21 @@ public class QuestionExcelListener extends AnalysisEventListener<QuestionExcelTe
 			errors.add(prefix + ": 选择题答案必须为是或否");
 		}
 		
-		if (QuestionConstant.TYPE.JUDGE.equals(type)) {
+		if (QuestionType.JUDGE.toString().equals(type)) {
 			if (!"true".equals(answer) && !"false".equals(answer)) {
 				errors.add(prefix + ": 判断题答案必须为true或false");
 			}
 		}
 		
-		if (QuestionConstant.TYPE.CHOICE.equals(type) && answer != null) {
-			if ("是".equals(multiple)) {
-				if (!answer.matches("^[A-D](,[A-D])+$")) {
-					errors.add(prefix + ": 选择题答案只能为A-D的字母，多个答案用逗号隔开");
-				}
-			} else if ("否".equals(multiple)) {
-				if (answer.length() != 1 || answer.charAt(0) < 'A' || answer.charAt(0) > 'D') {
-					errors.add(prefix + ": 选择题答案只能为A-D的字母");
-				}
+		if (QuestionType.SINGLE_CHOICE.toString().equals(type) && answer != null) {
+			if (answer.length() != 1 || answer.charAt(0) < 'A' || answer.charAt(0) > 'D') {
+				errors.add(prefix + ": 选择题答案只能为A-D的字母");
+			}
+		}
+		
+		if (QuestionType.MULTIPLE_CHOICE.toString().equals(type) && answer != null) {
+			if (!answer.matches("^[A-D](,[A-D])+$")) {
+				errors.add(prefix + ": 选择题答案只能为A-D的字母，多个答案用逗号隔开");
 			}
 		}
 		

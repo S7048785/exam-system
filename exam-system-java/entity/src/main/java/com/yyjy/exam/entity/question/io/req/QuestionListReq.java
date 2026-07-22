@@ -1,6 +1,7 @@
 package com.yyjy.exam.entity.question.io.req;
 
-import jakarta.validation.constraints.Pattern;
+import com.yyjy.exam.entity.question.entity.QuestionDifficulty;
+import com.yyjy.exam.entity.question.entity.QuestionType;
 import org.springframework.lang.Nullable;
 
 public record QuestionListReq(
@@ -8,12 +9,8 @@ public record QuestionListReq(
 		Integer size,
 		Long categoryId,
 		@Nullable
-		@Pattern(regexp = "^(EASY|MEDIUM|HARD)$", message = "难度只能是 EASY, MEDIUM 或 HARD")
-		String difficulty,
+		QuestionDifficulty difficulty,
 		@Nullable
-		@Pattern(regexp = "^(CHOICE|JUDGE|TEXT)$", message = "题目类型只能是 CHOICE, JUDGE 或 TEXT")
-		String type,
-		@Nullable
-		String keyword
+		QuestionType type // MethodArgumentTypeMismatchException
 ) {
 }

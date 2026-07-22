@@ -62,14 +62,7 @@ public class PaperService {
 		}
 		
 		List<PaperDetail.TargetOf_questions> sorted =
-				result.getQuestions().stream()
-						.sorted(Comparator.comparingInt(q -> switch (q.getType()) {
-							case "CHOICE" -> 1;
-							case "JUDGE" -> 2;
-							case "TEXT" -> 3;
-							default -> throw new BusinessException(MessageConstant.QUESTION_TYPE_NOT_EXIST);
-						}))
-						.toList();
+				result.getQuestions();
 		
 		result.setQuestions(sorted);
 		return result;

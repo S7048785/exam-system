@@ -4,9 +4,9 @@ import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.question.dto.QuestionImportInput;
 import com.yyjy.exam.entity.question.dto.QuestionSaveInput;
+import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.question.entity.Questions;
 import com.yyjy.exam.entity.question.entity.QuestionsCategoriesTable;
-import com.yyjy.exam.question.constant.QuestionConstant;
 import com.yyjy.exam.question.repository.QuestionsRepository;
 import org.babyfish.jimmer.sql.JSqlClient;
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode;
@@ -49,7 +49,6 @@ public class QuestionImportService {
 			var saveInput = new QuestionSaveInput.Builder()
 					                .title(item.getTitle())
 					                .type(item.getType())
-					                .multi(item.getMulti())
 					                .categoryId(item.getCategoryId())
 					                .difficulty(item.getDifficulty())
 					                .score(item.getScore())
@@ -59,8 +58,9 @@ public class QuestionImportService {
 			answers.setAnswer(item.getAnswer() != null ? item.getAnswer() : "");
 			saveInput.answers(answers);
 			
-			if (QuestionConstant.TYPE.CHOICE.equals(item.getType()) && item.getChoices() != null) {
+			if (QuestionType.SINGLE_CHOICE.equals(item.getType()) || QuestionType.MULTIPLE_CHOICE.equals(item.getType()) && item.getChoices() != null) {
 				List<QuestionSaveInput.TargetOf_choices> choices = new ArrayList<>();
+				assert item.getChoices() != null;
 				for (QuestionImportInput.TargetOf_choices importChoice : item.getChoices()) {
 					QuestionSaveInput.TargetOf_choices choice = new QuestionSaveInput.TargetOf_choices();
 					choice.setContent(importChoice.getContent());

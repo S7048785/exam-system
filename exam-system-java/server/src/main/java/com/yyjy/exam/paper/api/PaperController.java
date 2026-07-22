@@ -78,6 +78,7 @@ public class PaperController {
 	@Api
 	@GetMapping("/list")
 	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(PaperListQuery query) {
+		
 		return R.ok(paperService.listPapersByNameAndStatus(query, PAPER_ITEM));
 	}
 	

@@ -7,16 +7,15 @@ import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.common.util.RedisUtil;
 import com.yyjy.exam.entity.question.dto.*;
+import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.question.entity.Questions;
 import com.yyjy.exam.entity.question.entity.QuestionsCategoriesTable;
 import com.yyjy.exam.entity.question.entity.QuestionsTable;
-import com.yyjy.exam.entity.question.io.req.QuestionGenerateReq;
-import com.yyjy.exam.entity.question.io.req.QuestionListReq;
+import com.yyjy.exam.entity.question.io.req.*;
 import com.yyjy.exam.entity.question.io.res.QuestionGenerateDto;
 import com.yyjy.exam.entity.question.io.res.QuestionPageRes;
 import com.yyjy.exam.question.bo.QuestionExcelTemplateBo;
 import com.yyjy.exam.question.common.QuestionExcelListener;
-import com.yyjy.exam.question.constant.QuestionConstant;
 import com.yyjy.exam.question.repository.QuestionChoicesRepository;
 import com.yyjy.exam.question.repository.QuestionsRepository;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.sql.JSqlClient;
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
@@ -48,50 +46,80 @@ public class QuestionService {
 	private final QuestionGenerateService questionGenerateService;
 	private final JSqlClient sqlClient;
 	
-	private static @NotNull StringBuilder getStringBuilder(QuestionSaveInput question) {
-		if (question.getChoices() == null) {
+	@Transactional
+	public Questions save(QuestionSaveRequest request) {
+		if (questionsRepository.existsByTypeAndTitle(request.getQuestionType(), request.getTitle())) {
+			throw new BusinessException(MessageConstant.QUESTION_EXIST);
+		}
+		
+		if (!questionsRepository.existsById(request.getCategoryId())) {
+			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST);
+		}
+		
+		var builder = new QuestionSaveInput.Builder()
+				              .title(request.getTitle())
+				              .type(request.getQuestionType())
+				              .categoryId(request.getCategoryId())
+				              .difficulty(request.getDifficulty())
+				              .score(request.getScore())
+				              .analysis(request.getAnalysis());
+		
+		if (request instanceof SingleChoiceQuestionSaveRequest sc) {
+			processChoice(builder, sc.getChoices(), false);
+		} else if (request instanceof MultipleChoiceQuestionSaveRequest mc) {
+			processChoice(builder, mc.getChoices(), true);
+		} else if (request instanceof JudgeQuestionSaveRequest j) {
+			processJudge(builder, j);
+		} else if (request instanceof TextQuestionSaveRequest t) {
+			processText(builder, t);
+		}
+		
+		return questionsRepository.save(builder.build(), SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
+	}
+	
+	private void processChoice(QuestionSaveInput.Builder builder, List<ChoiceDto> choiceDtos, boolean allowMultiple) {
+		if (choiceDtos == null || choiceDtos.isEmpty()) {
 			throw new BusinessException(MessageConstant.QUESTION_CHOICE_CHOICES_NOT_EMPTY);
 		}
+		List<QuestionSaveInput.TargetOf_choices> choices = new ArrayList<>();
 		StringBuilder answerStr = new StringBuilder();
-		for (int i = 0; i < question.getChoices().size(); i++) {
-			QuestionSaveInput.TargetOf_choices choice = question.getChoices().get(i);
+		for (int i = 0; i < choiceDtos.size(); i++) {
+			ChoiceDto dto = choiceDtos.get(i);
+			var choice = new QuestionSaveInput.TargetOf_choices();
+			choice.setContent(dto.getContent());
+			choice.setCorrect(dto.getCorrect());
 			choice.setSort(i);
-			if (Boolean.TRUE.equals(choice.getCorrect())) {
+			choices.add(choice);
+			
+			if (Boolean.TRUE.equals(dto.getCorrect())) {
 				if (!answerStr.isEmpty()) {
-					if (Boolean.FALSE.equals(question.getMulti())) {
-						throw new BusinessException(MessageConstant.QUESTION_CHOICE_MULTI_ANSWER_NOT_EMPTY);
+					if (!allowMultiple) {
+						throw new BusinessException("单选题只能有一个正确答案");
 					}
 					answerStr.append(",");
 				}
 				answerStr.append((char) ('A' + i));
 			}
 		}
-		return answerStr;
+		builder.choices(choices);
+		
+		var answers = new QuestionSaveInput.TargetOf_answers();
+		answers.setAnswer(answerStr.toString());
+		builder.answers(answers);
 	}
 	
-	@Transactional
-	public Questions save(QuestionSaveInput question) {
-		if (questionsRepository.existsByTypeAndTitle(question.getType(), question.getTitle())) {
-			throw new BusinessException(MessageConstant.QUESTION_EXIST);
+	private void processJudge(QuestionSaveInput.Builder builder, JudgeQuestionSaveRequest request) {
+		var answers = new QuestionSaveInput.TargetOf_answers();
+		answers.setAnswer(request.getAnswer());
+		builder.answers(answers);
+	}
+	
+	private void processText(QuestionSaveInput.Builder builder, TextQuestionSaveRequest request) {
+		if (request.getAnswer() != null) {
+			var answers = new QuestionSaveInput.TargetOf_answers();
+			answers.setAnswer(request.getAnswer());
+			builder.answers(answers);
 		}
-		
-		if (!questionsRepository.existsById(question.getCategoryId())) {
-			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST);
-		}
-		
-		if ("CHOICE".equals(question.getType())) {
-			
-			StringBuilder answerStr = getStringBuilder(question);
-			if (question.getAnswers() != null) {
-				question.getAnswers().setAnswer(answerStr.toString());
-			}
-		} else {
-			if (Boolean.TRUE.equals(question.getMulti())) {
-				throw new BusinessException(MessageConstant.QUESTION_CHOICE_MULTI_NOT_EMPTY);
-			}
-		}
-		
-		return questionsRepository.save(question, SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
 	}
 	
 	@Transactional
@@ -108,8 +136,9 @@ public class QuestionService {
 			throw new BusinessException(MessageConstant.QUESTION_EXIST);
 		}
 		
-		// 删除旧题目选项
-		if (QuestionConstant.TYPE.CHOICE.equals(oldQuestion.type())) {
+		// 若是单选或多选题，则删除旧题目选项
+		if (QuestionType.SINGLE_CHOICE.equals(oldQuestion.type()) ||
+				    QuestionType.MULTIPLE_CHOICE.equals(oldQuestion.type())) {
 			questionChoicesRepository.deleteByQuestionId(question.getId());
 		}
 		
@@ -141,16 +170,12 @@ public class QuestionService {
 		if (req.categoryId() != null) {
 			query = query.where(t.categoryId().eq(req.categoryId()));
 		}
-		if (req.difficulty() != null && !req.difficulty().isBlank()) {
+		if (req.difficulty() != null) {
 			query = query.where(t.difficulty().eq(req.difficulty()));
 		}
-		if (req.type() != null && !req.type().isBlank()) {
+		if (req.type() != null) {
 			query = query.where(t.type().eq(req.type()));
 		}
-		if (req.keyword() != null && !req.keyword().isBlank()) {
-			query = query.where(t.title().like("%" + req.keyword() + "%"));
-		}
-		
 		var pageResult = query.select(t.fetch(QuestionsPageView.class)).fetchPage(page - 1, size);
 		
 		List<QuestionsPageView> records = pageResult.getRows();
@@ -295,7 +320,6 @@ public class QuestionService {
 		var input = new QuestionImportInput.Builder()
 				            .title(view.getTitle())
 				            .type(view.getType())
-				            .multi(view.getMulti())
 				            .categoryId(view.getCategoryId())
 				            .difficulty(view.getDifficulty())
 				            .score(view.getScore())
