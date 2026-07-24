@@ -61,7 +61,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           onError: (error: any) => {
             setIsSubmitting(false)
             toast.error(error.message || '网络错误')
-            form.resetField('password')
+            // 这会重新设置 saved?.email
+            // form.resetField('password')
+            form.setFieldValue('password', '')
             return
           },
           onSuccess: async (data) => {

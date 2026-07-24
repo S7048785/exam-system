@@ -41,8 +41,9 @@ export const api = new Api(async ({ uri, method, headers, body }) => {
       default:
         throw await response.json()
     }
+  } else {
+    const text = await response.text()
+    return text.length === 0 ? null : JSON.parse(text)
   }
 
-  const text = await response.text()
-  return text.length === 0 ? null : JSON.parse(text)
 })

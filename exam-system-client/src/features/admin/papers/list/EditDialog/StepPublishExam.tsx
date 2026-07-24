@@ -1,7 +1,6 @@
 import { ButtonGroup } from '#/components/ui/button-group.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Field } from '#/components/ui/field.tsx'
-import { Textarea } from '#/components/ui/textarea.tsx'
 import { toast } from 'sonner'
 
 interface StepPublishExamProps {
@@ -9,12 +8,10 @@ interface StepPublishExamProps {
   description: string
 }
 
-const BASE_URL = import.meta.env.VITE_WEB_URL
 export default function StepPublishExam({
   paperId,
-  description,
 }: StepPublishExamProps) {
-  const examUrl = `${BASE_URL}/exam/${paperId}`
+  const examUrl = `/exam/${paperId}`
 
   const handleCopy = async () => {
     try {
