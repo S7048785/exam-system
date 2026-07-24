@@ -31,7 +31,7 @@ public class ExamRecordService {
 	private final JSqlClient sqlClient;
 	
 	@Transactional
-	public ExamRecords startExam(int paperId, String studentName) {
+	public void startExam(int paperId, String studentName) {
 		/*
 		  TODO: 新增功能:
 		  1. 用户可多次考试、每次考试独立记录
@@ -56,7 +56,7 @@ public class ExamRecordService {
 			throw new BusinessException("不允许多次考试");
 		}
 		
-		return examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
+		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
 			draft.setPaperId(paperId);
 			draft.setStudentName(studentName);
 			draft.setStartTime(now);

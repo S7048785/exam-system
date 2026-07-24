@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/exams")
+@RequestMapping("/exam")
 @RequiredArgsConstructor
 public class ExamController {
 	
@@ -21,15 +21,13 @@ public class ExamController {
 	 * 用户开始考试
 	 */
 	@PostMapping("/start")
-	public R<ExamRecords> startExam(@RequestBody StartExamReq req) {
-		return R.ok(examRecordService.startExam(req.paperId(), req.studentName()));
+	public R<Void> startExam(@RequestBody StartExamReq req) {
+		examRecordService.startExam(req.paperId(), req.studentName());
+		return R.ok();
 	}
 	
 	/**
 	 * 获取考试记录
-	 *
-	 * @param id
-	 * @return
 	 */
 	@GetMapping("/{id}")
 	public R<ExamRecords> getExamRecord(@PathVariable int id) {
