@@ -33,10 +33,7 @@ public interface ExamRecords {
 	@Nullable
 	Integer score();
 	
-	@Nullable
-	String answers();
 	
-	@Nullable
 	LocalDateTime startTime();
 	
 	@Nullable

@@ -45,11 +45,14 @@ public class QuestionGenerateService {
 		
 		String extraReq = generateExtraRequirements(type);
 		
-		String difficultyDesc = switch (difficulty) {
-			case QuestionDifficulty.EASY -> "简单";
-			case QuestionDifficulty.HARD -> "困难";
-			case QuestionDifficulty.MEDIUM -> "中等";
-		};
+		String difficultyDesc;
+		if (difficulty == QuestionDifficulty.EASY) {
+			difficultyDesc = "简单";
+		} else if (difficulty == QuestionDifficulty.HARD) {
+			difficultyDesc = "困难";
+		} else {
+			difficultyDesc = "中等";
+		}
 		
 		ChatClient chatClient = chatClientBuilder
 				                        .defaultSystem(PromptConstant.QUESTION_GENERATE_SYSTEM_PROMPT)

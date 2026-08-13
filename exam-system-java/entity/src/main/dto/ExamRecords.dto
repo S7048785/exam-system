@@ -6,18 +6,50 @@ ExamStartView {
     paper {
         id
     }
+    userId
     studentName
     score
     startTime
     status
     windowSwitches
 }
+
+ExamTakingView {
+    id
+    userId
+    studentName
+    startTime
+    status
+    windowSwitches
+    paper {
+        id
+        name
+        description
+        published
+        totalScore
+        questionCount
+        duration
+        paperQuestions as questions {
+            flat(question) {
+                id
+                title
+                type
+                difficulty
+                score
+                questionChoices as choices {
+                    content
+                    sort
+                }
+            }
+        }
+    }
+}
+
 ExamRecordDetail {
     id
     userId
     studentName
     score
-    answers
     startTime
     endTime
     status

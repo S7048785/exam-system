@@ -8,43 +8,42 @@ import java.time.LocalDateTime;
 
 @Entity
 public interface AnswerRecord {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    int id();
-
-    @ManyToOne
-    ExamRecords examRecord();
-
-    @IdView
-    int examRecordId();
-
-    @ManyToOne
-    Questions question();
-
-    @IdView
-    long questionId();
-
-    String userAnswer();
-
-    @Nullable
-    Integer score();
-
-    @Nullable
-    @Column(name = "is_correct")
-    Integer correct();
-
-    @Nullable
-    String aiCorrection();
-
-    @Nullable
-    LocalDateTime createTime();
-
-    @Nullable
-    LocalDateTime updateTime();
-
-    @Column(name = "deleted_at")
-    @LogicalDeleted("now")
-    @Nullable
-    LocalDateTime delFlag();
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	int id();
+	
+	@ManyToOne
+	ExamRecords examRecord();
+	
+	@IdView
+	int examRecordId();
+	
+	@ManyToOne
+	Questions question();
+	
+	@IdView
+	long questionId();
+	
+	String userAnswer();
+	
+	int score();
+	
+	@Nullable
+	@Column(name = "is_correct")
+	Integer correct();
+	
+	@Nullable
+	String aiCorrection();
+	
+	@Nullable
+	LocalDateTime createTime();
+	
+	@Nullable
+	LocalDateTime updateTime();
+	
+	@Column(name = "deleted_at")
+	@LogicalDeleted("now")
+	@Nullable
+	LocalDateTime delFlag();
 }

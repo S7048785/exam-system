@@ -35,7 +35,7 @@ public interface Paper {
 	int totalScore();
 	
 	@Nullable
-	Integer PassingScore();
+	Integer passingScore();
 	
 	@Nullable
 	Integer questionCount();

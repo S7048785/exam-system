@@ -5,6 +5,7 @@ import org.babyfish.jimmer.sql.EnumType;
 @EnumType(EnumType.Strategy.NAME)
 public enum ExamRecordStatus {
     ONGOING,
+    GRADING,
     SUBMITTED,
     GRADED
 }
