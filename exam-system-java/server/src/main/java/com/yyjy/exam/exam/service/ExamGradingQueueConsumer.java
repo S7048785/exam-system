@@ -1,6 +1,7 @@
 package com.yyjy.exam.exam.service;
 
 import com.yyjy.exam.common.config.RabbitMQConfig;
+import com.yyjy.exam.entity.Tables;
 import com.yyjy.exam.entity.exam.entity.AnswerRecord;
 import com.yyjy.exam.entity.exam.entity.ExamRecordStatus;
 import com.yyjy.exam.entity.exam.entity.ExamRecordsDraft;
@@ -46,12 +47,17 @@ public class ExamGradingQueueConsumer {
 	}
 	
 	private void processGrading(int examRecordId) {
-		List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId);
-		
+		//List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId);
+		var table = Tables.ANSWER_RECORD_TABLE;
+		List<AnswerRecord> textAnswers = answerRecordRepo.sql().createQuery(table)
+				                                 .where(table.examRecordId().eq(examRecordId))
+				                                 .where(table.question().type().eq(QuestionType.TEXT))
+				                                 .select(table)
+				                                 .execute();
 		// 过滤出简答题
-		List<AnswerRecord> textAnswers = answerRecords.stream()
-				                                 .filter(ar -> QuestionType.TEXT.equals(ar.question().type()))
-				                                 .toList();
+		//List<AnswerRecord> textAnswers = answerRecords.stream()
+		//		                                 .filter(ar -> QuestionType.TEXT.equals(ar.question().type()))
+		//		                                 .toList();
 		
 		// 调用 AI 批量批改
 		if (!textAnswers.isEmpty()) {

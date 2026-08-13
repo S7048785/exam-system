@@ -1,6 +1,7 @@
 package com.yyjy.exam.exam.service;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.yyjy.exam.common.config.RabbitMQConfig;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
@@ -17,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.babyfish.jimmer.sql.JSqlClient;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
-import com.yyjy.exam.common.config.RabbitMQConfig;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -207,7 +207,11 @@ public class ExamRecordService {
 	 */
 	private void sendGradingMessage(int examRecordId) {
 		try {
-			rabbitTemplate.convertAndSend(RabbitMQConfig.GRADING_QUEUE, String.valueOf(examRecordId));
+			rabbitTemplate.convertAndSend(
+					RabbitMQConfig.GRADING_EXCHANGE,
+					RabbitMQConfig.GRADING_ROUTING_KEY,
+					String.valueOf(examRecordId)
+			);
 		} catch (Exception e) {
 			log.error("发送阅卷消息失败, examRecordId: {}", examRecordId, e);
 		}
@@ -249,6 +253,7 @@ public class ExamRecordService {
 		boolean hasTextQuestions = answerRecordRepo.findByExamRecordId(examRecordId).stream()
 				                           .anyMatch(ar -> QuestionType.TEXT.equals(ar.question().type()));
 		if (hasTextQuestions) {
+			// 包含主观题，更新试卷状态再交给 AI 批改
 			examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
 				draft.setId(examRecordId);
 				draft.setEndTime(LocalDateTime.now());
@@ -263,7 +268,7 @@ public class ExamRecordService {
 			}), SaveMode.UPDATE_ONLY);
 		}
 	}
-
+	
 	/**
 	 * 同步批改选择题和判断题（不处理简答题）
 	 */

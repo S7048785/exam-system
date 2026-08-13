@@ -30,6 +30,7 @@ public class ExamTimeoutScheduler {
 	public void autoSubmitTimeoutExams() {
 		var examTable = ExamRecordsTable.$;
 		
+		// 找出所有因为异常（如考生未主动交卷、网络中断等）而“卡”在 ONGOING 状态的考试。
 		// 1. 超时 ONGOING → GRADING → 推送
 		var timeoutRecords = sqlClient.createQuery(examTable)
 				                     .where(examTable.status().eq(ExamRecordStatus.ONGOING))
@@ -52,6 +53,7 @@ public class ExamTimeoutScheduler {
 			var duration = tuple.get_2();
 			var deadline = Objects.requireNonNull(record.startTime()).plusMinutes(duration);
 			if (now.isAfter(deadline)) {
+				// 批阅超时试卷
 				examRecordService.handleTimeoutSubmit(record.id());
 				ongoingCount++;
 			}

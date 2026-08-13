@@ -19,6 +19,11 @@ exam:
     host: HOST
     port: PORT
     database: DATABASE
+  rabbitmq:
+    host: HOST
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
   ai:
     api-key: API_KEY_DASHSCOPE
   cap:
