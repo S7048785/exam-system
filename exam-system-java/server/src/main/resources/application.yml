@@ -34,6 +34,14 @@ spring:
     port: ${exam.rabbitmq.port}
     username: ${exam.rabbitmq.username}
     password: ${exam.rabbitmq.password}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          multiplier: 2
+        default-reject-requeued: false
   datasource:
     driver-class-name: ${exam.datasource.driver-class-name}
     url: jdbc:mysql://${exam.datasource.host}:${exam.datasource.port}/${exam.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
