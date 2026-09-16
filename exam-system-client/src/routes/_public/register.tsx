@@ -1,31 +1,16 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import LoginForm from '#/features/login/LoginForm.tsx'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import RegisterForm from '#/features/login/RegisterForm.tsx'
 import ThemeToggle from '#/components/ThemeToggle.tsx'
 import { redirectIfAuthenticated } from '#/features/login/redirect-if-auth.ts'
-import useUserStore from '#/stores/user.ts'
-import type { UsersDto } from '#/__generated/model/dto'
 
-export const Route = createFileRoute('/_public/sign-in')({
-  component: SigninPage,
-  ssr: false,
+export const Route = createFileRoute('/_public/register')({
+  component: SignupPage,
   beforeLoad: ({ context }) => {
     redirectIfAuthenticated(context.user)
   },
 })
 
-function SigninPage() {
-  const setUser = useUserStore((s) => s.setUser)
-
-  const navigate = useNavigate()
-
-  const onLoginSuccess = async (user: UsersDto['UserController/USER_INFO']) => {
-    setUser(user)
-    if (user.role === 'admin') {
-      navigate({ to: '/admin/dashboard' })
-    } else {
-      navigate({ to: '/' })
-    }
-  }
+function SignupPage() {
   return (
     <main className="flex h-screen items-center justify-center px-4">
       <div className="absolute top-4 right-4">
@@ -34,23 +19,24 @@ function SigninPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <h1 className="text-foreground text-2xl font-bold tracking-tight">
-            欢迎回来
+            创建账号
           </h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            登录你的账号以继续使用考试系统
+            注册新账号以开始使用考试系统
           </p>
         </div>
+
         <div className="border-border bg-card border p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-6">
-            <LoginForm onLoginSuccess={onLoginSuccess} />
+            <RegisterForm />
           </div>
           <p className="text-muted-foreground mt-6 text-center text-sm">
-            没有账号？{' '}
+            已有账号？{' '}
             <Link
-              to="/sign-up"
+              to="/login"
               className="text-primary font-medium hover:underline"
             >
-              去注册
+              去登录
             </Link>
           </p>
         </div>

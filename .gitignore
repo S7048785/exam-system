@@ -1,3 +1,5 @@
 .agents/
 .claude/
 *.xlsx
+.reasonix/
+reasonix.toml

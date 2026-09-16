@@ -39,8 +39,12 @@ export default function Step1Upload({
 
   const handleDownloadTemplate = async () => {
     try {
-      const BASE_URL = import.meta.env.VITE_API_URL
-      const response = await fetch(`http://${BASE_URL}/question/batch/template`)
+      // 同源相对路径：dev 走 vite proxy，prod 走反向代理。
+      // 之前这里拼成 `http://${VITE_API_URL}/...`，而 VITE_API_URL 本身已含协议，
+      // 结果是 `http://http://localhost:8101/...`，且漏了 /api 上下文路径，必然 404。
+      const response = await fetch('/api/question/batch/template', {
+        credentials: 'include',
+      })
       if (!response.ok) throw new Error('下载失败')
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
