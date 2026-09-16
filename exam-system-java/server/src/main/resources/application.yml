@@ -37,11 +37,11 @@ spring:
     listener:
       simple:
         retry:
-          enabled: true
-          initial-interval: 1000
-          max-attempts: 3
-          multiplier: 2
-        default-reject-requeued: false
+          enabled: true # 启用消费端重试功能。
+          initial-interval: 1000 # 初始重试间隔时间。
+          max-attempts: 3 # 最大重试次数。
+          multiplier: 2 # 重试间隔时间倍增因子。
+        default-reject-requeued: false # 当消息处理失败并最终被拒绝（例如重试全部失败后）时，不将消息重新放回队列。
   datasource:
     driver-class-name: ${exam.datasource.driver-class-name}
     url: jdbc:mysql://${exam.datasource.host}:${exam.datasource.port}/${exam.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
@@ -84,8 +84,8 @@ spring:
 jimmer:
   language: java
   dialect: org.babyfish.jimmer.sql.dialect.MySqlDialect
-  show-sql: true
-  pretty-sql: true
+  show-sql: false
+  pretty-sql: false
   database-validation-mode: ERROR
 
 
