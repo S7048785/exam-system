@@ -4,7 +4,7 @@ export const Route = createFileRoute('/_auth')({
   component: RouteComponent,
   beforeLoad: ({ context }) => {
     if (!context.user) {
-      throw redirect({ to: '/sign-in' })
+      throw redirect({ to: '/login' })
     }
   },
 })

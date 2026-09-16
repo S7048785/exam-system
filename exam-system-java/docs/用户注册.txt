@@ -1,0 +1,12 @@
+业务流程:
+
+用户填 email + realName + password
+  → 完成 CapWidget 人机验证（获取 captchaToken）
+  → 点击"注册"
+  → POST /api/user/register { email, realName, password, captchaToken }
+  → 发送"注册链接"邮件
+  → 用户点击邮件中的链接
+  → GET http://localhost:8101/api/user/confirm?id=xxx
+  → 后端验证成功 → 设 status=ACTIVE → 302 重定向 http://localhost:9919
+  → 后端验证失败（链接无效）→ 302 重定向 http://localhost:9919（不报错）
+  → 首页加载，auth 流程自动检测登录状态

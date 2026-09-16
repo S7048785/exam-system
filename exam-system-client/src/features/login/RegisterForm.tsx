@@ -49,7 +49,7 @@ export default function RegisterForm() {
         {
           onSuccess: () => {
             toast.success('注册成功，请查收验证邮件')
-            router.navigate({ to: '/sign-in' })
+            router.navigate({ to: '/login' })
           },
           onError: (error: any) => {
             toast.error(error.message || '注册失败')

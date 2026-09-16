@@ -59,7 +59,7 @@ export default function Header() {
               <Button onClick={onLogout}>退出登录</Button>
             </>
           ) : (
-            <Link to="/sign-in" className="nav-link">
+            <Link to="/login" className="nav-link">
               登录
             </Link>
           )}

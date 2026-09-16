@@ -7,7 +7,7 @@ export const Route = createFileRoute('/admin')({
   beforeLoad: ({ context }) => {
     // 登录校验
     if (!context.user) {
-      throw redirect({ to: '/sign-in' })
+      throw redirect({ to: '/login' })
     }
     // 权限校验
     if (context.user.role !== 'admin') {

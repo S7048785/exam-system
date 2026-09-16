@@ -80,7 +80,7 @@ export function NavUser({
     router.invalidate()
 
     // 5. 跳转到登录页
-    navigate({ to: '/sign-in' })
+    navigate({ to: '/login' })
   }
 
   return (
