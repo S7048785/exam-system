@@ -1,7 +1,9 @@
 package com.yyjy.exam.entity.paper.io.req;
 
 import com.yyjy.exam.common.exception.BusinessException;
+import com.yyjy.exam.entity.paper.entity.ParticipateMode;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -13,6 +15,14 @@ public record PaperUpdateInput(
 		String description,
 		int duration,
 		Long categoryId,
+		/** 考试开始时间（`paper.start`，NOT NULL） */
+		LocalDateTime start,
+		/** 考试截止时间（`paper.end`，NOT NULL） */
+		LocalDateTime end,
+		/** 考生参与方式（免登录 / 账号登录） */
+		ParticipateMode participateMode,
+		/** 允许的考试次数上限 */
+		Integer maxAttempts,
 		Map<String, Integer> questions
 ) {
 	public PaperUpdateInput {
@@ -30,5 +40,7 @@ public record PaperUpdateInput(
 		if (duration <= 0) {
 			throw new BusinessException("考试时长必须大于0");
 		}
+		// 4. start / end / participateMode / maxAttempts 的校验在 PaperService 里做，
+		//    复用已有的 requireTimeWindow / requireValidMaxAttempts，避免提示语两处维护
 	}
 }

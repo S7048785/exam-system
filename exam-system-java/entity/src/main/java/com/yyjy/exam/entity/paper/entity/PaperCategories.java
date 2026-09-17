@@ -65,13 +65,5 @@ public interface PaperCategories {
 	 */
 	@Nullable
 	LocalDateTime updateTime();
-	
-	/**
-	 * 软删除时间，NULL表示未删除
-	 */
-	@Column(name = "deleted_at")
-	@LogicalDeleted("now")
-	@Nullable
-	LocalDateTime delFlag();
 }
 

@@ -1,21 +1,22 @@
 package com.yyjy.exam.question.service;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
-import com.yyjy.exam.common.constant.CacheConstant;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
-import com.yyjy.exam.common.util.RedisUtil;
 import com.yyjy.exam.entity.question.dto.*;
 import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.question.entity.Questions;
 import com.yyjy.exam.entity.question.entity.QuestionsCategoriesTable;
+import com.yyjy.exam.entity.question.entity.QuestionsDraft;
 import com.yyjy.exam.entity.question.entity.QuestionsTable;
 import com.yyjy.exam.entity.question.io.req.*;
 import com.yyjy.exam.entity.question.io.res.QuestionGenerateDto;
 import com.yyjy.exam.entity.question.io.res.QuestionPageRes;
 import com.yyjy.exam.question.bo.QuestionExcelTemplateBo;
 import com.yyjy.exam.question.common.QuestionExcelListener;
+import com.yyjy.exam.question.repository.CategoriesRepository;
 import com.yyjy.exam.question.repository.QuestionChoicesRepository;
 import com.yyjy.exam.question.repository.QuestionsRepository;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,8 +24,6 @@ import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.sql.JSqlClient;
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
-import org.springframework.data.redis.core.DefaultTypedTuple;
-import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,8 +31,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,18 +38,41 @@ public class QuestionService {
 	
 	private final QuestionsRepository questionsRepository;
 	private final QuestionChoicesRepository questionChoicesRepository;
-	private final RedisUtil redisUtil;
+	private final CategoriesRepository categoriesRepository;
 	private final QuestionImportService questionImportService;
 	private final QuestionGenerateService questionGenerateService;
 	private final JSqlClient sqlClient;
 	
+	/**
+	 * 多用户改造：题目归属校验的统一出口（决策台账 Q5 / Q25）。
+	 * 纯 owner 相等判断，**没有身份分支** —— 不给 admin 开后门。
+	 * 走 Table.userId() 而不是 question.userId()：实体按决定只加了 user()，没加 @IdView。
+	 */
+	public void requireOwnedQuestion(long id) {
+		long me = StpUtil.getLoginIdAsLong();
+		QuestionsTable t = QuestionsTable.$;
+		List<Long> owners = sqlClient.createQuery(t)
+				                    .where(t.id().eq(id))
+				                    .select(t.userId())
+				                    .execute();
+		if (owners.isEmpty()) {
+			throw new BusinessException(MessageConstant.QUESTION_NOT_EXIST);
+		}
+		if (owners.getFirst() != me) {
+			throw new BusinessException(MessageConstant.NOT_YOUR_RESOURCE);
+		}
+	}
+	
 	@Transactional
 	public Questions save(QuestionSaveReq req) {
-		if (questionsRepository.existsByTypeAndTitle(req.getType(), req.getTitle())) {
+		long me = StpUtil.getLoginIdAsLong();
+		
+		// 多用户改造：判重与分类校验都必须限定在"我自己的"范围内
+		if (questionsRepository.existsByUserIdAndTypeAndTitle(me, req.getType(), req.getTitle())) {
 			throw new BusinessException(MessageConstant.QUESTION_EXIST);
 		}
 		
-		if (!questionsRepository.existsById(req.getCategoryId())) {
+		if (!categoriesRepository.ownedBy(req.getCategoryId(), me)) {
 			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST);
 		}
 		
@@ -80,7 +100,11 @@ public class QuestionService {
 			}
 		}
 		
-		return questionsRepository.save(builder.build(), SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
+		// 多用户改造：owner 由服务端注入（DTO 里没有该字段，客户端无法伪造）
+		return questionsRepository.save(
+				       QuestionsDraft.$.produce(builder.build().toEntity(), d -> d.setUserId(me)),
+				       SaveMode.INSERT_ONLY,
+				       AssociatedSaveMode.APPEND);
 	}
 	
 	private void processChoice(QuestionSaveInput.Builder builder, List<ChoiceDto> choiceDtos, boolean allowMultiple) {
@@ -116,15 +140,22 @@ public class QuestionService {
 	
 	@Transactional
 	public Questions update(QuestionUpdateInput question) {
-		if (!questionsRepository.existsById(question.getCategoryId())) {
+		long me = StpUtil.getLoginIdAsLong();
+		
+		// 多用户改造：① 题目必须是自己的；② 目标分类也必须是自己的
+		requireOwnedQuestion(question.getId());
+		
+		if (!categoriesRepository.ownedBy(question.getCategoryId(), me)) {
 			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST);
 		}
+		
 		// 查询题目是否存在
 		Questions oldQuestion = questionsRepository.findById(question.getId())
 				                        .orElseThrow(() -> new BusinessException(MessageConstant.QUESTION_NOT_EXIST));
 		
-		// 查询同类型下是否有同名题目
-		if (questionsRepository.existsByTypeAndTitle(oldQuestion.type(), question.getTitle())) {
+		// 查询同类型下是否有同名题目（按 owner 判重，并排除题目自身）
+		if (questionsRepository.existsByUserIdAndTypeAndTitleExcludingId(
+				me, oldQuestion.type(), question.getTitle(), question.getId())) {
 			throw new BusinessException(MessageConstant.QUESTION_EXIST);
 		}
 		
@@ -138,16 +169,17 @@ public class QuestionService {
 	}
 	
 	public void remove(long id) {
+		// 多用户改造：只能删自己的题
+		requireOwnedQuestion(id);
 		questionsRepository.deleteById(id);
 	}
 	
 	public QuestionsPageView getById(long id) {
+		// 多用户改造：只能看自己的题
+		requireOwnedQuestion(id);
+		
 		QuestionsPageView question = questionsRepository.sql().getEntities().findById(QuestionsPageView.class, id);
 		Optional.ofNullable(question).orElseThrow(() -> new BusinessException(MessageConstant.QUESTION_NOT_EXIST));
-		
-		CompletableFuture.runAsync(() ->
-				                           redisUtil.zIncrementScore(CacheConstant.POPULAR_QUESTIONS_KEY, String.valueOf(id), 1.0)
-		);
 		
 		return question;
 	}
@@ -157,7 +189,8 @@ public class QuestionService {
 		int size = req.size() != null && req.size() < 20 ? req.size() : 20;
 		
 		QuestionsTable t = QuestionsTable.$;
-		var query = sqlClient.createQuery(t);
+		// 多用户改造：列表只看自己的题（没有 admin 分支）
+		var query = sqlClient.createQuery(t).where(t.userId().eq(StpUtil.getLoginIdAsLong()));
 		
 		if (req.categoryId() != null) {
 			query = query.where(t.categoryId().eq(req.categoryId()));
@@ -178,57 +211,6 @@ public class QuestionService {
 				       .size(size)
 				       .current(page)
 				       .build();
-	}
-	
-	public List<QuestionsPageView> getPopularQuestions(int size) {
-		// 从Redis中获取热门题目ID
-		Set<ZSetOperations.TypedTuple<String>> popularIdSet =
-				redisUtil.zReverseRangeWithScores(CacheConstant.POPULAR_QUESTIONS_KEY, 0, size - 1);
-		
-		if (popularIdSet == null || popularIdSet.isEmpty()) {
-			return questionsRepository.getLast(size);
-		}
-		
-		// 从缓存中获取的题目ID列表
-		List<Long> popularIdsList = popularIdSet.stream()
-				                            .map(item -> item.getValue() != null ? Long.parseLong(item.getValue()) : null)
-				                            .filter(Objects::nonNull)
-				                            .toList();
-		
-		// 从数据库中获取的题目列表
-		List<QuestionsPageView> popularQuestionList = new ArrayList<>();
-		List<Long> newPopularIdsList = new ArrayList<>();
-		
-		for (Long questionId : popularIdsList) {
-			QuestionsPageView view = questionsRepository.findQuestionsPageViewById(questionId);
-			if (view != null) {
-				newPopularIdsList.add(questionId);
-				popularQuestionList.add(view);
-			}
-		}
-		
-		if (popularQuestionList.size() < size) {
-			List<QuestionsPageView> notInQuestions = questionsRepository.getLastNotIn(
-					size - popularQuestionList.size(), newPopularIdsList);
-			popularQuestionList.addAll(notInQuestions);
-		}
-		
-		return popularQuestionList;
-	}
-	
-	/**
-	 * 刷新热门题目缓存
-	 */
-	public void refreshPopularQuestions() {
-		// 删除缓存
-		redisUtil.delete(CacheConstant.POPULAR_QUESTIONS_KEY);
-		// 查询所有题目id
-		List<Long> questionIds = questionsRepository.findAllIds();
-		// 存入缓存
-		Set<ZSetOperations.TypedTuple<String>> tuples = questionIds.stream()
-				                                                .map(id -> (ZSetOperations.TypedTuple<String>) new DefaultTypedTuple<>(String.valueOf(id), 0.0))
-				                                                .collect(Collectors.toSet());
-		redisUtil.zAdd(CacheConstant.POPULAR_QUESTIONS_KEY, tuples);
 	}
 	
 	public void exportTemplate(HttpServletResponse response) {
@@ -290,8 +272,11 @@ public class QuestionService {
 	
 	public List<QuestionGenerateDto> generateQuestions(QuestionGenerateReq req) {
 		var ct = QuestionsCategoriesTable.$;
+		// 2026-09-17：本接口已放开给所有登录用户 → 分类必须是自己建的，
+		// 否则普通用户能借别人的分类名去调大模型（下面 user_id 条件使 categoryDb 为 null）
 		String categoryDb = sqlClient.createQuery(ct)
 				                    .where(ct.id().eq(req.categoryId()))
+				                    .where(ct.userId().eq(StpUtil.getLoginIdAsLong()))
 				                    .select(ct.name())
 				                    .fetchFirstOrNull();
 		

@@ -1,5 +1,6 @@
 package com.yyjy.exam.question.service;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.question.dto.QuestionImportInput;
@@ -7,6 +8,7 @@ import com.yyjy.exam.entity.question.dto.QuestionSaveInput;
 import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.question.entity.Questions;
 import com.yyjy.exam.entity.question.entity.QuestionsCategoriesTable;
+import com.yyjy.exam.entity.question.entity.QuestionsDraft;
 import com.yyjy.exam.question.repository.QuestionsRepository;
 import org.babyfish.jimmer.sql.JSqlClient;
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode;
@@ -34,11 +36,14 @@ public class QuestionImportService {
 			throw new BusinessException(MessageConstant.QUESTION_NOT_EMPTY);
 		}
 		
+		long me = StpUtil.getLoginIdAsLong();
 		int okCount = 0;
 		for (QuestionImportInput item : questions) {
+			// 多用户改造：只能导入到自己的分类下
 			var ct = QuestionsCategoriesTable.$;
 			boolean categoryExists = !sqlClient.createQuery(ct)
 					                          .where(ct.id().eq(item.getCategoryId()))
+					                          .where(ct.userId().eq(me))
 					                          .select(ct.id())
 					                          .execute()
 					                          .isEmpty();
@@ -70,7 +75,10 @@ public class QuestionImportService {
 				}
 				saveInput.choices(choices);
 			}
-			Questions question = saveInput.build().toEntity();
+			// 多用户改造：owner 由服务端注入
+			Questions question = QuestionsDraft.$.produce(
+					                     saveInput.build().toEntity(),
+					                     d -> d.setUserId(me));
 			questionsRepository.save(question, SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
 			okCount++;
 		}

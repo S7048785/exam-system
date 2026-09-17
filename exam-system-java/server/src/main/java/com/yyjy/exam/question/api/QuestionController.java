@@ -1,6 +1,6 @@
 package com.yyjy.exam.question.api;
 
-import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.question.dto.QuestionImportInput;
 import com.yyjy.exam.entity.question.dto.QuestionImportView;
@@ -22,7 +22,19 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@SaCheckRole("admin")
+/**
+ * 多用户改造：类级 @SaCheckRole("admin") → @SaCheckLogin，题目按 owner 隔离，
+ * 归属校验收口在 QuestionService.requireOwnedQuestion（无 admin 后门）。
+ * <p>
+ * 2026-09-17 调整：
+ * <ul>
+ *   <li>{@code GET /question/popular} 与 {@code POST /question/popular/refresh} 已**删除**
+ *       —— 数据源是全局 Redis ZSet，返回的 QuestionsPageView 含 correct 与 answer，
+ *       与「题目按 `user_id` 隔离」的方向冲突；前端对这两个接口零调用。</li>
+ *   <li>{@code POST /question/batch/ai-generate} 已**去掉 admin 限制**，登录即可调用。</li>
+ * </ul>
+ */
+@SaCheckLogin
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/question")
@@ -73,25 +85,6 @@ public class QuestionController {
 	}
 	
 	/**
-	 * 获取热门题目 获取访问次数最多的热门题目，用于首页推荐展示
-	 */
-	@GetMapping("/popular")
-	public R<List<QuestionsPageView>> getPopularQuestions(
-			@RequestParam(defaultValue = "10") int size
-	) {
-		return R.ok(questionService.getPopularQuestions(size));
-	}
-	
-	/**
-	 * 热门题目缓存初始化、数据重置
-	 */
-	@PostMapping("/popular/refresh")
-	public R<Void> refreshQuestions() {
-		questionService.refreshPopularQuestions();
-		return R.ok();
-	}
-	
-	/**
 	 * 下载Excel导入模板
 	 */
 	@GetMapping("/batch/template")
@@ -109,6 +102,8 @@ public class QuestionController {
 	
 	/**
 	 * AI智能生成题目
+	 * <p>2026-09-17 起登录即可调用（原为 admin 专属）。
+	 * ⚠️ 注意：这里会**真实调用大模型产生费用**，成本控制口径（Q12）尚未确定。</p>
 	 */
 	@PostMapping("/batch/ai-generate")
 	public R<List<QuestionGenerateDto>> aiGenerate(@RequestBody QuestionGenerateReq req) {

@@ -37,7 +37,6 @@ public class ExamController {
 	 * 开始考试
 	 * 需要登录。返回 examRecordId 供后续操作使用
 	 */
-	@SaCheckLogin
 	@PostMapping("/start")
 	public R<Integer> startExam(@RequestBody StartExamReq req) {
 		int examRecordId = examRecordService.startExam(req.paperId(), req.studentName());

@@ -32,6 +32,20 @@ public interface Paper {
 	@Column(name = "is_published")
 	boolean published();
 	
+	/**
+	 * 考生参与方式：免登录考试 / 账号登录考试（默认 {@link ParticipateMode#LOGIN_REQUIRED}）。
+	 * ⚠️ 目前只存储不执行，见 HANDOFF 4.10。
+	 */
+	@Column(name = "participate_mode")
+	ParticipateMode participateMode();
+	
+	/**
+	 * 允许的考试次数上限，默认 1（即不可重复）。
+	 * 口径：**开考即计入**（含中途放弃、状态仍为 ONGOING 的记录）；软删除的记录不计。
+	 */
+	@Column(name = "max_attempts")
+	int maxAttempts();
+	
 	int totalScore();
 	
 	@Nullable

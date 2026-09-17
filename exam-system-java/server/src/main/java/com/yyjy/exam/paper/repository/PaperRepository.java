@@ -11,11 +11,26 @@ import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 
 public interface PaperRepository extends JRepository<Paper, Integer> {
 	
-	boolean existsByName(String name);
+	/**
+	 * 多用户改造：判重必须按 owner 作用域。
+	 * 原派生方法 existsByName 是全局的，会误拒"别的用户用过同名试卷"，已删除。
+	 */
+	default boolean existsByUserIdAndName(long userId, String name) {
+		PaperTable t = PaperTable.$;
+		return !sql().createQuery(t)
+				       .where(t.userId().eq(userId))
+				       .where(t.name().eq(name))
+				       .select(t.id())
+				       .limit(1)
+				       .execute()
+				       .isEmpty();
+	}
 	
-	default boolean existsByNameAndIdNot(String name, Integer id) {
+	/** 同上，但排除自身。更新时用，避免"没改名却被自己拦住"。 */
+	default boolean existsByUserIdAndNameAndIdNot(long userId, String name, Integer id) {
 		PaperTable t = PaperTable.$;
 		return sql().createQuery(t)
+				       .where(t.userId().eq(userId))
 				       .where(t.name().eq(name))
 				       .where(t.id().ne(id))
 				       .select(t.count())

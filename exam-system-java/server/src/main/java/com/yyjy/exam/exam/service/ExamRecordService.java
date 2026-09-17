@@ -2,12 +2,14 @@ package com.yyjy.exam.exam.service;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.config.RabbitMQConfig;
+import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.*;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.paper.entity.Paper;
+import com.yyjy.exam.entity.paper.entity.ParticipateMode;
 import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.user.entity.Users;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
@@ -62,15 +64,7 @@ public class ExamRecordService {
 			}
 		}
 		
-		// ---- 2. 重复考试校验 ----
-		if (userId != null) {
-			ExamRecords existing = examRecordsRepo.findByPaperIdAndUserId(paperId, userId);
-			if (existing != null) {
-				throw new BusinessException("您已参加过该考试");
-			}
-		}
-		
-		// ---- 3. 校验试卷状态和时间窗口 ----
+		// ---- 2. 校验试卷状态和时间窗口 ----
 		var paperEntity = sqlClient.findById(Paper.class, paperId);
 		if (paperEntity == null || !paperEntity.published()) {
 			throw new BusinessException("试卷不存在或未发布");
@@ -80,7 +74,22 @@ public class ExamRecordService {
 			throw new BusinessException("考试已结束");
 		}
 		
-		// ---- 4. 创建考试记录 ----
+		// ---- 3. 参与方式校验（paper.participate_mode）----
+		// 放在身份解析之后：匿名且没填姓名时先报「未登录且未提供考生姓名」，
+		// 填了姓名但这份试卷要求登录时报这一条 —— 两条都是「你必须登录」的意思。
+		if (paperEntity.participateMode() == ParticipateMode.LOGIN_REQUIRED && userId == null) {
+			throw new BusinessException(MessageConstant.EXAM_LOGIN_REQUIRED);
+		}
+		
+		// ---- 4. 次数校验（paper.max_attempts，默认 1 次）----
+		// 口径由用户指定：按**考生名**计数。所有状态都计（含中途放弃的 ONGOING），软删除的记录不计。
+		// 已知代价：登录用户换个 studentName 就能绕过；两个同名的人会共用这份额度。
+		if (examRecordsRepo.countByPaperIdAndStudentName(paperId, name) >= paperEntity.maxAttempts()) {
+			throw new BusinessException(MessageConstant.EXAM_ATTEMPT_LIMIT_REACHED
+					                           + "（上限 " + paperEntity.maxAttempts() + " 次）");
+		}
+		
+		// ---- 5. 创建考试记录 ----
 		final Long finalUserId = userId;
 		final String finalName = name;
 		ExamRecords saved = examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
@@ -101,6 +110,9 @@ public class ExamRecordService {
 	 * 获取答题页数据（不含正确答案，仅用于考试中展示题目）
 	 */
 	public ExamTakingView getExamTaking(int id) {
+		ExamRecords record = findRecordOrThrow(id);
+		assertOwned(record);
+		
 		ExamTakingView view = sqlClient.findById(ExamTakingView.class, id);
 		if (view == null) {
 			throw new BusinessException("考试记录不存在");
@@ -111,10 +123,19 @@ public class ExamRecordService {
 	/**
 	 * 获取考试详情（含答题记录、评分、AI 批注；用于成绩展示页）
 	 * 访问时触发请求时超时检测
+	 * <p>
+	 * 多用户改造：① 校验归属；② **考试还在进行中（ONGOING）时不返回详情**
+	 * —— 返回类型 `ExamRecordDetail` 含 `questionChoices.correct` 与 `questionAnswers.answer`（整套答案），
+	 * 不挡的话考生开考后立刻调本接口就能拿答案。
 	 */
 	public ExamRecordDetail getExamDetail(int id) {
 		ExamRecords record = findRecordOrThrow(id);
+		assertOwned(record);
 		checkAndHandleTimeout(record);
+		
+		if (record.status() == ExamRecordStatus.ONGOING) {
+			throw new BusinessException(MessageConstant.EXAM_DETAIL_NOT_AVAILABLE_ONGOING);
+		}
 		
 		return sqlClient.findById(ExamRecordDetail.class, id);
 	}
@@ -126,6 +147,8 @@ public class ExamRecordService {
 	@Transactional
 	public void saveAnswers(int examRecordId, List<SubmitAnswerReq> answers) {
 		ExamRecords record = findRecordOrThrow(examRecordId);
+		assertOwned(record);
+		
 		if (record.status() != ExamRecordStatus.ONGOING) {
 			throw new BusinessException("考试已结束，无法保存答案");
 		}
@@ -162,6 +185,8 @@ public class ExamRecordService {
 	@Transactional
 	public void submitAnswers(int examRecordId, List<SubmitAnswerReq> answers) {
 		ExamRecords record = findRecordOrThrow(examRecordId);
+		assertOwned(record);
+		
 		if (record.status() != ExamRecordStatus.ONGOING) {
 			throw new BusinessException("考试已提交");
 		}
@@ -331,6 +356,35 @@ public class ExamRecordService {
 			draft.setScore(s);
 			draft.setCorrect(s > 0 ? 1 : 0);
 		}));
+	}
+	
+	/**
+	 * 考试记录归属校验（多用户改造，决策台账 Q5 的收口形态）。
+	 * <ul>
+	 *   <li>记录的 `user_id` 为 <b>NULL</b> —— 匿名开考产生的记录，无主 → **放行**。
+	 *       匿名考生的正常流程（开考 / 存答案 / 交卷 / 看题 / 看成绩）都靠这条放行。</li>
+	 *   <li>记录有主 → **必须已登录且就是本人**，否则拒绝。未登录也算拒绝。</li>
+	 * </ul>
+	 * 这样既不影响匿名考试，又堵掉「未登录也能改别人答卷」与「登录用户碰别人记录」两条路。
+	 * <p>
+	 * ⚠️ 注意：单靠归属校验挡不住「注册用户开考后读自己那条记录的答案」——
+	 * 那条额外的防线在 `getExamDetail` 的 `status == ONGOING` 门里。
+	 */
+	private void assertOwned(ExamRecords record) {
+		Long ownerId = record.userId();
+		if (ownerId == null) {
+			return;
+		}
+		
+		long me;
+		try {
+			me = StpUtil.getLoginIdAsLong();
+		} catch (Exception e) {
+			throw new BusinessException(MessageConstant.NOT_YOUR_RESOURCE);
+		}
+		if (ownerId != me) {
+			throw new BusinessException(MessageConstant.NOT_YOUR_RESOURCE);
+		}
 	}
 	
 	/**

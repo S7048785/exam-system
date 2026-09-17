@@ -1,6 +1,7 @@
 package com.yyjy.exam.entity.question.entity;
 
 import com.yyjy.exam.entity.paper.entity.PaperQuestion;
+import com.yyjy.exam.entity.user.entity.Users;
 import org.babyfish.jimmer.sql.*;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,6 +14,9 @@ public interface Questions {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	long id();
+	
+	@ManyToOne
+	Users user();
 	
 	String title();
 	

@@ -7,9 +7,13 @@ PaperDetail {
     description
     categoryId
     published
+    participateMode
+    maxAttempts
     totalScore
     questionCount
     duration
+    start
+    end
     paperQuestions as questions {
         flat(question) {
             id
@@ -29,10 +33,20 @@ PaperDetail {
 }
 
 specification PaperListQuery {
-    like(name)
-    associatedIdEq(category) as categoryId
     published
     ongoing: Boolean?
     page: Int?
     size: Int?
+}
+
+input PaperSaveInput {
+    name
+    description
+    duration
+    categoryId
+    start
+    end
+    // 可选：不传则用默认值（LOGIN_REQUIRED / 1），这样前端不传也不会破坏建卷流程
+    participateMode?
+    maxAttempts?
 }
