@@ -1,5 +1,6 @@
 package com.yyjy.exam.entity.question.entity;
 
+import com.yyjy.exam.entity.user.entity.Users;
 import org.babyfish.jimmer.Formula;
 import org.babyfish.jimmer.sql.*;
 import org.jetbrains.annotations.Nullable;
@@ -19,6 +20,10 @@ public interface QuestionsCategories {
 	
 	@ManyToOne
 	QuestionsCategories parent();
+	
+	@Key
+	@ManyToOne
+	Users user();
 	
 	@IdView
 	long parentId();

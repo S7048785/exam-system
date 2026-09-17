@@ -1,5 +1,6 @@
 package com.yyjy.exam.entity.paper.entity;
 
+import com.yyjy.exam.entity.user.entity.Users;
 import org.babyfish.jimmer.sql.*;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,6 +32,10 @@ public interface PaperCategories {
 	 */
 	@ManyToOne
 	PaperCategories parent();
+	
+	@Key
+	@ManyToOne
+	Users user();
 	
 	@IdView
 	long parentId();
