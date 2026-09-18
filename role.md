@@ -12,12 +12,9 @@
 
 前端规范：@docs/client.md
 
-## 后端 Kotlin (exam-system-server)
-
-Kotlin 后端规范：@docs/server.md
-
 ## 后端 Java (exam-system-java)
 
+数据库规范：@docs/database.md
 Java 构建规范：@docs/java-build.md
 Jimmer ORM 规范：@docs/java-jimmer.md
 API 规范：@docs/java-api.md

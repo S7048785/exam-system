@@ -33,9 +33,9 @@ throw new BusinessException("错误消息");
 
 ## 配置分层
 `application.yml`（基础）← `application-dev.yml`（占位符）← `application-local.yml`（本地实际值）
-`exam.*` 前缀绑定到 `common/property/*Properties.java` 中。
+`exam.*` 前缀绑定到 **`common`** 模块的 `com.yyjy.exam.common.property`（`*Properties.java`）。
 
-## 常规定义文件
-- `common/constant/MessageConstant.java` — 错误消息常量（`question:xxx` / `paper:xxx` 格式）
-- `common/constant/CacheConstant.java` — Redis 缓存 key
-- `common/constant/PromptConstant.java` — AI 提示词模板（无 `trimIndent()`，缩进即文本一部分）
+## 常规定义文件（均在 `common` 模块）
+- `com.yyjy.exam.common.constant.MessageConstant` — 错误消息常量（`question:xxx` / `paper:xxx` 格式）
+- `com.yyjy.exam.common.constant.CacheConstant` — Redis 缓存 key
+- `com.yyjy.exam.common.constant.PromptConstant` — AI 提示词模板（无 `trimIndent()`，缩进即文本一部分）

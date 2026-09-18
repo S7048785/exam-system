@@ -7,10 +7,7 @@
 ```
 exam-system-client/  前端 - TanStack Start + React 19
 exam-system-java/    后端 - Spring Boot 3.4.5 + Jimmer ORM + Sa-Token (Java 21, Maven)
-exam-system-server/  ⚠ 忽略此项目，不要修改其代码
 ```
-
-**不要修改 `exam-system-server/` 下的任何文件。**
 
 ## 关键命令
 
@@ -33,18 +30,18 @@ bun run api              # 从后端下载 API 类型（后端需运行）
 ### 后端 Java (exam-system-java/)
 
 ```bash
-mvnw.cmd install -pl entity -am -q -DskipTests   # entity 变更后先 install
+mvnw.cmd install -pl entity -am -q -DskipTests   # 改了 entity 或 common 后先 install
 mvnw.cmd compile -pl server                       # 再编译 server
 mvnw.cmd test -pl server                          # 运行测试
 ```
 
-**构建顺序必须遵守**：`entity` → `server`。entity 变更后必须先 `install` 再编译/运行 server。
+**构建顺序必须遵守**：`common` → `entity` → `server`。`entity` / `common` 变更后必须先 `install` 再编译/运行 server。
 
 ## 后端架构要点
 
 - **端口 8101**，上下文路径 `/api` (application.yml)
-- **Maven 多模块**：`entity/`（Jimmer 实体 + DTO）+ `server/`（Controller/Service/Repository/Config）
-- **Jimmer 实体**是 `interface`（不是 class），所有实体含软删除 `delFlag` + `createTime`/`updateTime`
+- **Maven 多模块（3 个）**：`common`（常量/结果包装/配置属性/异常）+ `entity/`（Jimmer 实体 + DTO）+ `server/`（Controller/Service/Repository/Config，含 `CaptchaService`/`RedisUtil`）。`entity` 只依赖 `common`，不碰 Web/Redis
+- **Jimmer 实体**是 `interface`（不是 class），实体含 `createTime`/`updateTime`；**软删除只剩 `Users`/`Notices`**（其余实体的 `delFlag` 与库中 `deleted_at` 已移除）
 - **DTO 定义**：Jimmer 生成的在 `entity/src/main/dto/*.dto`，手写请求/响应在 `entity/.../io/req`、`io/res`
 - **错误处理**：业务异常统一抛 `BusinessException` → 422 `text/plain`；禁止直接抛 `RuntimeException`
 - **认证**：Sa-Token，cookie `access_token`，超时 7200s
@@ -55,7 +52,7 @@ mvnw.cmd test -pl server                          # 运行测试
 
 - Jimmer Java API 的 `in()`/`notIn()` 是小写，不是 `valueIn`/`valueNotIn`
 - `PaperSaveInput.questions` 类型是 `Map<String, Integer>`，不是 `Map<Long, Double>`
-- `common` 模块包含 `constant/`、`convention/`、`exception/`、`property/`、`util/`；`config/` 和 `auth/` 留在 server 模块
+- 模块拆分：`common`（`constant/`、`convention/`、`property/`、`exception/`）+ `entity/` + `server/`；`config/`、`auth/`、`util/` 都在 server 模块
 - `notice` 模块未实现
 
 ## 前端架构要点
