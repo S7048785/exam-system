@@ -123,11 +123,28 @@ public class PaperService {
 	}
 	
 	/**
-	 * 次数上限必须 >= 1（列是 `int unsigned NOT NULL DEFAULT 1`）。
+	 * 题目列表与分值校验。
+	 * 原先写在 `PaperUpdateInput` 的紧凑构造器里 —— 那里抛 BusinessException 会被 Jackson 包成
+	 * `Cannot construct instance ...`（500 而不是 422），搬到 service 才拿得到 422。
+	 * **必须在 `questions()` 的任何消费点之前调用**：为 null 时先给提示语，而不是在后头 NPE。
 	 */
-	private void requireValidMaxAttempts(int maxAttempts) {
-		if (maxAttempts < 1) {
-			throw new BusinessException(MessageConstant.PAPER_MAX_ATTEMPTS_INVALID);
+	private void requireValidQuestions(Map<String, Integer> questions) {
+		if (questions == null) {
+			throw new BusinessException("题目列表不能为空");
+		}
+		for (Integer value : questions.values()) {
+			if (value == null || value < 1) {
+				throw new BusinessException("每个题目的分值必须 >= 1，当前错误值：" + value);
+			}
+		}
+	}
+	
+	/**
+	 * 考试时长必须 > 0（`paper.duration`）。原来也写在 `PaperUpdateInput` 的构造器里。
+	 */
+	private void requireValidDuration(int duration) {
+		if (duration <= 0) {
+			throw new BusinessException("考试时长必须大于0");
 		}
 	}
 	
@@ -174,6 +191,11 @@ public class PaperService {
 	
 	@Transactional
 	public void updatePaper(PaperUpdateInput paperInput) {
+		// 这三条原先写在 `PaperUpdateInput` 的紧凑构造器里（会被 Jackson 包成 500）。
+		// 放在方法最前面，是为了保持与原来一致的校验优先级：早于登录态与归属校验。
+		requireValidQuestions(paperInput.questions());
+		requireValidDuration(paperInput.duration());
+		
 		long me = StpUtil.getLoginIdAsLong();
 		
 		// 多用户改造：① 试卷必须是自己的；② 目标分类与题目也必须是自己的
@@ -198,7 +220,6 @@ public class PaperService {
 		if (paperInput.maxAttempts() == null) {
 			throw new BusinessException(MessageConstant.PAPER_MAX_ATTEMPTS_INVALID);
 		}
-		requireValidMaxAttempts(paperInput.maxAttempts());
 		
 		if (paperRepository.existsByUserIdAndNameAndIdNot(me, paperInput.name(), paperInput.id())) {
 			throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
@@ -261,7 +282,7 @@ public class PaperService {
 		input.getParticipateMode();
 		ParticipateMode participateMode = input.getParticipateMode();
 		int maxAttempts = input.getMaxAttempts();
-		requireValidMaxAttempts(maxAttempts);
+		// maxAttempts >= 1 的校验已在 PaperController.addPaperV2 手动做，这里不重复
 		
 		Paper paper = paperRepository.save(PaperDraft.$.produce(input.toEntity(), draft -> {
 			draft.setUserId(userId);

@@ -50,10 +50,6 @@ input PaperSaveInput {
     categoryId
     start
     end
-    // 参与方式：只允许 ParticipateMode 的固定取值（ANONYMOUS / LOGIN_REQUIRED）
-    // 非法字符串在反序列化阶段就被拒（422）；数字序号（0/1）由
-    // spring.jackson.deserialization.fail-on-numbers-for-enums=true 一并关掉
-    @NotNull(message = MessageConstant.PAPER_PARTICIPATE_MODE_REQUIRED)
     participateMode
     @Min(value = 1, message = MessageConstant.PAPER_MAX_ATTEMPTS_INVALID)
     maxAttempts

@@ -6,23 +6,30 @@
         <artifactId>exam</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
+
     <artifactId>common</artifactId>
     <packaging>jar</packaging>
+
     <name>common</name>
+    <description>常量 / 异常 / 结果包装 / 配置属性 —— 不依赖 Web 容器与 Redis；被 entity、server 依赖</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
     <dependencies>
+        <!-- BusinessException 用到 HttpStatus / HttpStatusCode -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <!-- @ConfigurationProperties -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
-        </dependency>
+
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

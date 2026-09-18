@@ -12,7 +12,6 @@ import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
 import com.yyjy.exam.paper.service.PaperService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
@@ -93,7 +92,7 @@ public class PaperController {
 	 * 新增试卷 v2（不含题目，返回试卷ID）
 	 */
 	@PostMapping("/v2/add")
-	public R<Integer> addPaperV2(@RequestBody @Valid PaperSaveInput paper) {
+	public R<Integer> addPaperV2(@RequestBody PaperSaveInput paper) {
 		int id = paperService.addPaper(paper);
 		return R.ok(id);
 	}

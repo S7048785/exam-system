@@ -22,8 +22,8 @@
         <developer/>
     </developers>
     <modules>
-        <module>entity</module>
         <module>common</module>
+        <module>entity</module>
         <module>server</module>
     </modules>
     <scm>
@@ -37,7 +37,6 @@
         <jimmer.version>0.10.6</jimmer.version>
         <easyexcel.version>3.1.0</easyexcel.version>
         <hutool.version>5.8.42</hutool.version>
-        <tika.version>2.9.1</tika.version>
         <spring-security.version>7.0.0</spring-security.version>
         <jwt.version>4.4.0</jwt.version>
         <sa-token.version>1.44.0</sa-token.version>
@@ -78,18 +77,8 @@
             </dependency>
             <dependency>
                 <groupId>cn.hutool</groupId>
-                <artifactId>hutool-crypto</artifactId>
-                <version>${hutool.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>cn.hutool</groupId>
                 <artifactId>hutool-json</artifactId>
                 <version>${hutool.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tika</groupId>
-                <artifactId>tika-core</artifactId>
-                <version>${tika.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework.security</groupId>

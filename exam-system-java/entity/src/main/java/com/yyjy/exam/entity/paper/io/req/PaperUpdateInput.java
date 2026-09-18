@@ -1,7 +1,8 @@
 package com.yyjy.exam.entity.paper.io.req;
 
-import com.yyjy.exam.common.exception.BusinessException;
+import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.entity.paper.entity.ParticipateMode;
+import jakarta.validation.constraints.Min;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -15,32 +16,14 @@ public record PaperUpdateInput(
 		String description,
 		int duration,
 		Long categoryId,
-		/** 考试开始时间（`paper.start`，NOT NULL） */
+		/* 考试开始时间（`paper.start`，NOT NULL） */
 		LocalDateTime start,
-		/** 考试截止时间（`paper.end`，NOT NULL） */
+		/* 考试截止时间（`paper.end`，NOT NULL） */
 		LocalDateTime end,
-		/** 考生参与方式（免登录 / 账号登录） */
+		/* 考生参与方式（免登录 / 账号登录） */
 		ParticipateMode participateMode,
-		/** 允许的考试次数上限 */
+		@Min(value = 1, message = MessageConstant.PAPER_MAX_ATTEMPTS_INVALID)
 		Integer maxAttempts,
 		Map<String, Integer> questions
 ) {
-	public PaperUpdateInput {
-		// 1. 基础空值校验
-		if (questions == null) {
-			throw new BusinessException("题目列表不能为空");
-		}
-		// 2. 遍历校验每个分值必须 >= 1
-		for (Integer value : questions.values()) {
-			if (value == null || value < 1) {
-				throw new BusinessException("每个题目的分值必须 >= 1，当前错误值：" + value);
-			}
-		}
-		// 3. 如果有其他业务校验（比如 duration > 0）也可以写在这里
-		if (duration <= 0) {
-			throw new BusinessException("考试时长必须大于0");
-		}
-		// 4. start / end / participateMode / maxAttempts 的校验在 PaperService 里做，
-		//    复用已有的 requireTimeWindow / requireValidMaxAttempts，避免提示语两处维护
-	}
 }
