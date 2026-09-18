@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 
 public record QuestionTextGradingReq(
-		@NotNull int recordId,
+		@NotNull long recordId,
 		@NotBlank String title,
 		@NotBlank String answer,
 		@NotNull int score,

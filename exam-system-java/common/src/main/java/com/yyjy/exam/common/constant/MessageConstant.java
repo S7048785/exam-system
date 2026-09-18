@@ -19,6 +19,7 @@ public final class MessageConstant {
 	public static final String PAPER_MAX_ATTEMPTS_INVALID = "paper: 考试次数上限必须大于 0";
 	public static final String PAPER_PARTICIPATE_MODE_REQUIRED = "paper: 请选择考生参与方式";
 	public static final String PAPER_ALREADY_IN_EXAM = "paper: 该试卷已被考试引用，无法删除";
+	public static final String PAPER_PUBLISHED_CANNOT_EDIT_QUESTIONS = "paper: 试卷已发布，不能修改题目";
 	public static final String EXAM_LOGIN_REQUIRED = "exam: 该试卷要求登录后才能参加考试";
 	public static final String EXAM_ATTEMPT_LIMIT_REACHED = "exam: 已达到该试卷允许的考试次数上限";
 	public static final String EXAM_DETAIL_NOT_AVAILABLE_ONGOING = "exam: 考试尚未结束，暂不能查看试卷详情";

@@ -11,14 +11,18 @@ public interface AnswerRecord {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	int id();
+	long id();
 	
+	// 删考试记录时连带删除其答案（删试卷的级联路径：paper → exam_records → answer_record）
+	@Key
 	@ManyToOne
+	@OnDissociate(DissociateAction.DELETE)
 	ExamRecords examRecord();
 	
 	@IdView
 	int examRecordId();
 	
+	@Key
 	@ManyToOne
 	Questions question();
 	
@@ -27,7 +31,8 @@ public interface AnswerRecord {
 	
 	String userAnswer();
 	
-	int score();
+	@Nullable
+	Integer score();
 	
 	@Nullable
 	@Column(name = "is_correct")
@@ -42,8 +47,4 @@ public interface AnswerRecord {
 	@Nullable
 	LocalDateTime updateTime();
 	
-	@Column(name = "deleted_at")
-	@LogicalDeleted("now")
-	@Nullable
-	LocalDateTime delFlag();
 }

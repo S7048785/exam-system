@@ -4,6 +4,8 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.config.RabbitMQConfig;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
+import com.yyjy.exam.entity.Fetchers;
+import com.yyjy.exam.entity.Immutables;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.*;
@@ -32,6 +34,18 @@ import java.util.*;
 @Service
 public class ExamRecordService {
 	
+	/**
+	 * 批改取数图谱：题目 type / score / 标准答案。
+	 * 派生查询 findByExamRecordId 只带回关联对象的 id，不带图谱直接访问 question().type() 会抛 UnloadedException。
+	 */
+	private static final Fetcher<AnswerRecord> ANSWER_RECORD_GRADING =
+			Fetchers.ANSWER_RECORD_FETCHER
+					.userAnswer()
+					.question(
+							Fetchers.QUESTIONS_FETCHER
+									.type()
+									.score()
+									.questionAnswers(Fetchers.QUESTION_ANSWERS_FETCHER.answer()));
 	private final ExamRecordsRepository examRecordsRepo;
 	private final AnswerRecordRepository answerRecordRepo;
 	private final UsersRepository usersRepo;
@@ -86,7 +100,7 @@ public class ExamRecordService {
 		// 已知代价：登录用户换个 studentName 就能绕过；两个同名的人会共用这份额度。
 		if (examRecordsRepo.countByPaperIdAndStudentName(paperId, name) >= paperEntity.maxAttempts()) {
 			throw new BusinessException(MessageConstant.EXAM_ATTEMPT_LIMIT_REACHED
-					                           + "（上限 " + paperEntity.maxAttempts() + " 次）");
+					                            + "（上限 " + paperEntity.maxAttempts() + " 次）");
 		}
 		
 		// ---- 5. 创建考试记录 ----
@@ -144,7 +158,6 @@ public class ExamRecordService {
 	 * 手动保存答案（upsert）：答题过程中允许考生随时保存
 	 * 已存在的记录按 questionId 更新，不存在的插入
 	 */
-	@Transactional
 	public void saveAnswers(int examRecordId, List<SubmitAnswerReq> answers) {
 		ExamRecords record = findRecordOrThrow(examRecordId);
 		assertOwned(record);
@@ -159,25 +172,24 @@ public class ExamRecordService {
 		for (AnswerRecord ar : existingAnswers) {
 			answerMap.put(ar.questionId(), ar);
 		}
-		
-		// 逐题 upsert
+		// 先更新已存在的答案记录
+		var updateAnswers = new ArrayList<AnswerRecord>();
 		for (SubmitAnswerReq answer : answers) {
-			final AnswerRecord existing = answerMap.get((long) answer.questionId());
-			final SubmitAnswerReq cur = answer;
-			// 新增答案记录
-			answerRecordRepo.save(AnswerRecordDraft.$.produce(draft -> {
-				if (existing != null) {
-					draft.setId(existing.id());
-				}
-				draft.setExamRecordId(examRecordId);
-				draft.setQuestionId(cur.questionId());
-				draft.setUserAnswer(cur.userAnswer());
-			}), SaveMode.UPSERT);
+			if (answerMap.containsKey(answer.questionId())) {
+				AnswerRecord existing = answerMap.get(answer.questionId());
+				updateAnswers.add(Immutables.createAnswerRecord(existing, draft -> draft.setUserAnswer(answer.userAnswer())));
+			} else {
+				updateAnswers.add(Immutables.createAnswerRecord(draft -> draft.setScore(null).setUserAnswer(answer.userAnswer())
+						                                                         .setExamRecordId(examRecordId)
+						                                                         .setQuestionId(answer.questionId())));
+			}
+			
 		}
+		answerRecordRepo.saveEntities(updateAnswers, SaveMode.UPSERT);
 	}
 	
 	/**
-	 * 提交答案并进入评分流程：
+	 * 提交考试并进入评分流程（**本身不落库答案**，答案由 POST /exams/{examRecordId}/answers 先保存）：
 	 * 1. 选择题/判断题 → 同步即时批改
 	 * 2. 有简答题 → 状态置为 GRADING，触发异步 AI 批改
 	 * 3. 无简答题 → 状态直接置为 GRADED
@@ -193,37 +205,33 @@ public class ExamRecordService {
 		// 提交前先检查是否超时
 		checkAndHandleTimeout(record);
 		
-		// 保存所有提交的答案
-		for (SubmitAnswerReq answer : answers) {
-			final SubmitAnswerReq cur = answer;
-			answerRecordRepo.save(AnswerRecordDraft.$.produce(draft -> {
-				draft.setExamRecordId(examRecordId);
-				draft.setQuestionId(cur.questionId());
-				draft.setUserAnswer(cur.userAnswer());
-			}));
-		}
+		// 答案不在这里落库：调用方必须先用 POST /exams/{examRecordId}/answers 保存好，
+		// 本接口只负责「按已保存的答案批改 + 切状态」，answers 形参仅为保持接口契约。
 		
 		// 同步批改非简答题
 		gradeNonTextQuestions(examRecordId);
 		
 		// 判断是否有简答题需要异步 AI 批改
-		boolean hasTextQuestions = answerRecordRepo.findByExamRecordId(examRecordId).stream()
+		boolean hasTextQuestions = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING).stream()
 				                           .anyMatch(ar -> QuestionType.TEXT.equals(ar.question().type()));
 		
-		var nowTime = LocalDateTime.now();
+		finishGrading(examRecordId, hasTextQuestions);
+	}
+	
+	/**
+	 * 批改收尾（submitAnswers 与 handleTimeoutSubmit 两条路径共用）：
+	 * 客观题总分已由 gradeNonTextQuestions 写进 exam_records，这里只切状态 ——
+	 * 不含简答题 → 直接 GRADED；含简答题 → GRADING 并投递异步 AI 批改，
+	 * 简答分出来后由 ExamGradingQueueConsumer 累加到客观题小计上再置 GRADED。
+	 */
+	private void finishGrading(int examRecordId, boolean hasTextQuestions) {
+		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
+			draft.setId(examRecordId);
+			draft.setEndTime(LocalDateTime.now());
+			draft.setStatus(hasTextQuestions ? ExamRecordStatus.GRADING : ExamRecordStatus.GRADED);
+		}), SaveMode.UPDATE_ONLY);
 		if (hasTextQuestions) {
-			examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
-				draft.setId(examRecordId);
-				draft.setEndTime(nowTime);
-				draft.setStatus(ExamRecordStatus.GRADING);
-			}), SaveMode.UPDATE_ONLY);
 			sendGradingMessage(examRecordId);
-		} else {
-			examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
-				draft.setId(examRecordId);
-				draft.setEndTime(nowTime);
-				draft.setStatus(ExamRecordStatus.GRADED);
-			}), SaveMode.UPDATE_ONLY);
 		}
 	}
 	
@@ -275,46 +283,57 @@ public class ExamRecordService {
 	 */
 	public void handleTimeoutSubmit(int examRecordId) {
 		gradeNonTextQuestions(examRecordId);
-		boolean hasTextQuestions = answerRecordRepo.findByExamRecordId(examRecordId).stream()
+		boolean hasTextQuestions = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING).stream()
 				                           .anyMatch(ar -> QuestionType.TEXT.equals(ar.question().type()));
-		if (hasTextQuestions) {
-			// 包含主观题，更新试卷状态再交给 AI 批改
-			examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
-				draft.setId(examRecordId);
-				draft.setEndTime(LocalDateTime.now());
-				draft.setStatus(ExamRecordStatus.GRADING);
-			}), SaveMode.UPDATE_ONLY);
-			sendGradingMessage(examRecordId);
-		} else {
-			examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
-				draft.setId(examRecordId);
-				draft.setEndTime(LocalDateTime.now());
-				draft.setStatus(ExamRecordStatus.GRADED);
-			}), SaveMode.UPDATE_ONLY);
-		}
+		finishGrading(examRecordId, hasTextQuestions);
 	}
 	
 	/**
-	 * 同步批改选择题和判断题（不处理简答题）
+	 * 同步批改选择题和判断题（不处理简答题），结果**一次性批量写回**
 	 */
 	private void gradeNonTextQuestions(int examRecordId) {
-		List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId);
+		List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING);
+		// 先纯计算，把要写的结果攒成 draft，最后一次性批量落库
+		List<AnswerRecord> graded = new ArrayList<>();
+		int totalScore = 0;
 		for (AnswerRecord ar : answerRecords) {
 			var type = ar.question().type();
+			Integer score = null;
 			if (QuestionType.SINGLE_CHOICE.equals(type) || QuestionType.MULTIPLE_CHOICE.equals(type)) {
-				gradeChoiceQuestion(ar);
+				score = computeChoiceScore(ar);
 			} else if (QuestionType.JUDGE.equals(type)) {
-				gradeJudgeQuestion(ar);
+				score = computeJudgeScore(ar);
 			}
+			if (score == null) {
+				// 简答题等非选择题，交给异步 AI 批改，这里不碰
+				continue;
+			}
+			totalScore += score;
+			final int s = score;
+			graded.add(AnswerRecordDraft.$.produce(draft -> {
+				draft.setId(ar.id());
+				draft.setScore(s);
+				draft.setCorrect(s > 0 ? 1 : 0);
+			}));
 		}
+		if (!graded.isEmpty()) {
+			answerRecordRepo.saveEntities(graded, SaveMode.UPDATE_ONLY);
+		}
+		// 客观题（选择/判断）的总分**直接写进 exam_records**；
+		// 简答题的分数等异步 AI 批改完成后由 ExamGradingQueueConsumer 再累加上去
+		final int objectiveScore = totalScore;
+		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
+			draft.setId(examRecordId);
+			draft.setScore(objectiveScore);
+		}), SaveMode.UPDATE_ONLY);
 	}
 	
 	/**
-	 * 选择题评分：
+	 * 选择题评分（纯计算，不落库；写回由 gradeNonTextQuestions 批量做）：
 	 * 多选题 → 选项集合完全一致才得分（顺序无关）
 	 * 单选题 → 字符串精确匹配（忽略大小写）
 	 */
-	private void gradeChoiceQuestion(AnswerRecord ar) {
+	private int computeChoiceScore(AnswerRecord ar) {
 		String userAnswer = ar.userAnswer();
 		String correctAnswer = ar.question().questionAnswers() != null
 				                       ? Objects.requireNonNull(ar.question().questionAnswers()).answer() : null;
@@ -336,26 +355,16 @@ public class ExamRecordService {
 			}
 		}
 		
-		final int score = userScore;
-		answerRecordRepo.save(AnswerRecordDraft.$.produce(draft -> {
-			draft.setId(ar.id());
-			draft.setScore(score);
-			draft.setCorrect(score > 0 ? 1 : 0);
-		}));
+		return userScore;
 	}
 	
 	/**
-	 * 判断题评分：忽略大小写比较
+	 * 判断题评分（纯计算，不落库）：忽略大小写比较
 	 */
-	private void gradeJudgeQuestion(AnswerRecord ar) {
+	private int computeJudgeScore(AnswerRecord ar) {
 		String correctAnswer = ar.question().questionAnswers() != null
 				                       ? Objects.requireNonNull(ar.question().questionAnswers()).answer() : null;
-		final int s = ar.userAnswer().equalsIgnoreCase(correctAnswer) ? ar.question().score() : 0;
-		answerRecordRepo.save(AnswerRecordDraft.$.produce(draft -> {
-			draft.setId(ar.id());
-			draft.setScore(s);
-			draft.setCorrect(s > 0 ? 1 : 0);
-		}));
+		return ar.userAnswer().equalsIgnoreCase(correctAnswer) ? ar.question().score() : 0;
 	}
 	
 	/**

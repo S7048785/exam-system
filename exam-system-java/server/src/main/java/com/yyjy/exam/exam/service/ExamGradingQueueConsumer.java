@@ -1,9 +1,11 @@
 package com.yyjy.exam.exam.service;
 
 import com.yyjy.exam.common.config.RabbitMQConfig;
+import com.yyjy.exam.entity.Fetchers;
 import com.yyjy.exam.entity.Tables;
 import com.yyjy.exam.entity.exam.entity.AnswerRecord;
 import com.yyjy.exam.entity.exam.entity.ExamRecordStatus;
+import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.entity.ExamRecordsDraft;
 import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
@@ -52,7 +54,11 @@ public class ExamGradingQueueConsumer {
 		List<AnswerRecord> textAnswers = answerRecordRepo.sql().createQuery(table)
 				                                 .where(table.examRecordId().eq(examRecordId))
 				                                 .where(table.question().type().eq(QuestionType.TEXT))
-				                                 .select(table)
+				                                 .select(table.fetch(
+						                                 Fetchers.ANSWER_RECORD_FETCHER.question(
+								                                 Fetchers.QUESTIONS_FETCHER.title().questionAnswers().score()
+						                                 ).userAnswer()
+				                                 ))
 				                                 .execute();
 		// 过滤出简答题
 		//List<AnswerRecord> textAnswers = answerRecords.stream()
@@ -73,11 +79,23 @@ public class ExamGradingQueueConsumer {
 			examBulkGradingService.batchGrading(requests);
 		}
 		
-		// 累加总分
-		int totalScore = answerRecordRepo.findByExamRecordId(examRecordId).stream()
-				                 .filter(ar -> ar.score() > 0)
-				                 .mapToInt(AnswerRecord::score)
-				                 .sum();
+		// 简答分合计（刚由 AI 批改写回）
+		int textScore = answerRecordRepo.sumTextScoreByExamRecordId(examRecordId);
+		
+		ExamRecords record = examRecordsRepo.findById(examRecordId).orElse(null);
+		if (record == null) {
+			log.warn("考试记录不存在，跳过简答分累加, 考试记录ID: {}", examRecordId);
+			return;
+		}
+		// 只有还停在 GRADING 才累加：MQ 重投递时状态已是 GRADED，否则简答分会被加两遍
+		if (record.status() != ExamRecordStatus.GRADING) {
+			log.warn("考试记录 {} 当前状态为 {}，跳过简答分累加", examRecordId, record.status());
+			return;
+		}
+		int objectiveScore = record.score() == null ? 0 : record.score();
+		int totalScore = objectiveScore + textScore;
+		log.info("累加简答分: 考试记录ID={}, 客观题小计={}, 简答分={}, 合计={}",
+				examRecordId, objectiveScore, textScore, totalScore);
 		
 		// 成功 → GRADED
 		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {

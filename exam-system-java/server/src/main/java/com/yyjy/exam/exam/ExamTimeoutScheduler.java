@@ -36,10 +36,13 @@ public class ExamTimeoutScheduler {
 				                     .where(examTable.status().eq(ExamRecordStatus.ONGOING))
 				                     .where(
 						                     Predicate.sql(
+// ⚠️ 参数顺序别写反：MySQL 签名是 TIMESTAMPADD(unit, interval, datetime)，
+// 下面两个 expression 必须是「时长(分钟)」在前、「起始时间」在后 ——
+// 写反了表达式恒为 NULL，条件永远不成立，超时自动交卷就静默失效了。
 								                     "TIMESTAMPADD(MINUTE, %e, %e) <= NOW()",
 								                     it -> it
-										                           .expression(examTable.startTime())
 										                           .expression(examTable.paper().duration())
+										                           .expression(examTable.startTime())
 						                     )
 				                     )
 				                     .select(examTable, examTable.paper().duration())

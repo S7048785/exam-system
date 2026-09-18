@@ -29,8 +29,4 @@ public interface PaperQuestion {
 	@Nullable
 	LocalDateTime updateTime();
 	
-	@Column(name = "deleted_at")
-	@LogicalDeleted("now")
-	@Nullable
-	LocalDateTime delFlag();
 }

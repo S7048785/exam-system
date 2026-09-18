@@ -12,6 +12,7 @@ import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
 import com.yyjy.exam.paper.service.PaperService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
@@ -85,27 +86,14 @@ public class PaperController {
 	 */
 	@GetMapping("/list")
 	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(PaperListQuery query) {
-		
 		return R.ok(paperService.listPapersByNameAndStatus(query, PAPER_ITEM));
-	}
-	
-	/**
-	 * 公开广场：已发布的试卷，**不限 `user_id`**
-	 * <p>复用 {@link #PAPER_ITEM} —— 它的字段已核实安全（name / description / category.name /
-	 * published / totalScore / questionCount / duration / start / end / createTime），
-	 * 不含任何题目、选项或答案。</p>
-	 */
-	@GetMapping("/square")
-	public R<List<@FetchBy("PAPER_ITEM") Paper>> listSquarePapers(PaperListQuery query) {
-		
-		return R.ok(paperService.listPublishedPapers(query, PAPER_ITEM));
 	}
 	
 	/**
 	 * 新增试卷 v2（不含题目，返回试卷ID）
 	 */
 	@PostMapping("/v2/add")
-	public R<Integer> addPaperV2(@RequestBody PaperSaveInput paper) {
+	public R<Integer> addPaperV2(@RequestBody @Valid PaperSaveInput paper) {
 		int id = paperService.addPaper(paper);
 		return R.ok(id);
 	}
