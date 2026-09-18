@@ -12,6 +12,7 @@ public final class MessageConstant {
 	public static final String PAPER_NAME_EXIST = "paper: 试卷名称已存在";
 	public static final String PAPER_RULE_EMPTY = "paper: 试卷规则不能为空";
 	public static final String PAPER_QUESTION_EMPTY = "paper: 试卷题目不能为空";
+	public static final String PAPER_QUESTION_DUPLICATE = "paper: 题目不能重复";
 	public static final String PAPER_NOT_FOUND = "paper: 试卷不存在";
 	public static final String PAPER_CATEGORY_NOT_EXIST = "paper: 试卷分类不存在";
 	public static final String PAPER_TIME_WINDOW_REQUIRED = "paper: 请填写考试开始与截止时间";

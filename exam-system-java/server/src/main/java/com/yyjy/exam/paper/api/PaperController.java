@@ -3,18 +3,20 @@ package com.yyjy.exam.paper.api;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
+import com.yyjy.exam.entity.paper.dto.PaperConfigInput;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
 import com.yyjy.exam.entity.paper.dto.PaperListQuery;
-import com.yyjy.exam.entity.paper.dto.PaperSaveInput;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
-import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
+import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
 import com.yyjy.exam.paper.service.PaperService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -55,11 +57,11 @@ public class PaperController {
 	
 	
 	/**
-	 * 更新试卷
+	 * 更新试卷配置（不含题目）
 	 */
-	@PutMapping("/update")
-	public R<Void> updatePaper(@RequestBody PaperUpdateInput paper) {
-		paperService.updatePaper(paper);
+	@PutMapping("/{id}/config")
+	public R<Void> updatePaperConfig(@PathVariable int id, @RequestBody @Valid PaperConfigInput input) {
+		paperService.updatePaperConfig(id, input);
 		return R.ok();
 	}
 	
@@ -92,7 +94,7 @@ public class PaperController {
 	 * 新增试卷 v2（不含题目，返回试卷ID）
 	 */
 	@PostMapping("/v2/add")
-	public R<Integer> addPaperV2(@RequestBody PaperSaveInput paper) {
+	public R<Integer> addPaperV2(@Validated @RequestBody PaperConfigInput paper) {
 		int id = paperService.addPaper(paper);
 		return R.ok(id);
 	}
@@ -112,6 +114,15 @@ public class PaperController {
 	@GetMapping("/{id}/questions")
 	public R<List<PaperDetail.TargetOf_questions>> getPaperQuestions(@PathVariable int id) {
 		return R.ok(paperService.getPaperQuestions(id));
+	}
+	
+	/**
+	 * 整体替换试卷题目集（原 `PUT /paper/update` 的「题目」那半）
+	 */
+	@PutMapping("/{id}/questions")
+	public R<Void> replacePaperQuestions(@PathVariable int id, @RequestBody @Validated PaperQuestionsUpdateReq input) {
+		paperService.replacePaperQuestions(id, input);
+		return R.ok();
 	}
 	
 	/**

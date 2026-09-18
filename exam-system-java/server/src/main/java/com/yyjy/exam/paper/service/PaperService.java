@@ -3,13 +3,14 @@ package com.yyjy.exam.paper.service;
 import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
+import com.yyjy.exam.entity.Immutables;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
+import com.yyjy.exam.entity.paper.dto.PaperConfigInput;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
 import com.yyjy.exam.entity.paper.dto.PaperListQuery;
-import com.yyjy.exam.entity.paper.dto.PaperSaveInput;
 import com.yyjy.exam.entity.paper.entity.*;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
-import com.yyjy.exam.entity.paper.io.req.PaperUpdateInput;
+import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
 import com.yyjy.exam.paper.repository.PaperCategoriesRepository;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.paper.repository.PaperRepository;
@@ -39,13 +40,7 @@ public class PaperService {
 	private final QuestionsRepository questionsRepository;
 	
 	/**
-	 * 多用户改造：试卷归属校验的统一出口（决策台账 Q5 / Q25）。
-	 * 纯 owner 相等判断，**没有身份分支** —— 不给 admin 开后门。
-	 * 走 Table.userId() 而不是 paper.userId()：实体按决定只加了 user()，没加 @IdView。
-	 */
-	/**
 	 * 试卷发布后题目即冻结：不能再增题、改分值、删题、换整套题目集。
-	 * （试卷本身仍可删除 —— 见 removePaper。）
 	 */
 	public void requireQuestionEditable(int paperId) {
 		Paper paper = paperRepository.findById(paperId)
@@ -56,21 +51,27 @@ public class PaperService {
 	}
 	
 	/**
-	 * 提交的题目集（questionId → 分值）与库里现存的是否完全一致。
-	 * 用于「已发布试卷只允许改元数据、不允许动题目」的判定。
+	 * 题目集校验（整体替换用，见 {@link #replacePaperQuestions}）。
+	 * Web 层已有 @NotEmpty / 元素级 @Valid 兜底，这里再守一道，避免绕过校验的调用路径。
+	 * <p>
+	 * 同一道题在一次请求里**只能出现一次**，重复直接拒（而不是悄悄去重）：
+	 * 客户端给出 `[{179,5},{179,7}]` 时到底想表达 5 还是 7，服务端无从判断，
+	 * 静默保留一条属于替调用方猜意图；而放它们过去又会被写成两行 ——
+	 * `paper_question` 没有 {@code (paper_id, question_id)} 唯一约束，
+	 * 作答时同一题出现两次，`answer_record` 的唯一索引却只留 1 行，
+	 * 最终 `exam_records.score` 与卷面 `total_score` 对不上。
 	 */
-	private boolean sameQuestionSet(int paperId, Map<String, Integer> submitted) {
-		Map<Long, Integer> stored = paperQuestionRepo.findScoreMapByPaperId(paperId);
-		if (stored.size() != submitted.size()) {
-			return false;
+	private void requireValidQuestions(List<PaperQuestionsUpdateReq.Item> questions) {
+		if (questions == null || questions.isEmpty()) {
+			throw new BusinessException(MessageConstant.PAPER_QUESTION_EMPTY);
 		}
-		for (Map.Entry<String, Integer> entry : submitted.entrySet()) {
-			Integer storedScore = stored.get(Long.parseLong(entry.getKey()));
-			if (storedScore == null || !storedScore.equals(entry.getValue())) {
-				return false;
+		Set<Long> seen = new HashSet<>();
+		for (PaperQuestionsUpdateReq.Item item : questions) {
+			if (!seen.add(item.questionId())) {
+				throw new BusinessException(
+						MessageConstant.PAPER_QUESTION_DUPLICATE + "，questionId=" + item.questionId());
 			}
 		}
-		return true;
 	}
 	
 	public void requireOwnedPaper(int id) {
@@ -119,23 +120,6 @@ public class PaperService {
 		}
 		if (end.isBefore(start)) {
 			throw new BusinessException(MessageConstant.PAPER_TIME_WINDOW_INVALID);
-		}
-	}
-	
-	/**
-	 * 题目列表与分值校验。
-	 * 原先写在 `PaperUpdateInput` 的紧凑构造器里 —— 那里抛 BusinessException 会被 Jackson 包成
-	 * `Cannot construct instance ...`（500 而不是 422），搬到 service 才拿得到 422。
-	 * **必须在 `questions()` 的任何消费点之前调用**：为 null 时先给提示语，而不是在后头 NPE。
-	 */
-	private void requireValidQuestions(Map<String, Integer> questions) {
-		if (questions == null) {
-			throw new BusinessException("题目列表不能为空");
-		}
-		for (Integer value : questions.values()) {
-			if (value == null || value < 1) {
-				throw new BusinessException("每个题目的分值必须 >= 1，当前错误值：" + value);
-			}
 		}
 	}
 	
@@ -189,63 +173,63 @@ public class PaperService {
 		return result;
 	}
 	
+	/**
+	 * 更新试卷配置（**不含题目**）。
+	 */
 	@Transactional
-	public void updatePaper(PaperUpdateInput paperInput) {
-		// 这三条原先写在 `PaperUpdateInput` 的紧凑构造器里（会被 Jackson 包成 500）。
-		// 放在方法最前面，是为了保持与原来一致的校验优先级：早于登录态与归属校验。
-		requireValidQuestions(paperInput.questions());
-		requireValidDuration(paperInput.duration());
+	public void updatePaperConfig(int id, PaperConfigInput input) {
+		requireValidDuration(input.getDuration());
 		
 		long me = StpUtil.getLoginIdAsLong();
 		
-		// 多用户改造：① 试卷必须是自己的；② 目标分类与题目也必须是自己的
-		requireOwnedPaper(paperInput.id());
-		requireOwnedPaperCategory(me, paperInput.categoryId());
-		requireOwnedQuestions(me, paperInput.questions().keySet().stream().map(Long::parseLong).toList());
+		// 多用户改造：目标分类也必须是自己的
+		requireOwnedPaperCategory(me, input.getCategoryId());
 		
-		// 已发布 → 题目集冻结：只允许改元数据（时间窗 / 参与方式 / 次数 / 名称…），
-		// 提交的题目集与库里不一致就直接拒绝
-		Paper current = paperRepository.findById(paperInput.id())
-				                .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (current.published() && !sameQuestionSet(paperInput.id(), paperInput.questions())) {
-			throw new BusinessException(MessageConstant.PAPER_PUBLISHED_CANNOT_EDIT_QUESTIONS);
-		}
+		// 时间窗 / 参与方式 / 次数上限：配置是全量更新，三项都必须给
+		requireTimeWindow(input.getStart(), input.getEnd());
 		
-		// 时间窗 / 参与方式 / 次数上限：本接口是全量更新，三项都必须给
-		// （已发布的试卷也允许改 —— 项目没有下架接口，改错了还得能自救）
-		requireTimeWindow(paperInput.start(), paperInput.end());
-		if (paperInput.participateMode() == null) {
-			throw new BusinessException(MessageConstant.PAPER_PARTICIPATE_MODE_REQUIRED);
+		if (!paperRepository.existsByUserIdAndId(me, id)) {
+			throw new BusinessException("paper: 试卷不存在");
 		}
-		if (paperInput.maxAttempts() == null) {
-			throw new BusinessException(MessageConstant.PAPER_MAX_ATTEMPTS_INVALID);
-		}
-		
-		if (paperRepository.existsByUserIdAndNameAndIdNot(me, paperInput.name(), paperInput.id())) {
+		// 新名称不能重复
+		if (paperRepository.existsByNameAndUserIdAndIdNot(me, input.getName(), id)) {
 			throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
 		}
 		
-		paperQuestionRepo.deleteByPaperId(paperInput.id());
+		paperRepository.save(Immutables.createPaper(input.toEntity(), draft -> draft.setUserId(me).setId(id)));
+	}
+	
+	/**
+	 * **整体替换**试卷题目集（`PUT /paper/{id}/questions`）。
+	 * <p>
+	 * 与增量的 {@link #addPaperQuestions} 不同：先清空该卷题目，再按本次提交的顺序写入。
+	 * 已发布的试卷一律拒绝（{@link #requireQuestionEditable}），与其余题目接口口径一致。
+	 * 写完后重算 `question_count` / `total_score`（原 updatePaper 漏了这步，会留脏值）。
+	 */
+	@Transactional
+	public void replacePaperQuestions(int paperId, PaperQuestionsUpdateReq input) {
+		long me = StpUtil.getLoginIdAsLong();
+		
+		// 多用户改造：试卷与要写入的题目都必须是自己的
+		requireOwnedPaper(paperId);
+		// 发布后题目冻结
+		requireQuestionEditable(paperId);
+		requireValidQuestions(input.questions());
+		requireOwnedQuestions(me, input.questions().stream().map(PaperQuestionsUpdateReq.Item::questionId).toList());
+		
+		paperQuestionRepo.deleteByPaperId(paperId);
 		
 		paperRepository.save(PaperDraft.$.produce(draft -> {
-			draft.setId(paperInput.id());
-			draft.setName(paperInput.name());
-			draft.setDescription(paperInput.description());
-			draft.setDuration(paperInput.duration());
-			draft.setCategoryId(paperInput.categoryId());
-			draft.setStart(paperInput.start());
-			draft.setEnd(paperInput.end());
-			draft.setParticipateMode(paperInput.participateMode());
-			draft.setMaxAttempts(paperInput.maxAttempts());
-			for (Map.Entry<String, Integer> entry : paperInput.questions().entrySet()) {
-				long questionId = Long.parseLong(entry.getKey());
-				int score = entry.getValue();
+			draft.setId(paperId);
+			for (PaperQuestionsUpdateReq.Item item : input.questions()) {
 				draft.addIntoPaperQuestions(pq -> {
-					pq.setQuestionId(questionId);
-					pq.setScore(score);
+					pq.setQuestionId(item.questionId());
+					pq.setScore(item.score());
 				});
 			}
 		}), SaveMode.UPDATE_ONLY, AssociatedSaveMode.APPEND);
+		
+		paperRepository.recalculateTotals(paperId);
 	}
 	
 	@Transactional
@@ -268,7 +252,7 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public int addPaper(PaperSaveInput input) {
+	public int addPaper(PaperConfigInput input) {
 		long userId = StpUtil.getLoginIdAsLong();
 		
 		// 多用户改造：① 判重按用户；② 分类必须是自己的；③ 考试时间窗必填
@@ -282,7 +266,6 @@ public class PaperService {
 		input.getParticipateMode();
 		ParticipateMode participateMode = input.getParticipateMode();
 		int maxAttempts = input.getMaxAttempts();
-		// maxAttempts >= 1 的校验已在 PaperController.addPaperV2 手动做，这里不重复
 		
 		Paper paper = paperRepository.save(PaperDraft.$.produce(input.toEntity(), draft -> {
 			draft.setUserId(userId);

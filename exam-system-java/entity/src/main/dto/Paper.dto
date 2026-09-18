@@ -43,7 +43,7 @@ specification PaperListQuery {
     size: Int?
 }
 
-input PaperSaveInput {
+input PaperConfigInput {
     name
     description
     duration

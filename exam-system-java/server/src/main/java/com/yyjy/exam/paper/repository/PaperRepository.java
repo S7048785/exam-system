@@ -18,23 +18,20 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 	default boolean existsByUserIdAndName(long userId, String name) {
 		PaperTable t = PaperTable.$;
 		return !sql().createQuery(t)
-				       .where(t.userId().eq(userId))
-				       .where(t.name().eq(name))
-				       .select(t.id())
-				       .limit(1)
-				       .execute()
-				       .isEmpty();
+				        .where(t.userId().eq(userId))
+				        .where(t.name().eq(name))
+				        .select(t.id())
+				        .limit(1)
+				        .execute()
+				        .isEmpty();
 	}
 	
-	/** 同上，但排除自身。更新时用，避免"没改名却被自己拦住"。 */
-	default boolean existsByUserIdAndNameAndIdNot(long userId, String name, Integer id) {
+	default boolean existsByUserIdAndId(long userId, Integer id) {
 		PaperTable t = PaperTable.$;
 		return sql().createQuery(t)
 				       .where(t.userId().eq(userId))
-				       .where(t.name().eq(name))
-				       .where(t.id().ne(id))
-				       .select(t.count())
-				       .fetchFirst() > 0;
+				       .where(t.id().eq(id))
+				       .exists();
 	}
 	
 	default PaperDetail findDetailById(int id) {
@@ -68,5 +65,14 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 			draft.setQuestionCount(count);
 			draft.setTotalScore(total);
 		}), SaveMode.UPDATE_ONLY);
+	}
+	
+	default boolean existsByNameAndUserIdAndIdNot(long me, String name, int id) {
+		var t = PaperTable.$;
+		return sql().createQuery(t)
+				       .where(t.name().eq(name))
+				       .where(t.userId().eq(me))
+				       .where(t.id().ne(id))
+				       .exists();
 	}
 }
