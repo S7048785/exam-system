@@ -20,7 +20,7 @@ function SigninPage() {
   const onLoginSuccess = async (user: UsersDto['UserController/USER_INFO']) => {
     setUser(user)
     if (user.role === 'admin') {
-      navigate({ to: '/admin/dashboard' })
+      navigate({ to: '/dashboard' })
     } else {
       navigate({ to: '/' })
     }
