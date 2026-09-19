@@ -1,6 +1,7 @@
 package com.yyjy.exam.common.config;
 
 import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotRoleException;
 import com.yyjy.exam.common.convention.result.ErrorResponse;
 import com.yyjy.exam.common.exception.BusinessException;
 import jakarta.validation.ConstraintViolationException;
@@ -118,4 +119,9 @@ public class GlobalExceptionHandler {
 		//return SaResult.error(message);
 	}
 	
+	@ExceptionHandler(NotRoleException.class)
+	public ResponseEntity<ErrorResponse> handlerNotRoleException(NotRoleException nre) {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				       .body(new ErrorResponse("当前会话无此角色" + nre.getMessage()));
+	}
 }

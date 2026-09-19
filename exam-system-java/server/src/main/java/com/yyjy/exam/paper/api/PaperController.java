@@ -13,6 +13,7 @@ import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
 import com.yyjy.exam.paper.service.PaperService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
@@ -93,7 +94,7 @@ public class PaperController {
 	/**
 	 * 新增试卷 v2（不含题目，返回试卷ID）
 	 */
-	@PostMapping("/v2/add")
+	@PostMapping("/add")
 	public R<Integer> addPaperV2(@Validated @RequestBody PaperConfigInput paper) {
 		int id = paperService.addPaper(paper);
 		return R.ok(id);
@@ -137,7 +138,7 @@ public class PaperController {
 	/**
 	 * 删除试卷中的一道题目
 	 */
-	@DeleteMapping("/{id}/questions/{questionId}")
+	@DeleteMapping("/{id}/question/{questionId}")
 	public R<Void> removePaperQuestion(@PathVariable int id, @PathVariable long questionId) {
 		paperService.removePaperQuestion(id, questionId);
 		return R.ok();
@@ -146,11 +147,11 @@ public class PaperController {
 	/**
 	 * 更新试卷中题目的分数
 	 */
-	@PutMapping("/{id}/questions/{questionId}/score")
+	@PutMapping("/{id}/question/{questionId}/score")
 	public R<Void> updatePaperQuestionScore(
 			@PathVariable int id,
 			@PathVariable long questionId,
-			@RequestParam int score
+			@RequestParam @Min(1) int score
 	) {
 		paperService.updatePaperQuestionScore(id, questionId, score);
 		return R.ok();
