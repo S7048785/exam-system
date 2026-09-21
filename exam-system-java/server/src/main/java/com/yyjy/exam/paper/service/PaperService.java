@@ -151,6 +151,18 @@ public class PaperService {
 			query.where(paper.end().lt(LocalDateTime.now()));
 		}
 		
+		// 2026-09-20 补：`name` / `categoryId` 是新加的（前端 PaperFilters 的「试卷名称」「试卷分类」
+		// 一直在筛，但查询里根本没这两个条件）；`published` 则是早就声明了却一直没被使用 —— 声明了就该生效
+		if (conditions.getName() != null && !conditions.getName().isBlank()) {
+			query.where(paper.name().like("%" + conditions.getName().trim() + "%"));
+		}
+		if (conditions.getCategoryId() != null) {
+			query.where(paper.categoryId().eq(conditions.getCategoryId()));
+		}
+		if (conditions.getPublished() != null) {
+			query.where(paper.published().eq(conditions.getPublished()));
+		}
+		
 		return query
 				       .select(paper.fetch(fetcher))
 				       .limit(size, (long) (page - 1) * size)

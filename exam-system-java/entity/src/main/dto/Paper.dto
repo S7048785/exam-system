@@ -37,8 +37,10 @@ PaperDetail {
 }
 
 specification PaperListQuery {
+    name
     published
     ongoing: Boolean?
+    categoryId: Long?
     page: Int?
     size: Int?
 }

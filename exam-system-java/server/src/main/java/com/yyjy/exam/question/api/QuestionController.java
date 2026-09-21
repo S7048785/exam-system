@@ -3,8 +3,6 @@ package com.yyjy.exam.question.api;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.question.dto.QuestionImportInput;
-import com.yyjy.exam.entity.question.dto.QuestionImportView;
-import com.yyjy.exam.entity.question.dto.QuestionUpdateInput;
 import com.yyjy.exam.entity.question.dto.QuestionsPageView;
 import com.yyjy.exam.entity.question.entity.Questions;
 import com.yyjy.exam.entity.question.io.req.QuestionGenerateReq;
@@ -12,6 +10,7 @@ import com.yyjy.exam.entity.question.io.req.QuestionListReq;
 import com.yyjy.exam.entity.question.io.req.QuestionSaveReq;
 import com.yyjy.exam.entity.question.io.res.QuestionGenerateDto;
 import com.yyjy.exam.entity.question.io.res.QuestionPageRes;
+import com.yyjy.exam.question.bo.QuestionImportResult;
 import com.yyjy.exam.question.service.QuestionService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -22,18 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-/**
- * 多用户改造：类级 @SaCheckRole("admin") → @SaCheckLogin，题目按 owner 隔离，
- * 归属校验收口在 QuestionService.requireOwnedQuestion（无 admin 后门）。
- * <p>
- * 2026-09-17 调整：
- * <ul>
- *   <li>{@code GET /question/popular} 与 {@code POST /question/popular/refresh} 已**删除**
- *       —— 数据源是全局 Redis ZSet，返回的 QuestionsPageView 含 correct 与 answer，
- *       与「题目按 `user_id` 隔离」的方向冲突；前端对这两个接口零调用。</li>
- *   <li>{@code POST /question/batch/ai-generate} 已**去掉 admin 限制**，登录即可调用。</li>
- * </ul>
- */
 @SaCheckLogin
 @RestController
 @RequiredArgsConstructor
@@ -53,9 +40,9 @@ public class QuestionController {
 	/**
 	 * 更新题目
 	 */
-	@PutMapping("/update")
-	public R<Questions> updateQuestion(@RequestBody QuestionUpdateInput question) {
-		return R.ok(questionService.update(question));
+	@PutMapping("/update/{id}")
+	public R<Questions> updateQuestion(@PathVariable long id, @RequestBody @Valid QuestionSaveReq question) {
+		return R.ok(questionService.update(id, question));
 	}
 	
 	/**
@@ -93,14 +80,6 @@ public class QuestionController {
 	}
 	
 	/**
-	 * 预览Excel文件内容
-	 */
-	@PostMapping("/batch/preview-excel")
-	public R<List<QuestionImportView>> previewExcel(@RequestPart("file") MultipartFile file) {
-		return R.ok(questionService.parseExcel(file));
-	}
-	
-	/**
 	 * AI智能生成题目
 	 * <p>2026-09-17 起登录即可调用（原为 admin 专属）。
 	 * ⚠️ 注意：这里会**真实调用大模型产生费用**，成本控制口径（Q12）尚未确定。</p>
@@ -114,15 +93,17 @@ public class QuestionController {
 	 * 批量导入题目
 	 */
 	@PostMapping("/batch/import-questions")
-	public R<String> importQuestions(@RequestBody List<QuestionImportInput> questions) {
+	public R<QuestionImportResult> importQuestions(@RequestBody List<QuestionImportInput> questions) {
 		return R.ok(questionService.importBatch(questions));
 	}
 	
 	/**
-	 * Excel批量导入题目
+	 * Excel 批量导入（唯一入口）：一次上传即完成「解析 → 分类解析 → 入库」，返回逐行报告。
+	 * <p>批量导入的正确语义是「能导的导、导不了的说明原因」：填错的行会被跳过，报告里给出
+	 * 「第几行、错在哪」，其余行照常入库，而不是一行有问题就把整份文件丢掉。</p>
 	 */
 	@PostMapping("/batch/excel-import-questions")
-	public R<String> importExcelQuestions(@RequestPart("file") MultipartFile file) {
-		return R.ok(questionService.importBatchExcel(file));
+	public R<QuestionImportResult> importExcelQuestions(@RequestPart("file") MultipartFile file) {
+		return R.ok(questionService.importFromExcel(file));
 	}
 }

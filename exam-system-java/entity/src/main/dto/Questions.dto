@@ -1,8 +1,6 @@
 export com.yyjy.exam.entity.question.entity.Questions
     -> package com.yyjy.exam.entity.question.dto
 
-import jakarta.validation.constraints.Pattern
-
 QuestionsPageView {
     id
     title
@@ -40,24 +38,6 @@ input QuestionSaveInput {
         sort
     }
     questionAnswers as answers  {
-        answer
-    }
-}
-
-input QuestionUpdateInput {
-    id!
-    title
-    categoryId
-    difficulty
-    score
-    analysis
-    questionChoices? as choices  {
-        content
-        correct
-        sort
-    }
-    questionAnswers as answers  {
-        id
         answer
     }
 }

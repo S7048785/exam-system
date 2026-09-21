@@ -30,6 +30,7 @@ public final class MessageConstant {
 	public static final String QUESTION_NOT_EXIST = "question: 题目不存在";
 	public static final String QUESTION_EXIST = "question: 同类型下已存在同名题目";
 	public static final String QUESTION_CHOICE_CHOICES_NOT_EMPTY = "question: 选择题选项不能为空";
+	public static final String QUESTION_CHOICE_AT_LEAST_TWO = "question: 选择题至少需要两个选项";
 	public static final String QUESTION_CHOICE_MULTI_NOT_EMPTY = "question: 非选择题 multi属性不能为true";
 	public static final String QUESTION_CHOICE_MULTI_ANSWER_NOT_EMPTY = "question: 多选题只能有一个正确答案";
 	public static final String FILE_FORMAT_ERROR = "question: 批量导入的文件格式错误，必须是xlsx或xls格式";

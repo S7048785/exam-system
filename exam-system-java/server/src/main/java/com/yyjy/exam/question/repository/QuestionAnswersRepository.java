@@ -4,4 +4,5 @@ import com.yyjy.exam.entity.question.entity.QuestionAnswers;
 import org.babyfish.jimmer.spring.repository.JRepository;
 
 public interface QuestionAnswersRepository extends JRepository<QuestionAnswers, Long> {
+    void deleteByQuestionId(long questionId);
 }

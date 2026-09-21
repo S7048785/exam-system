@@ -2,21 +2,20 @@ package com.yyjy.exam.question.service;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.question.dto.*;
-import com.yyjy.exam.entity.question.entity.QuestionType;
-import com.yyjy.exam.entity.question.entity.Questions;
-import com.yyjy.exam.entity.question.entity.QuestionsCategoriesTable;
-import com.yyjy.exam.entity.question.entity.QuestionsDraft;
-import com.yyjy.exam.entity.question.entity.QuestionsTable;
+import com.yyjy.exam.entity.question.entity.*;
 import com.yyjy.exam.entity.question.io.req.*;
 import com.yyjy.exam.entity.question.io.res.QuestionGenerateDto;
 import com.yyjy.exam.entity.question.io.res.QuestionPageRes;
 import com.yyjy.exam.question.bo.QuestionExcelTemplateBo;
+import com.yyjy.exam.question.bo.QuestionImportResult;
 import com.yyjy.exam.question.common.QuestionExcelListener;
 import com.yyjy.exam.question.repository.CategoriesRepository;
+import com.yyjy.exam.question.repository.QuestionAnswersRepository;
 import com.yyjy.exam.question.repository.QuestionChoicesRepository;
 import com.yyjy.exam.question.repository.QuestionsRepository;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -36,12 +36,88 @@ import java.util.*;
 @RequiredArgsConstructor
 public class QuestionService {
 	
+	/**
+	 * 模板本体所在 sheet。解析端 {@code EasyExcel.read(...).sheet()} 只读第 0 个 sheet。
+	 */
+	private static final String TEMPLATE_SHEET = "题目模板";
+	
+	/**
+	 * 填写说明 sheet，固定放在最后，不参与导入。
+	 */
+	private static final String NOTE_SHEET = "填写说明";
+	
 	private final QuestionsRepository questionsRepository;
 	private final QuestionChoicesRepository questionChoicesRepository;
+	private final QuestionAnswersRepository questionAnswersRepository;
 	private final CategoriesRepository categoriesRepository;
 	private final QuestionImportService questionImportService;
 	private final QuestionGenerateService questionGenerateService;
 	private final JSqlClient sqlClient;
+	
+	private static void requireExcelFile(MultipartFile file) {
+		if (file.isEmpty()) {
+			throw new BusinessException(MessageConstant.FILE_NOT_EMPTY);
+		}
+		String filename = file.getOriginalFilename();
+		if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
+			throw new BusinessException(MessageConstant.FILE_FORMAT_ERROR);
+		}
+	}
+	
+	/**
+	 * 读第 0 个 sheet（模板本体）；第 2 个「填写说明」不参与解析。
+	 */
+	private static QuestionExcelListener readExcel(MultipartFile file) {
+		try {
+			QuestionExcelListener listener = new QuestionExcelListener();
+			EasyExcel.read(file.getInputStream(), QuestionExcelTemplateBo.class, listener).sheet().doRead();
+			return listener;
+		} catch (IOException e) {
+			throw new BusinessException("解析Excel失败");
+		}
+	}
+	
+	private static String categoryKey(long parentId, String name) {
+		return parentId + "\u0000" + name;
+	}
+	
+	private static List<List<String>> noteHead() {
+		return List.of(List.of("字段"), List.of("是否必填"), List.of("怎么填"));
+	}
+	
+	/**
+	 * 填写说明 sheet 的内容，与模板同源维护，改模板列时记得一起改。
+	 */
+	private static List<List<String>> createTemplateNotes() {
+		List<List<String>> rows = new ArrayList<>();
+		
+		rows.add(List.of("【字段说明】", "", ""));
+		rows.add(List.of("试题内容", "必填", "题干文字，最长 255 个字。"));
+		rows.add(List.of("选项A ~ 选项D", "选填", "选择题填，至少两个，且要连续填、中间不能留空；判断题 / 简答题留空。"));
+		rows.add(List.of("答案", "必填", "单选填字母，如 B；多选直接连写，如 ABC（写 A,B,C 也行）；"
+				                                 + "判断题填 对 / 错（也认 √ / × / true / false）；简答题填参考答案原文。"));
+		rows.add(List.of("分类名", "必填", "支持多级，用 / 分隔，例如 数学/算数。"
+				                                   + "不存在的分类会自动创建（父级不存在时父子一起建）。"));
+		rows.add(List.of("难度", "选填", "容易 / 中等 / 困难（也认 简单、难、EASY、MEDIUM、HARD）。留空按「中等」处理。"));
+		rows.add(List.of("分值", "选填", "大于 0 的整数。留空按 1 分处理。"));
+		rows.add(List.of("解析", "选填", "答案解析，可留空。"));
+		
+		rows.add(List.of("", "", ""));
+		rows.add(List.of("【题型不用填，按选项和答案自动判断】", "", ""));
+		rows.add(List.of("单选题", "自动", "填了选项 + 答案只有 1 个字母"));
+		rows.add(List.of("多选题", "自动", "填了选项 + 答案有 2 个及以上字母"));
+		rows.add(List.of("判断题", "自动", "没填选项 + 答案填 对 / 错（或 true / false）"));
+		rows.add(List.of("简答题", "自动", "没填选项 + 答案填其他内容"));
+		
+		rows.add(List.of("", "", ""));
+		rows.add(List.of("【其他】", "", ""));
+		rows.add(List.of("示例行", "提醒", "第 2 行起都是示例，正式导入前请删掉，只留自己的数据。"));
+		rows.add(List.of("表头", "提醒", "第 1 行表头不要改名字（列的前后顺序可以调）。"));
+		rows.add(List.of("有行填错时", "提醒", "该行不会被导入，其余行照常导入；"
+				                                       + "接口会返回「第几行、错在哪」，改完重新上传即可。"));
+		
+		return rows;
+	}
 	
 	/**
 	 * 多用户改造：题目归属校验的统一出口（决策台账 Q5 / Q25）。
@@ -76,6 +152,18 @@ public class QuestionService {
 			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST);
 		}
 		
+		// 多用户改造：owner 由服务端注入（DTO 里没有该字段，客户端无法伪造）
+		return questionsRepository.save(
+				QuestionsDraft.$.produce(buildSaveInput(req).toEntity(), d -> d.setUserId(me)),
+				SaveMode.INSERT_ONLY,
+				AssociatedSaveMode.APPEND);
+	}
+	
+	/**
+	 * 把 add / update 共用的「type + 多态 extra」请求模型翻译成 Jimmer 的 QuestionSaveInput。
+	 * 题型差异只在 {@link QuestionExtra} 的子类上分派一处，两个入口不再各写一套 if。
+	 */
+	private QuestionSaveInput buildSaveInput(QuestionSaveReq req) {
 		var builder = new QuestionSaveInput.Builder()
 				              .title(req.getTitle())
 				              .type(req.getType())
@@ -99,12 +187,7 @@ public class QuestionService {
 				builder.answers(answers);
 			}
 		}
-		
-		// 多用户改造：owner 由服务端注入（DTO 里没有该字段，客户端无法伪造）
-		return questionsRepository.save(
-				       QuestionsDraft.$.produce(builder.build().toEntity(), d -> d.setUserId(me)),
-				       SaveMode.INSERT_ONLY,
-				       AssociatedSaveMode.APPEND);
+		return builder.build();
 	}
 	
 	private void processChoice(QuestionSaveInput.Builder builder, List<ChoiceDto> choiceDtos, boolean allowMultiple) {
@@ -139,33 +222,37 @@ public class QuestionService {
 	}
 	
 	@Transactional
-	public Questions update(QuestionUpdateInput question) {
+	public Questions update(long id, QuestionSaveReq req) {
 		long me = StpUtil.getLoginIdAsLong();
 		
 		// 多用户改造：① 题目必须是自己的；② 目标分类也必须是自己的
-		requireOwnedQuestion(question.getId());
+		requireOwnedQuestion(id);
 		
-		if (!categoriesRepository.ownedBy(question.getCategoryId(), me)) {
+		if (!categoriesRepository.ownedBy(req.getCategoryId(), me)) {
 			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST);
 		}
 		
 		// 查询题目是否存在
-		Questions oldQuestion = questionsRepository.findById(question.getId())
-				                        .orElseThrow(() -> new BusinessException(MessageConstant.QUESTION_NOT_EXIST));
+		questionsRepository.findById(id)
+				.orElseThrow(() -> new BusinessException(MessageConstant.QUESTION_NOT_EXIST));
 		
-		// 查询同类型下是否有同名题目（按 owner 判重，并排除题目自身）
+		// 查询同类型下是否有同名题目（按 owner 判重，并排除题目自身）。
+		// 用请求里的 type 而不是库里的旧 type：改题型时按改完之后的类型判重才对。
 		if (questionsRepository.existsByUserIdAndTypeAndTitleExcludingId(
-				me, oldQuestion.type(), question.getTitle(), question.getId())) {
+				me, req.getType(), req.getTitle(), id)) {
 			throw new BusinessException(MessageConstant.QUESTION_EXIST);
 		}
 		
-		// 若是单选或多选题，则删除旧题目选项
-		if (QuestionType.SINGLE_CHOICE.equals(oldQuestion.type()) ||
-				    QuestionType.MULTIPLE_CHOICE.equals(oldQuestion.type())) {
-			questionChoicesRepository.deleteByQuestionId(question.getId());
-		}
+		// 与 add 统一口径：选项与答案都「先删旧、再按本次提交重建」。
+		// 所以 answers 不再需要行 id，也天然支持「选择题 ↔ 判断题」这类改题型；
+		// 而「选项至少两个」等校验在进本方法前已由 @Valid + Extra 子类拦下，删不到数据。
+		questionChoicesRepository.deleteByQuestionId(id);
+		questionAnswersRepository.deleteByQuestionId(id);
 		
-		return questionsRepository.save(question, SaveMode.UPDATE_ONLY);
+		return questionsRepository.save(
+				QuestionsDraft.$.produce(buildSaveInput(req).toEntity(), d -> d.setId(id)),
+				SaveMode.UPDATE_ONLY,
+				AssociatedSaveMode.APPEND);
 	}
 	
 	public void remove(long id) {
@@ -192,6 +279,9 @@ public class QuestionService {
 		// 多用户改造：列表只看自己的题（没有 admin 分支）
 		var query = sqlClient.createQuery(t).where(t.userId().eq(StpUtil.getLoginIdAsLong()));
 		
+		if (req.keyword() != null && !req.keyword().isBlank()) {
+			query = query.where(t.title().like("%" + req.keyword().trim() + "%"));
+		}
 		if (req.categoryId() != null) {
 			query = query.where(t.categoryId().eq(req.categoryId()));
 		}
@@ -224,50 +314,127 @@ public class QuestionService {
 			// 设置响应头Content-Disposition标识任何格式都以下载方式打开
 			response.addHeader("Content-Disposition", "attachment;filename=" + fileName + ".xlsx");
 			
-			// 生成模板文件
-			EasyExcel.write(response.getOutputStream(), QuestionExcelTemplateBo.class)
-					.registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
-					.sheet("题目模板")
-					.doWrite(List.of(createTemplateBo()));
+			// 生成模板文件：两个 sheet —— 第 0 个是模板本体（解析端只读它），第 1 个是填写说明
+			ExcelWriter writer = EasyExcel.write(response.getOutputStream())
+					                     .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
+					                     .build();
+			try {
+				writer.write(createTemplateRows(),
+						EasyExcel.writerSheet(0, TEMPLATE_SHEET).head(QuestionExcelTemplateBo.class).build());
+				writer.write(createTemplateNotes(),
+						EasyExcel.writerSheet(1, NOTE_SHEET).head(noteHead()).build());
+			} finally {
+				writer.finish();
+			}
 		} catch (Exception e) {
 			throw new BusinessException("导出模板失败");
 		}
 	}
 	
-	public List<QuestionImportView> parseExcel(MultipartFile file) {
-		try {
-			QuestionExcelListener listener = new QuestionExcelListener();
-			EasyExcel.read(file.getInputStream(), QuestionExcelTemplateBo.class, listener).sheet().doRead();
-			
-			List<String> errors = listener.getErrors();
-			if (!errors.isEmpty()) {
-				throw new BusinessException("数据校验失败：\n" + String.join("\n", errors));
-			}
-			return listener.getDatas();
-		} catch (BusinessException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new BusinessException("解析Excel失败");
-		}
+	/**
+	 * 从 Excel 一次性完成「解析 → 分类解析 → 入库」，返回逐行报告。
+	 * <p>
+	 * 批量导入的**唯一入口**：文件直传，解析与入库都在服务端完成，分类名不会离开服务端。
+	 * 口径是「能导的导、导不了的说明原因」——填错的行被跳过并带行号返回，其余照常入库，
+	 * 而不是一行有问题就把整份文件丢掉。
+	 */
+	@Transactional
+	public QuestionImportResult importFromExcel(MultipartFile file) {
+		requireExcelFile(file);
+		
+		long me = StpUtil.getLoginIdAsLong();
+		QuestionExcelListener listener = readExcel(file);
+		
+		List<QuestionImportView> views = listener.getDatas();
+		CategoryIndex index = loadCategoryIndex(me);
+		int categoriesBefore = index.byPath().size();
+		assignCategoryIds(views, listener.getCategoryNames(), me, index);
+		
+		QuestionImportResult result = questionImportService.importBatch(
+				views.stream().map(this::convertImportViewToInput).toList());
+		result.setFailed(listener.getFailedRows());
+		result.setErrors(listener.getErrors());
+		result.setCategoriesCreated(index.byPath().size() - categoriesBefore);
+		return result;
 	}
 	
-	public String importBatch(List<QuestionImportInput> questions) {
+	public QuestionImportResult importBatch(List<QuestionImportInput> questions) {
 		return questionImportService.importBatch(questions);
 	}
 	
-	public String importBatchExcel(MultipartFile file) {
-		if (file.isEmpty()) {
-			throw new BusinessException(MessageConstant.FILE_NOT_EMPTY);
+	/**
+	 * 把每行的分类名解析成真实 id（不存在则建）。同一份文件里同名的只解析一次。
+	 */
+	private void assignCategoryIds(List<QuestionImportView> views, List<String> categoryNames,
+	                               long userId, CategoryIndex index) {
+		Map<String, Long> resolved = new HashMap<>();
+		for (int i = 0; i < views.size(); i++) {
+			String categoryName = categoryNames.get(i);
+			Long categoryId = resolved.get(categoryName);
+			if (categoryId == null) {
+				categoryId = resolveCategoryId(categoryName, userId, index);
+				resolved.put(categoryName, categoryId);
+			}
+			views.get(i).setCategoryId(categoryId);
 		}
-		String filename = file.getOriginalFilename();
-		if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
-			throw new BusinessException(MessageConstant.FILE_FORMAT_ERROR);
+	}
+	
+	/**
+	 * 一次查出该用户全部分类建索引，把「每级查一次库」降到「整批查一次」。
+	 */
+	private CategoryIndex loadCategoryIndex(long userId) {
+		var t = QuestionsCategoriesTable.$;
+		List<QuestionsCategories> all = sqlClient.createQuery(t)
+				                                .where(t.userId().eq(userId))
+				                                .select(t.fetch(QuestionsCategoriesFetcher.$.parentId().name()))
+				                                .execute();
+		
+		Map<String, Long> byPath = new HashMap<>();
+		Map<Long, Integer> childCount = new HashMap<>();
+		for (QuestionsCategories category : all) {
+			byPath.put(categoryKey(category.parentId(), category.name()), category.id());
+			childCount.merge(category.parentId(), 1, Integer::sum);
 		}
-		List<QuestionImportView> views = parseExcel(file);
-		List<QuestionImportInput> inputs = views.stream()
-				                                   .map(this::convertImportViewToInput)
-				                                   .toList();
-		return questionImportService.importBatch(inputs);
+		return new CategoryIndex(byPath, childCount);
+	}
+	
+	/**
+	 * 「数学/算数」→ 逐级查找，没有就建，返回叶子分类 id。
+	 * <p>
+	 * 建分类的写法与 {@code QuestionCategoryController.addCategory} 保持一致：
+	 * {@code SaveMode.INSERT_ONLY} + owner 由服务端注入（DTO 里没有 userId，客户端无法伪造）。
+	 */
+	private long resolveCategoryId(String categoryPath, long userId, CategoryIndex index) {
+		List<String> segments = QuestionExcelListener.splitCategoryPath(categoryPath);
+		if (segments.isEmpty()) {
+			throw new BusinessException(MessageConstant.QUESTION_CATEGORY_NOT_EXIST + " " + categoryPath);
+		}
+		
+		long parentId = 0L;
+		long currentId = 0L;
+		for (String name : segments) {
+			String key = categoryKey(parentId, name);
+			Long categoryId = index.byPath().get(key);
+			if (categoryId == null) {
+				// sort 取同级现有数量，保证新分类排在同级末尾
+				int sort = index.childCount().getOrDefault(parentId, 0);
+				var input = new QuestionsCategorySaveInput.Builder()
+						            .name(name)
+						            .parentId(parentId)
+						            .sort(sort)
+						            .build();
+				categoryId = categoriesRepository.save(
+								QuestionsCategoriesDraft.$.produce(input.toEntity(), d -> d.setUserId(userId)),
+								SaveMode.INSERT_ONLY)
+						             .id();
+				// 写回索引：同一批里再出现同名路径不会重复建
+				index.byPath().put(key, categoryId);
+				index.childCount().merge(parentId, 1, Integer::sum);
+			}
+			currentId = categoryId;
+			parentId = categoryId;
+		}
+		return currentId;
 	}
 	
 	public List<QuestionGenerateDto> generateQuestions(QuestionGenerateReq req) {
@@ -316,21 +483,64 @@ public class QuestionService {
 		return input.build();
 	}
 	
-	private QuestionExcelTemplateBo createTemplateBo() {
-		return QuestionExcelTemplateBo.builder()
-				       .content("以下哪个是Spring框架的核心特性?")
-				       .type("CHOICE")
-				       .multiple("否")
-				       .categoryId("1")
-				       .difficulty("MEDIUM")
-				       .score("1")
-				       .choiceA("依赖注入")
-				       .choiceB("面向切面编程")
-				       .choiceC("事务管理")
-				       .choiceD("以上都是")
-				       .answer("D")
-				       .analysis("Spring框架的核心特性包括依赖注入、面向切面编程和事务管理等。")
-				       .build();
+	/**
+	 * 模板里的示例行。覆盖 4 种题型 + 中文难度 + 留空默认值，用户照抄格式即可。
+	 * 正式导入前删掉这些示例行。
+	 */
+	private List<QuestionExcelTemplateBo> createTemplateRows() {
+		List<QuestionExcelTemplateBo> rows = new ArrayList<>();
 		
+		// 单选：填了选项 + 答案 1 个字母
+		rows.add(QuestionExcelTemplateBo.builder()
+				         .content("1+1=?")
+				         .choiceA("1")
+				         .choiceB("2")
+				         .choiceC("3")
+				         .choiceD("4")
+				         .answer("B")
+				         .categoryName("数学/算数")
+				         .difficulty("容易")
+				         .score("5")
+				         .analysis("解析略")
+				         .build());
+		
+		// 多选：答案连写 ABC，写 A,B,C 也一样
+		rows.add(QuestionExcelTemplateBo.builder()
+				         .content("下列哪些是编程语言？")
+				         .choiceA("Java")
+				         .choiceB("Python")
+				         .choiceC("HTTP")
+				         .choiceD("Go")
+				         .answer("ABC")
+				         .categoryName("计算机/基础")
+				         .difficulty("中等")
+				         .score("5")
+				         .analysis("HTTP 是应用层协议，不是编程语言。")
+				         .build());
+		
+		// 判断题：不填选项，答案填 对 / 错
+		rows.add(QuestionExcelTemplateBo.builder()
+				         .content("Java 是面向对象的语言。")
+				         .answer("对")
+				         .categoryName("计算机/基础")
+				         .difficulty("容易")
+				         .score("2")
+				         .analysis("Java 支持封装、继承和多态。")
+				         .build());
+		
+		// 简答题：不填选项，答案填参考答案；难度和分值留空 → 默认中等 / 1 分
+		rows.add(QuestionExcelTemplateBo.builder()
+				         .content("请简述封装的含义。")
+				         .answer("把数据和对数据的操作捆绑在一起，并对外隐藏实现细节。")
+				         .categoryName("计算机/基础")
+				         .build());
+		
+		return rows;
+	}
+	
+	/**
+	 * (parentId, name) → 分类 id 的内存索引，外加每个父节点下的子分类数（用来算 sort）。
+	 */
+	private record CategoryIndex(Map<String, Long> byPath, Map<Long, Integer> childCount) {
 	}
 }
