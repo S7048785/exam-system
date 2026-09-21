@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { dashboardStatsOptions } from '#/features/controller/dashboard/dashboardQueries.ts'
+import { dashboardStatsOptions } from '#/features/console/dashboard/dashboardQueries.ts'
 import {
   Table,
   TableBody,

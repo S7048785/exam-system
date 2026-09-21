@@ -41,9 +41,11 @@ export const api = new Api(async ({ uri, method, headers, body }) => {
     if (response.status === 403) {
       throw redirect({ to: '/login' })
     }
-    throw redirect({ to: '/error' })
+    if (response.status / 100 === 5) {
+      throw redirect({ to: '/error' })
+    }
     // 必须先把 body 当文本读出来：422 的业务错误是 text/plain，不能直接 .json()
-    // throw new ApiError(response.status, uri, parseBody(text, contentType))
+    throw new ApiError(response.status, uri, parseBody(text, contentType))
   }
 
   return parseBody(text, contentType)

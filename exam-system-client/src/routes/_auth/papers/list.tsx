@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { api } from '#/ApiInstance.ts'
-import { papersQueryOptions } from '#/features/controller/papers/paperQueries.ts'
-import PaperInfoDialog from '#/features/controller/papers/list/EditDialog'
-import { PaperFilters } from '#/features/controller/papers/list/PaperFilters.tsx'
-import { PaperPagination } from '#/features/controller/papers/list/PaperPagination.tsx'
-import PaperList from '#/features/controller/papers/list/body/PaperList.tsx'
+import { papersQueryOptions } from '#/features/console/papers/paperQueries.ts'
+import PaperInfoDialog from '#/features/console/papers/list/EditDialog'
+import { PaperFilters } from '#/features/console/papers/list/PaperFilters.tsx'
+import { PaperPagination } from '#/features/console/papers/list/PaperPagination.tsx'
+import PaperList from '#/features/console/papers/list/body/PaperList.tsx'
 import type { PaperListQuery } from '#/__generated/model/static'
 import { usePaperListStore } from '#/stores/paper-list.ts'
 import { Button } from '#/components/ui/button.tsx'
@@ -28,7 +28,7 @@ export const Route = createFileRoute('/_auth/papers/list')({
   },
 })
 
-export type PageListFilterType = Omit<PaperListQuery, 'page' & 'size'>
+export type PageListFilterType = Omit<PaperListQuery, 'page' | 'size'>
 
 function CreatePaper() {
   const addPaper = usePaperListStore((state) => state.addPaper)
