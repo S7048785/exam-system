@@ -22,16 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 多用户改造：类级注解 @SaCheckRole("admin") → @SaCheckLogin。
- * 试卷按 owner 隔离，归属校验收口在 PaperService.requireOwnedPaper（无 admin 后门）。
- * <p>
- * 读路径当前只有 {@code GET /paper/list} —— 「我的试卷」，强制按 `user_id` 过滤，含未发布草稿。
- * <p>
- * ⚠️ 2026-09-20 修正：原注释里还写着一条 {@code GET /paper/square}（公开广场，强制 `is_published = 1`、
- * **不限 `user_id`**），**这个方法并不存在**（前端也没有广场页面）。将来真要加，务必与 `/paper/list`
- * 拆成两个接口 —— 靠一个接口 + query 参数糊在一起，迟早出现「漏加 owner 条件 → 用户看到别人的全部草稿」。
- */
 @SaCheckLogin
 @RestController
 @RequestMapping("/paper")
@@ -100,11 +90,22 @@ public class PaperController {
 	}
 	
 	/**
-	 * 发布试卷（PUBLISHED false -> true）
+	 * 发布试卷（is_published false -> true）
 	 */
 	@PostMapping("/{id}/publish")
 	public R<Void> publishPaper(@PathVariable int id) {
 		paperService.publishPaper(id);
+		return R.ok();
+	}
+	
+	/**
+	 * 撤回发布（is_published true -> false），回到草稿态。
+	 * <p>
+	 * ⚠️ 会**物理删除**该卷的全部考试记录与作答明细，不可恢复。
+	 */
+	@PostMapping("/{id}/unpublish")
+	public R<Void> unpublishPaper(@PathVariable int id) {
+		paperService.unpublishPaper(id);
 		return R.ok();
 	}
 	

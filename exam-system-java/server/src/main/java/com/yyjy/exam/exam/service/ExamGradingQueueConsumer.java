@@ -10,6 +10,7 @@ import com.yyjy.exam.entity.exam.entity.ExamRecordsDraft;
 import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
 import com.yyjy.exam.exam.repository.ExamRecordsRepository;
+import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
@@ -17,6 +18,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -30,6 +32,7 @@ public class ExamGradingQueueConsumer {
 	
 	private final ExamRecordsRepository examRecordsRepo;
 	private final AnswerRecordRepository answerRecordRepo;
+	private final PaperQuestionRepository paperQuestionRepo;
 	private final ExamBulkGradingService examBulkGradingService;
 	
 	@RabbitListener(queues = RabbitMQConfig.GRADING_QUEUE)
@@ -56,7 +59,11 @@ public class ExamGradingQueueConsumer {
 				                                 .where(table.question().type().eq(QuestionType.TEXT))
 				                                 .select(table.fetch(
 						                                 Fetchers.ANSWER_RECORD_FETCHER.question(
-								                                 Fetchers.QUESTIONS_FETCHER.title().questionAnswers().score()
+								                                 // ⚠️ questionAnswers() 必须带 fetcher 才会加载 answer，
+								                                 // 否则下面取标准答案时抛 UnloadedException（曾导致简答批改整条链路失效）
+								                                 Fetchers.QUESTIONS_FETCHER.title()
+										                                 .questionAnswers(Fetchers.QUESTION_ANSWERS_FETCHER.answer())
+										                                 .score()
 						                                 ).userAnswer()
 				                                 ))
 				                                 .execute();
@@ -65,6 +72,10 @@ public class ExamGradingQueueConsumer {
 		//		                                 .filter(ar -> QuestionType.TEXT.equals(ar.question().type()))
 		//		                                 .toList();
 		
+		// 满分口径与客观题一致：试卷配分(paper_question.score)优先，取不到才回落题目分值。
+		// 简答题的满分要交给 AI 作为评分上限，读错了会直接给出与卷面总分不符的分数。
+		Map<Long, Integer> paperScores = resolvePaperScores(examRecordId);
+		
 		// 调用 AI 批量批改
 		if (!textAnswers.isEmpty()) {
 			var requests = textAnswers.stream()
@@ -72,7 +83,7 @@ public class ExamGradingQueueConsumer {
 							               ar.id(),
 							               ar.question().title(),
 							               Objects.requireNonNull(ar.question().questionAnswers()).answer(),
-							               ar.question().score(),
+							               scoreOf(ar, paperScores),
 							               ar.userAnswer()
 					               ))
 					               .toList();
@@ -103,5 +114,25 @@ public class ExamGradingQueueConsumer {
 			draft.setScore(totalScore);
 			draft.setStatus(ExamRecordStatus.GRADED);
 		}), SaveMode.UPDATE_ONLY);
+	}
+	
+	/**
+	 * 某场考试所用试卷的「题目 → 配分」映射（`paper_question.score`）。
+	 * 考试记录不存在时返回空表，调用方会回落到「题目分值」。
+	 */
+	private Map<Long, Integer> resolvePaperScores(int examRecordId) {
+		ExamRecords record = examRecordsRepo.findById(examRecordId).orElse(null);
+		if (record == null) {
+			return Map.of();
+		}
+		return paperQuestionRepo.findScoreMapByPaperId(record.paperId());
+	}
+	
+	/**
+	 * 取某道题在本场考试里的**满分**：试卷配分优先，查不到（例如题已从试卷移除）才用题目自带分值。
+	 */
+	private int scoreOf(AnswerRecord ar, Map<Long, Integer> paperScores) {
+		Integer paperScore = paperScores.get(ar.questionId());
+		return paperScore != null ? paperScore : ar.question().score();
 	}
 }

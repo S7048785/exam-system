@@ -11,6 +11,7 @@ import com.yyjy.exam.entity.paper.dto.PaperListQuery;
 import com.yyjy.exam.entity.paper.entity.*;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
+import com.yyjy.exam.exam.repository.ExamRecordsRepository;
 import com.yyjy.exam.paper.repository.PaperCategoriesRepository;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.paper.repository.PaperRepository;
@@ -38,9 +39,13 @@ public class PaperService {
 	private final PaperQuestionRepository paperQuestionRepo;
 	private final PaperCategoriesRepository paperCategoriesRepository;
 	private final QuestionsRepository questionsRepository;
+	private final ExamRecordsRepository examRecordRepo;
 	
 	/**
 	 * 试卷发布后题目即冻结：不能再增题、改分值、删题、换整套题目集。
+	 * <p>
+	 * 「发布后」覆盖三个状态：**未开始 / 进行中 / 已结束** —— 只要 `is_published = true` 就锁。
+	 * 想改题只有一条路：先调 {@link #unpublishPaper} 撤回发布（回到草稿态）。
 	 */
 	public void requireQuestionEditable(int paperId) {
 		Paper paper = paperRepository.findById(paperId)
@@ -72,6 +77,23 @@ public class PaperService {
 						MessageConstant.PAPER_QUESTION_DUPLICATE + "，questionId=" + item.questionId());
 			}
 		}
+	}
+	
+	/**
+	 * 按 questionId 对一批题目去重，保留**最后一次**出现的元素（因此分值以最后一次为准）。
+	 * <p>
+	 * 增量加题接口（{@link #addPaperQuestions}）是幂等语义的「加或改」，不像
+	 * {@link #replacePaperQuestions} 那样有 {@link #requireValidQuestions} 兜底 ——
+	 * 同一批里同题出现两次时，不去重就会靠「查重是否命中」决定是插重复行还是覆盖分值，
+	 * 结果不确定。而 {@code paper_question} 上没有 {@code (paper_id, question_id)} 唯一约束，
+	 * 一旦插出重复行，该卷题目数虚高、作答记录又只留一行，总分会对不上。
+	 */
+	private <T> List<T> dedupeByQuestionId(List<T> items, java.util.function.ToLongFunction<T> idOf) {
+		Map<Long, T> byId = new LinkedHashMap<>();
+		for (T item : items) {
+			byId.put(idOf.applyAsLong(item), item);   // 后写的覆盖先写的
+		}
+		return new ArrayList<>(byId.values());
 	}
 	
 	public void requireOwnedPaper(int id) {
@@ -164,6 +186,7 @@ public class PaperService {
 		}
 		
 		return query
+				       .orderBy(paper.end().desc(), paper.published().asc())
 				       .select(paper.fetch(fetcher))
 				       .limit(size, (long) (page - 1) * size)
 				       .execute();
@@ -215,7 +238,7 @@ public class PaperService {
 	 * **整体替换**试卷题目集（`PUT /paper/{id}/questions`）。
 	 * <p>
 	 * 与增量的 {@link #addPaperQuestions} 不同：先清空该卷题目，再按本次提交的顺序写入。
-	 * 已发布的试卷一律拒绝（{@link #requireQuestionEditable}），与其余题目接口口径一致。
+	 * 已发布的试卷一律拒绝（{@link #requireQuestionEditable}）。
 	 * 写完后重算 `question_count` / `total_score`（原 updatePaper 漏了这步，会留脏值）。
 	 */
 	@Transactional
@@ -306,10 +329,44 @@ public class PaperService {
 		}), SaveMode.UPDATE_ONLY);
 	}
 	
+	/**
+	 * 撤回发布：回到草稿态，并**物理删除**该卷的全部考试记录（含正在答题的 ONGOING）
+	 * 与它们的作答明细。
+	 * <p>
+	 * ⚠️ 记录是**硬删**（库里没有软删除列），不可恢复。
+	 * <p>
+	 * 之所以连带删记录：撤回后题目会被改，而判分读的是**当前题库**的正确答案与分值 ——
+	 * 若保留旧记录，考生看到的历史成绩会与「按新卷判」的结果自相矛盾。
+	 * 直接销毁整场考试，语义最干净（用户明确选择的口径）。
+	 * <p>
+	 * 副作用：正在答题的考生手里的 examRecordId 立即失效，下次存答案/交卷都会 422
+	 * 「考试记录不存在」。用户明确选择「照删」。
+	 */
+	@Transactional
+	public void unpublishPaper(int id) {
+		requireOwnedPaper(id);
+		
+		Paper paper = paperRepository.findById(id)
+				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
+		if (!paper.published()) {
+			throw new BusinessException(MessageConstant.PAPER_NOT_PUBLISH);
+		}
+		
+		// 先销毁考试记录（连带 answer_record），再把卷变回草稿
+		examRecordRepo.deleteByPaperId(id);
+		paperRepository.save(PaperDraft.$.produce(draft -> {
+			draft.setId(id);
+			draft.setPublished(false);
+		}), SaveMode.UPDATE_ONLY);
+	}
+	
 	@Transactional
 	public void addPaperQuestions(int paperId, PaperQuestionAddReq input) {
 		long me = StpUtil.getLoginIdAsLong();
-		List<PaperQuestionAddReq.Item> items = input.questions() != null ? input.questions() : List.of();
+		List<PaperQuestionAddReq.Item> raw = input.questions() != null ? input.questions() : List.of();
+		// 同一批请求里同一道题可能出现多次：若不去重，第二条要么插出重复行、要么把前一条的
+		// 分值覆盖掉（取决于查重是否命中），结果都不确定。这里以**最后一次**出现的分值为准。
+		List<PaperQuestionAddReq.Item> items = dedupeByQuestionId(raw, PaperQuestionAddReq.Item::questionId);
 		
 		// 多用户改造：试卷与要加进去的题目都必须是自己的
 		requireOwnedPaper(paperId);
@@ -337,6 +394,16 @@ public class PaperService {
 		paperRepository.recalculateTotals(paperId);
 	}
 	
+	/**
+	 * 从试卷中移除一道题。
+	 * <p>
+	 * 与其他改题操作口径一致：**已发布的卷不能移除题目**（{@link #requireQuestionEditable}），
+	 * 必须先调 {@link #unpublishPaper} 撤回发布。
+	 * <p>
+	 * ⚠️ 若该卷**已经被考过**，移除后历史答卷（{@code answer_record.question_id}）
+	 * 会指向一道不再属于本卷的题，卷面总分也不再等于那次考试的满分。这是有意接受的代价，
+	 * 历史记录本身不删、可继续查看。
+	 */
 	@Transactional
 	public void removePaperQuestion(int paperId, long questionId) {
 		// 多用户改造：只能改自己的卷

@@ -16,6 +16,7 @@ import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.user.entity.Users;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
 import com.yyjy.exam.exam.repository.ExamRecordsRepository;
+import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.user.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,9 @@ public class ExamRecordService {
 	/**
 	 * 批改取数图谱：题目 type / score / 标准答案。
 	 * 派生查询 findByExamRecordId 只带回关联对象的 id，不带图谱直接访问 question().type() 会抛 UnloadedException。
+	 * <p>
+	 * ⚠️ 这里的 `score()`（questions.score）只是**回落值**：判分满分以 `paper_question.score`（试卷配分）
+	 * 为准，仅当该题已不在试卷里时才用它 —— 见 {@link #scoreOf}。
 	 */
 	private static final Fetcher<AnswerRecord> ANSWER_RECORD_GRADING =
 			Fetchers.ANSWER_RECORD_FETCHER
@@ -48,6 +52,7 @@ public class ExamRecordService {
 									.questionAnswers(Fetchers.QUESTION_ANSWERS_FETCHER.answer()));
 	private final ExamRecordsRepository examRecordsRepo;
 	private final AnswerRecordRepository answerRecordRepo;
+	private final PaperQuestionRepository paperQuestionRepo;
 	private final UsersRepository usersRepo;
 	private final RabbitTemplate rabbitTemplate;
 	private final JSqlClient sqlClient;
@@ -84,6 +89,9 @@ public class ExamRecordService {
 			throw new BusinessException("试卷不存在或未发布");
 		}
 		var now = LocalDateTime.now();
+		if (now.isBefore(paperEntity.start())) {
+			throw new BusinessException(MessageConstant.EXAM_NOT_STARTED);
+		}
 		if (paperEntity.end().isBefore(now)) {
 			throw new BusinessException("考试已结束");
 		}
@@ -293,6 +301,9 @@ public class ExamRecordService {
 	 */
 	private void gradeNonTextQuestions(int examRecordId) {
 		List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING);
+		// 分值口径：优先用「试卷配分」(paper_question.score)，取不到才回落「题目分值」(questions.score)。
+		// 只查一次，避免逐题打库。
+		Map<Long, Integer> paperScores = resolvePaperScores(examRecordId);
 		// 先纯计算，把要写的结果攒成 draft，最后一次性批量落库
 		List<AnswerRecord> graded = new ArrayList<>();
 		int totalScore = 0;
@@ -300,9 +311,9 @@ public class ExamRecordService {
 			var type = ar.question().type();
 			Integer score = null;
 			if (QuestionType.SINGLE_CHOICE.equals(type) || QuestionType.MULTIPLE_CHOICE.equals(type)) {
-				score = computeChoiceScore(ar);
+				score = computeChoiceScore(ar, scoreOf(ar, paperScores));
 			} else if (QuestionType.JUDGE.equals(type)) {
-				score = computeJudgeScore(ar);
+				score = computeJudgeScore(ar, scoreOf(ar, paperScores));
 			}
 			if (score == null) {
 				// 简答题等非选择题，交给异步 AI 批改，这里不碰
@@ -332,8 +343,10 @@ public class ExamRecordService {
 	 * 选择题评分（纯计算，不落库；写回由 gradeNonTextQuestions 批量做）：
 	 * 多选题 → 选项集合完全一致才得分（顺序无关）
 	 * 单选题 → 字符串精确匹配（忽略大小写）
+	 *
+	 * @param fullScore 答对时的满分，由调用方按「试卷配分优先」的口径算好传入
 	 */
-	private int computeChoiceScore(AnswerRecord ar) {
+	private int computeChoiceScore(AnswerRecord ar, int fullScore) {
 		String userAnswer = ar.userAnswer();
 		String correctAnswer = ar.question().questionAnswers() != null
 				                       ? Objects.requireNonNull(ar.question().questionAnswers()).answer() : null;
@@ -344,14 +357,14 @@ public class ExamRecordService {
 			if (correctAnswer != null) {
 				Set<String> userSet = new HashSet<>(List.of(userAnswer.split(",")));
 				Set<String> correctSet = new HashSet<>(List.of(correctAnswer.split(",")));
-				userScore = userSet.equals(correctSet) ? ar.question().score() : 0;
+				userScore = userSet.equals(correctSet) ? fullScore : 0;
 			}
 		} else {
 			// 单选题：精确匹配，容忍大小写差异
 			if (userAnswer.equals(correctAnswer)) {
-				userScore = ar.question().score();
+				userScore = fullScore;
 			} else if (userAnswer.equalsIgnoreCase(correctAnswer)) {
-				userScore = ar.question().score();
+				userScore = fullScore;
 			}
 		}
 		
@@ -360,11 +373,36 @@ public class ExamRecordService {
 	
 	/**
 	 * 判断题评分（纯计算，不落库）：忽略大小写比较
+	 *
+	 * @param fullScore 答对时的满分，由调用方按「试卷配分优先」的口径算好传入
 	 */
-	private int computeJudgeScore(AnswerRecord ar) {
+	private int computeJudgeScore(AnswerRecord ar, int fullScore) {
 		String correctAnswer = ar.question().questionAnswers() != null
 				                       ? Objects.requireNonNull(ar.question().questionAnswers()).answer() : null;
-		return ar.userAnswer().equalsIgnoreCase(correctAnswer) ? ar.question().score() : 0;
+		return ar.userAnswer().equalsIgnoreCase(correctAnswer) ? fullScore : 0;
+	}
+	
+	/**
+	 * 某场考试所用试卷的「题目 → 配分」映射（`paper_question.score`）。
+	 * 考试记录不存在时返回空表，调用方会回落到「题目分值」。
+	 */
+	private Map<Long, Integer> resolvePaperScores(int examRecordId) {
+		ExamRecords record = examRecordsRepo.findById(examRecordId).orElse(null);
+		if (record == null) {
+			return Map.of();
+		}
+		return paperQuestionRepo.findScoreMapByPaperId(record.paperId());
+	}
+	
+	/**
+	 * 取某道题在本场考试里的**满分**：试卷配分优先，查不到（例如题已从试卷移除）才用题目自带分值。
+	 * <p>
+	 * 🔴 这张卷的 `paper.total_score` 是按 `paper_question.score` 累加的，
+	 * 判分若读 `questions.score`，会给出一道与卷面总分对不上的分数 —— 故以配分为准。
+	 */
+	private int scoreOf(AnswerRecord ar, Map<Long, Integer> paperScores) {
+		Integer paperScore = paperScores.get(ar.questionId());
+		return paperScore != null ? paperScore : ar.question().score();
 	}
 	
 	/**

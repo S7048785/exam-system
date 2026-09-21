@@ -11,6 +11,8 @@ import com.yyjy.exam.entity.question.entity.*;
 import com.yyjy.exam.entity.question.io.req.*;
 import com.yyjy.exam.entity.question.io.res.QuestionGenerateDto;
 import com.yyjy.exam.entity.question.io.res.QuestionPageRes;
+import com.yyjy.exam.paper.repository.PaperQuestionRepository;
+import com.yyjy.exam.paper.repository.PaperRepository;
 import com.yyjy.exam.question.bo.QuestionExcelTemplateBo;
 import com.yyjy.exam.question.bo.QuestionImportResult;
 import com.yyjy.exam.question.common.QuestionExcelListener;
@@ -52,6 +54,8 @@ public class QuestionService {
 	private final CategoriesRepository categoriesRepository;
 	private final QuestionImportService questionImportService;
 	private final QuestionGenerateService questionGenerateService;
+	private final PaperQuestionRepository paperQuestionRepository;
+	private final PaperRepository paperRepository;
 	private final JSqlClient sqlClient;
 	
 	private static void requireExcelFile(MultipartFile file) {
@@ -255,10 +259,31 @@ public class QuestionService {
 				AssociatedSaveMode.APPEND);
 	}
 	
+	/**
+	 * 删除题目。题目本身不可恢复，且会**连带**做三件事：
+	 * <ol>
+	 *   <li>摘掉它在所有试卷里的引用（否则 paper_question 会留下悬空 question_id，
+	 *       导致引用它的试卷 GET /paper/{id} 直接 500）；</li>
+	 *   <li>重算受影响的每张试卷的冗余列（question_count / total_score）；</li>
+	 *   <li>删掉它的选项与答案（库里没有外键约束，不删就是孤儿数据）。</li>
+	 * </ol>
+	 * 题目与试卷都只可能是自己的（归属在加题时就已约束），所以这里不再逐个校验试卷归属。
+	 * 已发布的试卷同样会被摘掉引用 —— 删题是题库侧操作，不适用"已发布卷题目冻结"。
+	 */
+	@Transactional
 	public void remove(long id) {
 		// 多用户改造：只能删自己的题
 		requireOwnedQuestion(id);
+		
+		// 先摘引用并拿到受影响的试卷，再删题目本体（顺序无所谓，但要同一个事务）
+		List<Integer> affectedPaperIds = paperQuestionRepository.deleteByQuestionId(id);
+		questionChoicesRepository.deleteByQuestionId(id);
+		questionAnswersRepository.deleteByQuestionId(id);
 		questionsRepository.deleteById(id);
+		
+		for (int paperId : affectedPaperIds) {
+			paperRepository.recalculateTotals(paperId);
+		}
 	}
 	
 	public QuestionsPageView getById(long id) {
@@ -273,7 +298,8 @@ public class QuestionService {
 	
 	public QuestionPageRes list(QuestionListReq req) {
 		int page = req.page() != null ? req.page() : 1;
-		int size = req.size() != null && req.size() < 20 ? req.size() : 20;
+		// size 缺省为 20；显式传入时按其值，但钳制在 [1, 100] 内，避免恶意超大分页。
+		int size = req.size() != null ? Math.clamp(req.size(), 1, 100) : 20;
 		
 		QuestionsTable t = QuestionsTable.$;
 		// 多用户改造：列表只看自己的题（没有 admin 分支）
