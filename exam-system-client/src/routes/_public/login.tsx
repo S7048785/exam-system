@@ -10,6 +10,7 @@ export const Route = createFileRoute('/_public/login')({
   beforeLoad: ({ context }) => {
     redirectIfAuthenticated(context.user)
   },
+  ssr: false
 })
 
 function SigninPage() {

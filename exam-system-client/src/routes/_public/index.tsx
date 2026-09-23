@@ -1,4 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { ArrowRightIcon } from 'lucide-react'
+import { Button } from '#/components/ui/button.tsx'
 
 export const Route = createFileRoute('/_public/')({
   component: App,
@@ -17,6 +19,12 @@ function App() {
         <p className="text-muted-foreground mb-8 max-w-2xl text-base sm:text-lg">
           快速创建和管理试卷，支持多种题型，智能组卷，在线考试。
         </p>
+        <Button asChild size="lg">
+          <Link to="/dashboard">
+            进入控制台
+            <ArrowRightIcon data-icon="inline-end" />
+          </Link>
+        </Button>
       </section>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

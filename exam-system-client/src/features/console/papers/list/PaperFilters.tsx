@@ -12,6 +12,7 @@ import { Plus, X } from 'lucide-react'
 import CategoryTreePicker from '#/components/category-tree/CategoryTreePicker.tsx'
 import type { TreeNode } from '#/components/category-tree/CategoryTreePicker.tsx'
 import type { PageListFilterType } from '#/routes/_auth/papers/list.tsx'
+import type { PaperStatus } from '#/__generated/model/enums'
 
 interface PaperFiltersProps {
   values: PageListFilterType
@@ -19,6 +20,23 @@ interface PaperFiltersProps {
   onRefresh: () => void
   categoryTree: readonly TreeNode[]
 }
+
+/**
+ * 后端 `PaperStatus` 四态筛选。
+ *
+ * ⚠️ 文案与枚举名的对应关系以后端 `PaperService.listPapersByNameAndStatus` 的实现为准，
+ * **不是**按枚举名直译（枚举源码里的注释与实现相反，别被它带跑）：
+ * `PUBLISHED` 分支是 `start >= now` → 未开始；`PENDING` 分支是区间内 → 进行中。
+ */
+const PAPER_STATUS_OPTIONS: ReadonlyArray<{
+  value: PaperStatus
+  label: string
+}> = [
+  { value: 'DRAFT', label: '草稿' },
+  { value: 'PENDING', label: '未开始' },
+  { value: 'PUBLISHED', label: '进行中' },
+  { value: 'FINISHED', label: '已结束' },
+]
 
 export function PaperFilters({
   values,
@@ -61,11 +79,11 @@ export function PaperFilters({
       <div className="space-y-1.5">
         <Label className="text-muted-foreground text-xs">考试状态</Label>
         <Select
-          value={values.ongoing === undefined ? 'ALL' : String(values.ongoing)}
+          value={values.status ?? 'ALL'}
           onValueChange={(v) =>
             onChange({
               ...values,
-              ongoing: v === 'ALL' ? undefined : v === 'true',
+              status: v === 'ALL' ? undefined : (v as PaperStatus),
             })
           }
         >
@@ -74,8 +92,11 @@ export function PaperFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">全部状态</SelectItem>
-            <SelectItem value="true">进行中</SelectItem>
-            <SelectItem value="false">已结束</SelectItem>
+            {PAPER_STATUS_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

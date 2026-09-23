@@ -56,7 +56,7 @@ export function PaperPagination({
           variant="outline"
           size="sm"
           onClick={() => onPageChange(page + 1)}
-          disabled={size >= totalPages}
+          disabled={page >= totalPages}
         >
           下一页
         </Button>

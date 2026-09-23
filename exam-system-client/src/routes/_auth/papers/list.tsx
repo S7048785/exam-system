@@ -22,7 +22,7 @@ export const Route = createFileRoute('/_auth/papers/list')({
         page: 1,
         size: 10,
         categoryId: undefined,
-        ongoing: undefined,
+        status: undefined,
       }),
     )
   },
@@ -45,7 +45,7 @@ function PapersPage() {
   const [filters, setFilters] = useState<PageListFilterType>({
     name: '',
     categoryId: undefined,
-    ongoing: undefined,
+    status: undefined,
   })
   const [pageCondition, setPageCondition] = useState({
     page: 1,
@@ -101,16 +101,21 @@ function PapersPage() {
       </div>
       {isPending ? (
         <Loading />
-      ) : listData?.data.at(0) ? (
+      ) : listData?.list.at(0) ? (
         <>
-          <PaperList papers={listData.data} />
+          <PaperList papers={listData.list} />
 
           <PaperPagination
             size={pageCondition.size}
             page={pageCondition.page}
-            total={listData.data.length}
+            total={listData.total ?? listData.list.length}
             onPageChange={handlePageChange}
-            totalPages={listData.data.length}
+            totalPages={Math.max(
+              1,
+              Math.ceil(
+                (listData.total ?? listData.list.length) / pageCondition.size,
+              ),
+            )}
             onSizeChange={(newSize: number) => {
               setPageCondition({ ...pageCondition, size: newSize, page: 1 })
             }}
