@@ -2,13 +2,14 @@ package com.yyjy.exam.paper.service;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
+import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.Immutables;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperConfigInput;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
-import com.yyjy.exam.entity.paper.dto.PaperListQuery;
 import com.yyjy.exam.entity.paper.entity.*;
+import com.yyjy.exam.entity.paper.io.req.PaperListQuery;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
 import com.yyjy.exam.exam.repository.ExamRecordsRepository;
@@ -157,39 +158,51 @@ public class PaperService {
 	/**
 	 * 「我的试卷」列表：强制按 `user_id` 过滤（含未发布草稿）。公开广场走 listPublishedPapers。
 	 */
-	public List<Paper> listPapersByNameAndStatus(PaperListQuery conditions, Fetcher<Paper> fetcher) {
+	public PageRes<Paper> listPapersByNameAndStatus(PaperListQuery conditions, Fetcher<Paper> fetcher) {
 		PaperTable paper = PaperTable.$;
 		
-		int page = Objects.requireNonNullElse(conditions.getPage(), 1);
-		int size = Objects.requireNonNullElse(conditions.getSize(), 10);
+		// 缺省：page=1、size=10；显式传入的非法值由记录类上的 @Min/@Max 拦成 422
+		int page = conditions.page();
+		int size = conditions.size();
 		
 		var query = paperRepository.sql().createQuery(paper)
 				            .where(paper.userId().eq(StpUtil.getLoginIdAsLong()));
 		
-		if (Boolean.TRUE.equals(conditions.getOngoing())) {
-			query.where(paper.end().ge(LocalDateTime.now()));
-			
-		} else if (Boolean.FALSE.equals(conditions.getOngoing())) {
-			query.where(paper.end().lt(LocalDateTime.now()));
+		var now = LocalDateTime.now();
+		if (conditions.status() != null) {
+			switch (conditions.status()) {
+				case DRAFT:
+					query.where(paper.published().eq(false));
+					break;
+				case PENDING:
+					query.where(paper.published().eq(true), paper.start().ge(now));
+					break;
+				case PUBLISHED:
+					query.where(paper.published().eq(true), paper.start().le(now), paper.end().ge(now));
+					break;
+				case FINISHED:
+					query.where(paper.published().eq(true), paper.end().le(now));
+					break;
+				default:
+					break;
+			}
 		}
 		
 		// 2026-09-20 补：`name` / `categoryId` 是新加的（前端 PaperFilters 的「试卷名称」「试卷分类」
 		// 一直在筛，但查询里根本没这两个条件）；`published` 则是早就声明了却一直没被使用 —— 声明了就该生效
-		if (conditions.getName() != null && !conditions.getName().isBlank()) {
-			query.where(paper.name().like("%" + conditions.getName().trim() + "%"));
+		if (conditions.name() != null && !conditions.name().isBlank()) {
+			query.where(paper.name().like(conditions.name().trim()));
 		}
-		if (conditions.getCategoryId() != null) {
-			query.where(paper.categoryId().eq(conditions.getCategoryId()));
-		}
-		if (conditions.getPublished() != null) {
-			query.where(paper.published().eq(conditions.getPublished()));
+		if (conditions.categoryId() != null) {
+			query.where(paper.categoryId().eq(conditions.categoryId()));
 		}
 		
-		return query
-				       .orderBy(paper.end().desc(), paper.published().asc())
-				       .select(paper.fetch(fetcher))
-				       .limit(size, (long) (page - 1) * size)
-				       .execute();
+		var res = query
+				          .orderBy(paper.end().desc(), paper.published().asc(), paper.id().desc())
+				          .select(paper.fetch(fetcher))
+				          .fetchPage(page - 1, size);
+		
+		return PageRes.<Paper>builder().page(page).pageSize(size).total(res.getTotalRowCount()).list(res.getRows()).build();
 	}
 	
 	public PaperDetail getPaper(int id) {

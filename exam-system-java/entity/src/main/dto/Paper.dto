@@ -3,7 +3,6 @@ export com.yyjy.exam.entity.paper.entity.Paper
 
 import com.yyjy.exam.common.constant.MessageConstant
 import jakarta.validation.constraints.Min
-import jakarta.validation.constraints.NotNull
 
 PaperDetail {
     id
@@ -34,15 +33,6 @@ PaperDetail {
         score
     }
     createTime
-}
-
-specification PaperListQuery {
-    name
-    published
-    ongoing: Boolean?
-    categoryId: Long?
-    page: Int?
-    size: Int?
 }
 
 input PaperConfigInput {

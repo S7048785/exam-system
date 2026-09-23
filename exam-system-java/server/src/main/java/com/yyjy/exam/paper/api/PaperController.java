@@ -1,14 +1,15 @@
 package com.yyjy.exam.paper.api;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperConfigInput;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
-import com.yyjy.exam.entity.paper.dto.PaperListQuery;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
+import com.yyjy.exam.entity.paper.io.req.PaperListQuery;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
 import com.yyjy.exam.paper.service.PaperService;
@@ -76,8 +77,8 @@ public class PaperController {
 	 * 获取试卷列表（**我的**，含未发布草稿）
 	 */
 	@GetMapping("/list")
-	public R<List<@FetchBy("PAPER_ITEM") Paper>> listPapers(PaperListQuery query) {
-		return R.ok(paperService.listPapersByNameAndStatus(query, PAPER_ITEM));
+	public PageRes<@FetchBy("PAPER_ITEM") Paper> listPapers(@Validated PaperListQuery query) {
+		return paperService.listPapersByNameAndStatus(query, PAPER_ITEM);
 	}
 	
 	/**
