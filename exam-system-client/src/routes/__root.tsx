@@ -72,7 +72,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     )
   },
   pendingComponent: () => {
-    return <div>加载中</div>
+    return <div className="flex min-h-screen items-center justify-center text-sm">
+      加载中…
+    </div>
   },
 })
 
@@ -88,12 +90,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
         <Scripts />
-        {import.meta.env.DEV && (
-          <ClientOnly>
-            <ReactQueryDevtools buttonPosition="top-right" />
-            <TanStackRouterDevtools position="bottom-right" />
-          </ClientOnly>
-        )}
+        {/*{import.meta.env.DEV && (*/}
+        {/*  <ClientOnly>*/}
+        {/*    <ReactQueryDevtools buttonPosition="top-right" />*/}
+        {/*    <TanStackRouterDevtools position="bottom-right" />*/}
+        {/*  </ClientOnly>*/}
+        {/*)}*/}
       </body>
     </html>
   )

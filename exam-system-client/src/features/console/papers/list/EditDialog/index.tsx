@@ -11,7 +11,7 @@ import { Button } from '#/components/ui/button.tsx'
 import { toast } from 'sonner'
 import { paperQueries } from '#/features/console/papers/paperQueries.ts'
 import { api } from '#/ApiInstance.ts'
-import type { PaperConfigInput } from '#/__generated/model/static'
+import type { PaperSaveInput } from '#/__generated/model/static'
 import type { ParticipateMode } from '#/__generated/model/enums'
 import StepIndicator from './StepIndicator.tsx'
 import StepBasicInfo from './StepBasicInfo.tsx'
@@ -19,11 +19,6 @@ import StepDesignPaper from './StepDesignPaper/StepDesignPaper.tsx'
 import StepPublishExam from './StepPublishExam.tsx'
 import { usePaperListStore } from '#/stores/paper-list.ts'
 import { useShallow } from 'zustand/react/shallow'
-import {
-  defaultTimeWindow,
-  toApiDateTime,
-  toLocalInput,
-} from '#/features/console/papers/time-window.ts'
 import { XIcon } from 'lucide-react'
 import z from 'zod'
 
@@ -36,24 +31,13 @@ const STEPS = [
 /**
  * 「考试信息」这一步的校验。
  *
- * 文案与原来的手写 if 链逐字一致（原来的顺序：名称 → 分类 → 时长 → 起止时间 → 时间先后 → 次数上限）。
+ * 只校验这一步的 4 个字段 —— 时长 / 起止时间 / 次数上限 / 及格分 / 开关属于「考试设置」，
+ * 不在向导里填（新建时后端落默认值，之后到列表页该试卷的「设置」弹窗改）。
  */
-const paperConfigSchema = z
-  .object({
-    name: z.string().trim().min(1, '请填写试卷名称'),
-    categoryId: z.number('请选择试卷分类'),
-    duration: z.number('时长必须大于 0').gt(0, '时长必须大于 0'),
-    start: z.string().min(1, '请填写开考时间与截止时间'),
-    end: z.string().min(1, '请填写开考时间与截止时间'),
-    maxAttempts: z
-      .number('考试次数上限不能小于 1')
-      .min(1, '考试次数上限不能小于 1'),
-  })
-  // 起止时间缺失时交给上面的必填校验报错，这里只比先后
-  .refine((v) => !v.start || !v.end || new Date(v.end) >= new Date(v.start), {
-    message: '截止时间不能早于开考时间',
-    path: ['end'],
-  })
+const paperInfoSchema = z.object({
+  name: z.string().trim().min(1, '请填写试卷名称'),
+  categoryId: z.number('请选择试卷分类'),
+})
 
 export default function PaperInfoDialog() {
   const queryClient = useQueryClient()
@@ -82,17 +66,12 @@ export default function PaperInfoDialog() {
   const [publishedInSession, setPublishedInSession] = useState(false)
   const effectivePaperId = editPaperId ?? createdPaperId
 
-  // 表单状态
+  // 表单状态（只含试卷自身的 4 个字段）
   const [name, setName] = useState('')
   const [categoryId, setCategoryId] = useState<number | undefined>()
   const [description, setDescription] = useState('')
-  const [duration, setDuration] = useState(60)
-  // 考试设置（后端 PaperConfigInput 里 start/end/participateMode/maxAttempts 都是必填）
-  const [start, setStart] = useState(() => defaultTimeWindow().start)
-  const [end, setEnd] = useState(() => defaultTimeWindow().end)
   const [participateMode, setParticipateMode] =
     useState<ParticipateMode>('LOGIN_REQUIRED')
-  const [maxAttempts, setMaxAttempts] = useState(1)
 
   // 分类树
   const { data: treeData } = useQuery({
@@ -131,49 +110,31 @@ export default function PaperInfoDialog() {
       if (dialogMode === 'edit' && detailData?.data) {
         const d = detailData.data
         setName(d.name)
-        setDescription(d.description)
-        setDuration(d.duration)
+        setDescription(d.description ?? '')
         setCategoryId(d.categoryId)
-        setStart(toLocalInput(d.start))
-        setEnd(toLocalInput(d.end))
         setParticipateMode(d.participateMode)
-        setMaxAttempts(d.maxAttempts)
       } else {
-        const w = defaultTimeWindow()
         setName('')
         setCategoryId(undefined)
         setDescription('')
-        setDuration(60)
-        setStart(w.start)
-        setEnd(w.end)
         setParticipateMode('LOGIN_REQUIRED')
-        setMaxAttempts(1)
       }
     }
   }, [dialogOpen, dialogMode, detailData])
 
-  const addPaperV2Mutation = useMutation({
-    mutationFn: (input: PaperConfigInput) =>
-      api.paperController.addPaperV2({ body: input }),
+  // 保存试卷：同一接口兼顾新增/更新（带 id = 更新，不带 id = 新增）
+  const savePaperMutation = useMutation({
+    mutationFn: (input: PaperSaveInput) =>
+      api.paperController.savePaperV2({ body: input }),
   })
 
-  // 编辑模式：把「考试信息」这一步的改动提交回去
-  // （2026-09-20 补：原来只有 create 分支会提交，编辑试卷时改了配置根本不会保存）
-  const updatePaperConfigMutation = useMutation({
-    mutationFn: (input: PaperConfigInput) =>
-      api.paperController.updatePaperConfig({ id: editPaperId!, body: input }),
-  })
-
-  /** 第 0 步表单 → PaperConfigInput（8 个字段后端全必填，create / edit 共用同一份结构） */
-  const buildConfigInput = (): PaperConfigInput => ({
+  /** 向导第 0 步的表单 → PaperSaveInput（id 只在更新时给） */
+  const buildSaveInput = (id?: number): PaperSaveInput => ({
+    id,
     name,
     description,
-    duration,
     categoryId: categoryId!,
-    start: toApiDateTime(start),
-    end: toApiDateTime(end),
     participateMode,
-    maxAttempts,
   })
 
   const switchToStep = async (index: number) => {
@@ -181,48 +142,34 @@ export default function PaperInfoDialog() {
 
     if (index > currentStep) {
       if (currentStep === 0) {
-        const checked = paperConfigSchema.safeParse({
-          name,
-          categoryId,
-          duration,
-          start,
-          end,
-          maxAttempts,
-        })
+        const checked = paperInfoSchema.safeParse({ name, categoryId })
         if (!checked.success) {
           toast.error(checked.error.issues[0].message)
           return
         }
       }
 
-      if (dialogMode === 'create' && !createdPaperId && index >= 1) {
+      // 离开第 0 步：保存基本信息。新建走新增（后端顺带落实考试设置行默认值），
+      // 编辑（或再次回到第 0 步后重进）带 id 走更新。
+      if (currentStep === 0 && index > 0) {
+        const idToSave = dialogMode === 'edit' ? editPaperId : createdPaperId
         try {
-          const res = await addPaperV2Mutation.mutateAsync(buildConfigInput())
-          setCreatedPaperId(res.data)
+          const res = await savePaperMutation.mutateAsync(buildSaveInput(idToSave))
+          if (dialogMode === 'create') setCreatedPaperId(res.data)
           targetPaperId = res.data
-        } catch {
+          if (idToSave) {
+            await queryClient.invalidateQueries({
+              queryKey: ['paperDetail', idToSave],
+            })
+          }
+          queryClient.invalidateQueries({ queryKey: ['listPapers'] })
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '试卷信息保存失败')
           return
         }
       }
-
-      // 编辑模式：离开第 0 步时保存「考试信息」的改动
-      // （后端 PUT /paper/{id}/config 是全字段更新，已发布的试卷也允许改）
-      if (
-        dialogMode === 'edit' &&
-        editPaperId &&
-        currentStep === 0 &&
-        index > 0
-      ) {
-          updatePaperConfigMutation.mutateAsync(buildConfigInput())
-          queryClient.invalidateQueries({
-            queryKey: ['paperDetail', editPaperId],
-          })
-          queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-
-      }
     }
 
-    // 进入「设计试卷」时试卷已经是草稿态（published = false），无需额外调用撤回接口。
     // 已发布则不再请求发布接口，只负责跳到步骤三看考试入口。
     if (index === 2 && targetPaperId && !isPublished) {
       setPublishing(true)
@@ -299,20 +246,12 @@ export default function PaperInfoDialog() {
               name={name}
               categoryId={categoryId}
               description={description}
-              duration={duration}
-              start={start}
-              end={end}
               participateMode={participateMode}
-              maxAttempts={maxAttempts}
               categoryTree={categoryTree}
               onNameChange={setName}
               onCategoryChange={setCategoryId}
               onDescriptionChange={setDescription}
-              onDurationChange={setDuration}
-              onStartChange={setStart}
-              onEndChange={setEnd}
               onParticipateModeChange={setParticipateMode}
-              onMaxAttemptsChange={setMaxAttempts}
             />
           ) : currentStep === 1 ? (
             <StepDesignPaper paperId={effectivePaperId!} />

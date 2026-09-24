@@ -18,27 +18,27 @@ export const PAPER_PHASE_VARIANT: Record<
 }
 
 /**
- * 四态由 published + start + end 推导，与后端 `requireQuestionEditable` 的口径一致。
+ * 四态由 published + start + end 推导。
  *
  * ⚠️ 判定顺序不能颠倒：必须先判 published，再判 start，最后判 end ——
  * 否则「未开始」会被误判成「进行中」。
  *
- * ⚠️ 只有「草稿」态才能改题目；其余三态都必须先「撤回发布」。
+ * ℹ️ 起止时间在 1:1 的考试设置表里，理论上不缺失（列 NOT NULL）；这里对缺失做兜底：
+ * 没设置就按「未开始」显示。
  */
 export function getPaperPhase(
   published: boolean,
-  start: string,
-  end: string
+  start?: string,
+  end?: string
 ): PaperPhase {
   if (!published) return 'draft'
+  if (!start) return 'notStarted'
   const now = Date.now()
   if (now < new Date(start).getTime()) return 'notStarted'
+  if (!end) return 'ongoing'
   if (now < new Date(end).getTime()) return 'ongoing'
   return 'ended'
 }
-
-/** 是否允许修改题目：只有草稿可以 */
-export const canEditQuestions = (phase: PaperPhase) => phase === 'draft'
 
 // 题目类型
 export const QUESTION_TYPE_MAP: Record<

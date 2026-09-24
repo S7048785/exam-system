@@ -70,8 +70,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link to={'/'} className="p-5">
-              <span className="text-base font-semibold">Exam System</span>
+            <Link to={'/'} className="flex items-center gap-2.5 px-5 py-4">
+              <img
+                src="/favicon.ico"
+                alt="logo"
+                className="size-7 rounded-md"
+              />
+              <span className="text-base font-semibold">在线考试系统</span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>

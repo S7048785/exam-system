@@ -8,5 +8,10 @@ export const Route = createFileRoute('/_auth')({
       throw redirect({ to: '/login' })
     }
   },
-  ssr: false
+  ssr: false,
+  pendingComponent: () => {
+    return <div className="flex min-h-screen items-center justify-center text-sm">
+      加载中…
+    </div>
+  },
 })

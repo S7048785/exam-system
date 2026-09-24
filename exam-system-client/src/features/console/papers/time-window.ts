@@ -1,6 +1,6 @@
 /**
  * 考试时间窗的取值转换。
- * 后端 `PaperConfigInput.start` / `end` 是 `LocalDateTime`（必填），
+ * 后端 `PaperExamSettingsInput.start` / `end` 是 `LocalDateTime`（必填），
  * 前端用 `<input type="datetime-local">`，值是 `YYYY-MM-DDTHH:mm`（不带秒）。
  */
 
