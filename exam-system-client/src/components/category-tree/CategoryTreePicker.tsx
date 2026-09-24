@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '#/components/ui/popover'
-import { ChevronDown, ChevronRight, File, Folder } from 'lucide-react'
+import { ChevronDown, ChevronRight, Check, File, Folder } from 'lucide-react'
 import { cn } from '#/lib/utils.ts'
 
 /** 通用树节点接口 — PaperCategoriesTree 和 QuestionsCategoriesTree 都符合 */
@@ -18,9 +18,16 @@ export interface TreeNode {
 interface CategoryTreePickerProps {
   nodes: readonly TreeNode[]
   value?: number
-  onChange: (id: number) => void
+  onChange: (id: number | undefined) => void
   placeholder?: string
   className?: string
+  /**
+   * 是否在弹层顶部提供「全部」项（点击即清空选择，回调 `undefined`）。
+   *
+   * 默认关闭 —— 必选分类的场景（如新建试卷）不该给清空入口；
+   * 筛选场景传 `true`，即可替代触发器旁边额外的 X 按钮。
+   */
+  clearable?: boolean
 }
 
 /** 在树中按 id 查找节点名称 */
@@ -114,6 +121,8 @@ function TreeNodeItem({
  *
  * 适用场景：试卷分类选择、试题分类选择
  *
+ * 筛选场景传 `clearable`，弹层顶部会出现一项「全部」（文案取 `placeholder`），点击等价于清空选择。
+ *
  * @example
  * ```tsx
  * <CategoryTreePicker
@@ -130,6 +139,7 @@ export default function CategoryTreePicker({
   onChange,
   placeholder = '选择分类',
   className,
+  clearable = false,
 }: CategoryTreePickerProps) {
   const [open, setOpen] = useState(false)
   const selectedName = value ? findNodeName(nodes, value) : undefined
@@ -155,6 +165,22 @@ export default function CategoryTreePicker({
         align="start"
       >
         <div className="max-h-[50vh] overflow-y-auto p-1">
+          {clearable && (
+            <button
+              type="button"
+              className={cn(
+                'hover:bg-accent flex w-full items-center gap-1.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors',
+                value == null && 'bg-accent text-accent-foreground font-medium',
+              )}
+              onClick={() => {
+                onChange(undefined)
+                setOpen(false)
+              }}
+            >
+              <span className="flex-1 truncate">{placeholder}</span>
+              {value == null && <Check className="size-4 shrink-0" />}
+            </button>
+          )}
           {nodes.length === 0 ? (
             <p className="text-muted-foreground px-2 py-4 text-center text-sm">
               暂无分类

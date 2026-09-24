@@ -1,16 +1,10 @@
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
-import { Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import CategoryTreePicker from '#/components/category-tree/CategoryTreePicker.tsx'
 import type { TreeNode } from '#/components/category-tree/CategoryTreePicker.tsx'
+import PopoverSelect from '#/components/popover-select/PopoverSelect.tsx'
 import type { PageListFilterType } from '#/routes/_auth/papers/list.tsx'
 import type { PaperStatus } from '#/__generated/model/enums'
 
@@ -56,49 +50,25 @@ export function PaperFilters({
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-muted-foreground text-xs">试卷分类</Label>
-        <div className="flex items-center gap-1">
-          <CategoryTreePicker
-            nodes={categoryTree}
-            value={values.categoryId}
-            onChange={(id) => onChange({ ...values, categoryId: id })}
-            placeholder="全部分类"
-            className="w-50"
-          />
-          {values.categoryId != null && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onChange({ ...values, categoryId: undefined })}
-            >
-              <X className="size-4" />
-            </Button>
-          )}
-        </div>
+        <Label className="text-muted-foreground text-xs block">试卷分类</Label>
+        <CategoryTreePicker
+          nodes={categoryTree}
+          value={values.categoryId}
+          onChange={(id) => onChange({ ...values, categoryId: id })}
+          placeholder="全部分类"
+          className="w-40"
+          clearable
+        />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-muted-foreground text-xs">考试状态</Label>
-        <Select
-          value={values.status ?? 'ALL'}
-          onValueChange={(v) =>
-            onChange({
-              ...values,
-              status: v === 'ALL' ? undefined : (v as PaperStatus),
-            })
-          }
-        >
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="全部状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">全部状态</SelectItem>
-            {PAPER_STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label className="text-muted-foreground text-xs block">考试状态</Label>
+        <PopoverSelect
+          options={PAPER_STATUS_OPTIONS}
+          value={values.status}
+          onChange={(status) => onChange({ ...values, status })}
+          placeholder="全部状态"
+          className="w-40"
+        />
       </div>
       <Button variant="outline" onClick={onRefresh} className="gap-1.5">
         <Plus className="h-4 w-4" />

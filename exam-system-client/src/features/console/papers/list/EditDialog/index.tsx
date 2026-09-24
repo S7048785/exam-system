@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
+import { Button } from '#/components/ui/button.tsx'
 import { toast } from 'sonner'
 import { paperQueries } from '#/features/console/papers/paperQueries.ts'
 import { api } from '#/ApiInstance.ts'
@@ -24,12 +25,35 @@ import {
   toLocalInput,
 } from '#/features/console/papers/time-window.ts'
 import { XIcon } from 'lucide-react'
+import z from 'zod'
 
 const STEPS = [
   { title: '考试信息', description: '编辑试卷基本信息' },
   { title: '设计试卷', description: '选择试卷题目' },
   { title: '发布考试', description: '发布试卷并获取考试链接' },
 ]
+
+/**
+ * 「考试信息」这一步的校验。
+ *
+ * 文案与原来的手写 if 链逐字一致（原来的顺序：名称 → 分类 → 时长 → 起止时间 → 时间先后 → 次数上限）。
+ */
+const paperConfigSchema = z
+  .object({
+    name: z.string().trim().min(1, '请填写试卷名称'),
+    categoryId: z.number('请选择试卷分类'),
+    duration: z.number('时长必须大于 0').gt(0, '时长必须大于 0'),
+    start: z.string().min(1, '请填写开考时间与截止时间'),
+    end: z.string().min(1, '请填写开考时间与截止时间'),
+    maxAttempts: z
+      .number('考试次数上限不能小于 1')
+      .min(1, '考试次数上限不能小于 1'),
+  })
+  // 起止时间缺失时交给上面的必填校验报错，这里只比先后
+  .refine((v) => !v.start || !v.end || new Date(v.end) >= new Date(v.start), {
+    message: '截止时间不能早于开考时间',
+    path: ['end'],
+  })
 
 export default function PaperInfoDialog() {
   const queryClient = useQueryClient()
@@ -52,6 +76,10 @@ export default function PaperInfoDialog() {
 
   const [currentStep, setCurrentStep] = useState(0)
   const [createdPaperId, setCreatedPaperId] = useState<number | undefined>()
+  // 发布请求进行中：步骤二的「发布试卷」按钮据此置灰，避免重复点击
+  const [publishing, setPublishing] = useState(false)
+  // 本次会话内已发布过（编辑态的发布来自详情里的 published 字段）
+  const [publishedInSession, setPublishedInSession] = useState(false)
   const effectivePaperId = editPaperId ?? createdPaperId
 
   // 表单状态
@@ -79,6 +107,22 @@ export default function PaperInfoDialog() {
     ...paperQueries.detail(editPaperId!),
     enabled: dialogOpen && dialogMode === 'edit' && !!editPaperId,
   })
+
+  /**
+   * 试卷是否已发布 —— 已发布就不再请求发布接口，只跳转到步骤三。
+   *
+   * 两个来源：
+   * - 编辑态的 `published` 字段（打开弹窗时详情是多少就是多少）；
+   * - 本次会话内发布成功的标记（详情缓存可能还是旧的 `published: false`）。
+   */
+  const isPublished =
+    publishedInSession ||
+    (dialogMode === 'edit' && detailData?.data.published === true)
+
+  // 每次打开弹窗重置发布标记（只依赖弹窗身份，别跟着 detailData 刷新一起清掉）
+  useEffect(() => {
+    if (dialogOpen) setPublishedInSession(false)
+  }, [dialogOpen, dialogMode, editPaperId])
 
   useEffect(() => {
     if (dialogOpen) {
@@ -137,28 +181,16 @@ export default function PaperInfoDialog() {
 
     if (index > currentStep) {
       if (currentStep === 0) {
-        if (!name.trim()) {
-          toast.error('请填写试卷名称')
-          return
-        }
-        if (!categoryId) {
-          toast.error('请选择试卷分类')
-          return
-        }
-        if (duration <= 0) {
-          toast.error('时长必须大于 0')
-          return
-        }
-        if (!start || !end) {
-          toast.error('请填写开考时间与截止时间')
-          return
-        }
-        if (new Date(end) < new Date(start)) {
-          toast.error('截止时间不能早于开考时间')
-          return
-        }
-        if (maxAttempts < 1) {
-          toast.error('考试次数上限不能小于 1')
+        const checked = paperConfigSchema.safeParse({
+          name,
+          categoryId,
+          duration,
+          start,
+          end,
+          maxAttempts,
+        })
+        if (!checked.success) {
+          toast.error(checked.error.issues[0].message)
           return
         }
       }
@@ -181,47 +213,43 @@ export default function PaperInfoDialog() {
         currentStep === 0 &&
         index > 0
       ) {
-        try {
-          await updatePaperConfigMutation.mutateAsync(buildConfigInput())
-          await queryClient.invalidateQueries({
+          updatePaperConfigMutation.mutateAsync(buildConfigInput())
+          queryClient.invalidateQueries({
             queryKey: ['paperDetail', editPaperId],
           })
-          await queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-          toast.success('试卷信息已保存')
+          queryClient.invalidateQueries({ queryKey: ['listPapers'] })
+
+      }
+    }
+
+    // 进入「设计试卷」时试卷已经是草稿态（published = false），无需额外调用撤回接口。
+    // 已发布则不再请求发布接口，只负责跳到步骤三看考试入口。
+    if (index === 2 && targetPaperId && !isPublished) {
+      setPublishing(true)
+      try {
+        // 校验：试题不能为空
+        try {
+          const { data: questions } =
+            await api.paperController.getPaperQuestions({ id: targetPaperId })
+          if (!questions.length) {
+            toast.error('请先添加试题')
+            return
+          }
         } catch {
-          toast.error('试卷信息保存失败')
+          toast.error('查询试题失败')
           return
         }
-      }
 
-      if (index === 2 && targetPaperId) {
-        const isPublished =
-          dialogMode === 'edit' && detailData?.data.published === true
-        // 还没发布：先确认有题目，再发布
-        if (!isPublished) {
-          try {
-            const { data: questions } =
-              await api.paperController.getPaperQuestions({
-                id: targetPaperId,
-              })
-            if (!questions.length) {
-              toast.error('请先添加试题')
-              return
-            }
-          } catch {
-            toast.error('查询试题失败')
-            return
-          }
-
-          try {
-            await api.paperController.publishPaper({ id: targetPaperId })
-            queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-            toast.success('试卷发布成功')
-          } catch {
-            toast.error('发布失败')
-            return
-          }
+        try {
+          await api.paperController.publishPaper({ id: targetPaperId })
+          setPublishedInSession(true)
+          queryClient.invalidateQueries({ queryKey: ['listPapers'] })
+          toast.success('试卷发布成功')
+        } catch {
+          // 已发布的卷再调用会抛 422「试卷已发布」——按需求前端不处理该异常，照常跳转
         }
+      } finally {
+        setPublishing(false)
       }
     }
     setCurrentStep(index)
@@ -243,8 +271,22 @@ export default function PaperInfoDialog() {
               currentStep={currentStep}
               onStepClick={switchToStep}
             />
-            <div>
-              <XIcon onClick={() => setDialogOpen(false)} size={24} className={"hover:text-blue-400 cursor-pointer"} />
+            <div className="flex items-center gap-3">
+              {/* 「设计试卷」这一步才有发布入口，放在关闭按钮左侧 */}
+              {currentStep === 1 && (
+                <Button
+                  size="sm"
+                  onClick={() => void switchToStep(2)}
+                  disabled={publishing}
+                >
+                  {publishing ? '发布中…' : '发布试卷'}
+                </Button>
+              )}
+              <XIcon
+                onClick={() => setDialogOpen(false)}
+                size={24}
+                className={'hover:text-blue-400 cursor-pointer'}
+              />
             </div>
           </DialogTitle>
         </DialogHeader>

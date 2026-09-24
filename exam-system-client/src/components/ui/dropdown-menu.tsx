@@ -15,10 +15,23 @@ type PointerDownOutsideEvent = Parameters<
   >
 >[0];
 
+/**
+ * Radix 的 `modal` 默认为 `true`：会把内容包进 `react-remove-scroll`，锁住 body 滚动，
+ * 副作用是**页面滚动条消失**、并用 padding 补偿导致横向跳动。
+ * Radix 官方口径：想让 body 保持可滚动就把 Root 设成非模态。
+ * 因此这里默认 `modal={false}`；个别需要"禁止点外部"的菜单可显式传 `modal`。
+ */
 function DropdownMenu({
+  modal = false,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+  return (
+    <DropdownMenuPrimitive.Root
+      data-slot="dropdown-menu"
+      modal={modal}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuPortal({
