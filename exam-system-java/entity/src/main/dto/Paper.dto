@@ -1,7 +1,7 @@
 export com.yyjy.exam.entity.paper.entity.Paper
     -> package com.yyjy.exam.entity.paper.dto
 
-import com.yyjy.exam.common.constant.MessageConstant
+import com.yyjy.exam.entity.constant.ValidationMessage
 import jakarta.validation.constraints.Min
 
 PaperDetail {
@@ -43,6 +43,6 @@ input PaperConfigInput {
     start
     end
     participateMode
-    @Min(value = 1, message = MessageConstant.PAPER_MAX_ATTEMPTS_INVALID)
+    @Min(value = 1, message = ValidationMessage.PAPER_MAX_ATTEMPTS_INVALID)
     maxAttempts
 }

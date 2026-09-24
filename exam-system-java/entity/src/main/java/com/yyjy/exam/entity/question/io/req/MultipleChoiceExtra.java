@@ -1,6 +1,6 @@
 package com.yyjy.exam.entity.question.io.req;
 
-import com.yyjy.exam.common.constant.MessageConstant;
+import com.yyjy.exam.entity.constant.ValidationMessage;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -13,7 +13,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 public class MultipleChoiceExtra extends QuestionExtra {
     @NotEmpty
-    @Size(min = 2, message = MessageConstant.QUESTION_CHOICE_AT_LEAST_TWO)
+    @Size(min = 2, message = ValidationMessage.QUESTION_CHOICE_AT_LEAST_TWO)
     @Valid
     private List<ChoiceDto> choices;
 }

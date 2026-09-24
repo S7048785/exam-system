@@ -3,6 +3,7 @@ package com.yyjy.exam.question.service;
 import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
+import com.yyjy.exam.entity.constant.ValidationMessage;
 import com.yyjy.exam.entity.question.dto.QuestionImportInput;
 import com.yyjy.exam.entity.question.dto.QuestionSaveInput;
 import com.yyjy.exam.entity.question.entity.QuestionType;
@@ -54,7 +55,7 @@ public class QuestionImportService {
 	@Transactional
 	public QuestionImportResult importBatch(List<QuestionImportInput> questions) {
 		if (questions.isEmpty()) {
-			throw new BusinessException(MessageConstant.QUESTION_NOT_EMPTY);
+			throw new BusinessException(ValidationMessage.QUESTION_NOT_EMPTY);
 		}
 		if (questions.size() > MAX_IMPORT_ROWS) {
 			throw new BusinessException("单次最多导入 " + MAX_IMPORT_ROWS + " 条，当前 " + questions.size() + " 条");

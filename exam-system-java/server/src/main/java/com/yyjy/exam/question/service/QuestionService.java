@@ -6,6 +6,7 @@ import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
+import com.yyjy.exam.entity.constant.ValidationMessage;
 import com.yyjy.exam.entity.question.dto.*;
 import com.yyjy.exam.entity.question.entity.*;
 import com.yyjy.exam.entity.question.io.req.*;
@@ -60,11 +61,11 @@ public class QuestionService {
 	
 	private static void requireExcelFile(MultipartFile file) {
 		if (file.isEmpty()) {
-			throw new BusinessException(MessageConstant.FILE_NOT_EMPTY);
+			throw new BusinessException(ValidationMessage.FILE_NOT_EMPTY);
 		}
 		String filename = file.getOriginalFilename();
 		if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
-			throw new BusinessException(MessageConstant.FILE_FORMAT_ERROR);
+			throw new BusinessException(ValidationMessage.FILE_FORMAT_ERROR);
 		}
 	}
 	
@@ -196,7 +197,7 @@ public class QuestionService {
 	
 	private void processChoice(QuestionSaveInput.Builder builder, List<ChoiceDto> choiceDtos, boolean allowMultiple) {
 		if (choiceDtos == null || choiceDtos.isEmpty()) {
-			throw new BusinessException(MessageConstant.QUESTION_CHOICE_CHOICES_NOT_EMPTY);
+			throw new BusinessException(ValidationMessage.QUESTION_CHOICE_CHOICES_NOT_EMPTY);
 		}
 		List<QuestionSaveInput.TargetOf_choices> choices = new ArrayList<>();
 		StringBuilder answerStr = new StringBuilder();

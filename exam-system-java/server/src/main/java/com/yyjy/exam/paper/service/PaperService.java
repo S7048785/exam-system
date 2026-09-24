@@ -5,6 +5,7 @@ import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.Immutables;
+import com.yyjy.exam.entity.constant.ValidationMessage;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
 import com.yyjy.exam.entity.paper.dto.PaperConfigInput;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
@@ -69,13 +70,13 @@ public class PaperService {
 	 */
 	private void requireValidQuestions(List<PaperQuestionsUpdateReq.Item> questions) {
 		if (questions == null || questions.isEmpty()) {
-			throw new BusinessException(MessageConstant.PAPER_QUESTION_EMPTY);
+			throw new BusinessException(ValidationMessage.PAPER_QUESTION_EMPTY);
 		}
 		Set<Long> seen = new HashSet<>();
 		for (PaperQuestionsUpdateReq.Item item : questions) {
 			if (!seen.add(item.questionId())) {
 				throw new BusinessException(
-						MessageConstant.PAPER_QUESTION_DUPLICATE + "，questionId=" + item.questionId());
+						ValidationMessage.PAPER_QUESTION_DUPLICATE + "，questionId=" + item.questionId());
 			}
 		}
 	}
@@ -139,10 +140,10 @@ public class PaperService {
 	 */
 	private void requireTimeWindow(LocalDateTime start, LocalDateTime end) {
 		if (start == null || end == null) {
-			throw new BusinessException(MessageConstant.PAPER_TIME_WINDOW_REQUIRED);
+			throw new BusinessException(ValidationMessage.PAPER_TIME_WINDOW_REQUIRED);
 		}
 		if (end.isBefore(start)) {
-			throw new BusinessException(MessageConstant.PAPER_TIME_WINDOW_INVALID);
+			throw new BusinessException(ValidationMessage.PAPER_TIME_WINDOW_INVALID);
 		}
 	}
 	
@@ -449,7 +450,7 @@ public class PaperService {
 	@Transactional
 	public Paper aiCreatePaper(PaperAiSaveDto dto) {
 		if (dto.getRules() == null || dto.getRules().isEmpty()) {
-			throw new BusinessException(MessageConstant.PAPER_RULE_EMPTY);
+			throw new BusinessException(ValidationMessage.PAPER_RULE_EMPTY);
 		}
 		
 		long me = StpUtil.getLoginIdAsLong();
