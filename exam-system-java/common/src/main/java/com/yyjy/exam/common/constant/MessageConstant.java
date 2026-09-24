@@ -13,13 +13,11 @@ public final class MessageConstant {
 	 * 纯 owner 相等判断，不含 admin 分支（决策台账 #15）。
 	 */
 	public static final String NOT_YOUR_RESOURCE = "common: 无权操作他人的资源";
-	public static final String PAPER_NOT_PUBLISH = "paper: 试卷未发布";
 	public static final String PAPER_IS_PUBLISHED = "paper: 试卷已发布";
 	public static final String PAPER_NAME_EXIST = "paper: 试卷名称已存在";
 	public static final String PAPER_NOT_FOUND = "paper: 试卷不存在";
 	public static final String PAPER_CATEGORY_NOT_EXIST = "paper: 试卷分类不存在";
 	public static final String PAPER_ALREADY_IN_EXAM = "paper: 该试卷已被考试引用，无法删除";
-	public static final String PAPER_PUBLISHED_CANNOT_EDIT_QUESTIONS = "paper: 试卷已发布，不能修改题目";
 	public static final String EXAM_LOGIN_REQUIRED = "exam: 该试卷要求登录后才能参加考试";
 	public static final String EXAM_ATTEMPT_LIMIT_REACHED = "exam: 已达到该试卷允许的考试次数上限";
 	public static final String EXAM_DETAIL_NOT_AVAILABLE_ONGOING = "exam: 考试尚未结束，暂不能查看试卷详情";

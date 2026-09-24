@@ -8,6 +8,7 @@ import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.io.req.StartExamReq;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
+import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.exam.service.ExamRecordService;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
@@ -30,13 +31,21 @@ public class ExamController {
 					.score()
 					.startTime()
 					.endTime()
-					.paper(Fetchers.PAPER_FETCHER.totalScore().passingScore());
+					.paper(Fetchers.PAPER_FETCHER
+							       .totalScore()
+							       .examSettings(Fetchers.PAPER_EXAM_SETTINGS_FETCHER.passingScore()));
 	private final ExamRecordService examRecordService;
 	
 	/**
-	 * 开始考试
-	 * 需要登录。返回 examRecordId 供后续操作使用
+	 * 考试入口页信息（**考生侧，免登录可访问**）：试卷名、考试时间、描述、总分、参与方式。
+	 * <p>
+	 * 未发布 → 422「考试不存在」；已结束 → 422「考试已结束」；未开始照常返回，由前端提示。
 	 */
+	@GetMapping("/paper/{id}")
+	public R<ExamPaperInfoRes> getExamPaperInfo(@PathVariable int id) {
+		return R.ok(examRecordService.getPaperInfoForExaminee(id));
+	}
+	
 	@PostMapping("/start")
 	public R<Integer> startExam(@RequestBody StartExamReq req) {
 		int examRecordId = examRecordService.startExam(req.paperId(), req.studentName());

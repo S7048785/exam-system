@@ -4,17 +4,17 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.exception.BusinessException;
-import com.yyjy.exam.entity.Immutables;
 import com.yyjy.exam.entity.constant.ValidationMessage;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
-import com.yyjy.exam.entity.paper.dto.PaperConfigInput;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
+import com.yyjy.exam.entity.paper.dto.PaperExamSettingsInput;
+import com.yyjy.exam.entity.paper.dto.PaperSaveInput;
 import com.yyjy.exam.entity.paper.entity.*;
 import com.yyjy.exam.entity.paper.io.req.PaperListQuery;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
-import com.yyjy.exam.exam.repository.ExamRecordsRepository;
 import com.yyjy.exam.paper.repository.PaperCategoriesRepository;
+import com.yyjy.exam.paper.repository.PaperExamSettingsRepository;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.paper.repository.PaperRepository;
 import com.yyjy.exam.question.repository.QuestionsRepository;
@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,24 +38,69 @@ public class PaperService {
 	 */
 	private static final ParticipateMode DEFAULT_PARTICIPATE_MODE = ParticipateMode.LOGIN_REQUIRED;
 	private static final int DEFAULT_MAX_ATTEMPTS = 1;
+	/**
+	 * 建卷时的默认考试时长（分钟）与默认考试时间窗长度（天）
+	 */
+	private static final int DEFAULT_DURATION = 60;
+	private static final int DEFAULT_WINDOW_DAYS = 7;
+	
 	private final PaperRepository paperRepository;
 	private final PaperQuestionRepository paperQuestionRepo;
 	private final PaperCategoriesRepository paperCategoriesRepository;
 	private final QuestionsRepository questionsRepository;
-	private final ExamRecordsRepository examRecordRepo;
+	private final PaperExamSettingsRepository paperExamSettingsRepo;
 	
 	/**
-	 * 试卷发布后题目即冻结：不能再增题、改分值、删题、换整套题目集。
+	 * 写入考试设置（1:1 子表 `paper_exam_settings`）。
 	 * <p>
-	 * 「发布后」覆盖三个状态：**未开始 / 进行中 / 已结束** —— 只要 `is_published = true` 就锁。
-	 * 想改题只有一条路：先调 {@link #unpublishPaper} 撤回发布（回到草稿态）。
+	 * 显式 upsert、不依赖聚合级联：级联在不同 {@link SaveMode} 下行为不同
+	 * （INSERT_ONLY 会连带插子表、UPDATE_ONLY 不会），这里统一兜一次，
+	 * 保证**建卷与改配置两条路径都必然有且只有一行设置**。
+	 *
+	 * @param settings               前端传来的设置；null 表示这次没带这个字段
+	 * @param writeDefaultWhenAbsent true = 没带就写默认值（建卷路径）；
+	 *                               false = 没带就保留库里原值（改配置路径）
 	 */
-	public void requireQuestionEditable(int paperId) {
-		Paper paper = paperRepository.findById(paperId)
-				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (paper.published()) {
-			throw new BusinessException(MessageConstant.PAPER_PUBLISHED_CANNOT_EDIT_QUESTIONS);
+	private void saveExamSettings(
+			int paperId,
+			@Nullable PaperExamSettingsInput settings,
+			boolean writeDefaultWhenAbsent) {
+		PaperExamSettings existing = paperExamSettingsRepo.findByPaperId(paperId);
+		if (settings == null && !writeDefaultWhenAbsent && existing != null) {
+			return;
 		}
+		
+		// settings 为 null 时只 set paperId，其余 8 列交给库默认值（全 0 / false）
+		PaperExamSettings draft = PaperExamSettingsDraft.$.produce(d -> {
+			if (existing != null) {
+				d.setId(existing.id());
+			}
+			d.setPaperId(paperId);
+			if (settings != null) {
+				d.setDuration(settings.getDuration());
+				d.setStart(settings.getStart());
+				d.setEnd(settings.getEnd());
+				// 及格分是必填（实体里是 int），DTO 的 getter 也是基本类型，别再判 null
+				d.setPassingScore(settings.getPassingScore());
+				d.setMaxAttempts(settings.getMaxAttempts());
+				// 8 项开关在实体里是 Boolean，生成的 DTO 访问器是 getXxx()（不是 isXxx()）
+				d.setRequireAllAnswered(settings.getRequireAllAnswered());
+				d.setHideQuestionScore(settings.getHideQuestionScore());
+				d.setShowRankAfterSubmit(settings.getShowRankAfterSubmit());
+				d.setShowAnswerAfterSubmit(settings.getShowAnswerAfterSubmit());
+				d.setMinAnswerMinutes(settings.getMinAnswerMinutes());
+				d.setShuffleQuestions(settings.getShuffleQuestions());
+				d.setShuffleChoices(settings.getShuffleChoices());
+			} else {
+				// 建卷默认值：60 分钟、now ~ now+7 天、1 次；及格分不设，开关全关
+				LocalDateTime now = LocalDateTime.now();
+				d.setDuration(DEFAULT_DURATION);
+				d.setStart(now);
+				d.setEnd(now.plusDays(DEFAULT_WINDOW_DAYS));
+				d.setMaxAttempts(DEFAULT_MAX_ATTEMPTS);
+			}
+		});
+		paperExamSettingsRepo.save(draft, SaveMode.UPSERT);
 	}
 	
 	/**
@@ -160,13 +206,17 @@ public class PaperService {
 	 * 「我的试卷」列表：强制按 `user_id` 过滤（含未发布草稿）。公开广场走 listPublishedPapers。
 	 */
 	public PageRes<Paper> listPapersByNameAndStatus(PaperListQuery conditions, Fetcher<Paper> fetcher) {
-		PaperTable paper = PaperTable.$;
+		// 时长/起止/次数/及格分搬进了 1:1 的设置表，所以以**设置表**为查询根，
+		// 用正向关联 settings.paper() 往上取名称/分类/发布态（避免反向关联进查询）。
+		// 代价：没有设置行的卷不会出现在列表里 —— 建卷必然写设置行，历史数据也已回填。
+		PaperExamSettingsTable settings = PaperExamSettingsTable.$;
+		PaperTable paper = settings.paper();
 		
 		// 缺省：page=1、size=10；显式传入的非法值由记录类上的 @Min/@Max 拦成 422
 		int page = conditions.page();
 		int size = conditions.size();
 		
-		var query = paperRepository.sql().createQuery(paper)
+		var query = paperRepository.sql().createQuery(settings)
 				            .where(paper.userId().eq(StpUtil.getLoginIdAsLong()));
 		
 		var now = LocalDateTime.now();
@@ -176,13 +226,13 @@ public class PaperService {
 					query.where(paper.published().eq(false));
 					break;
 				case PENDING:
-					query.where(paper.published().eq(true), paper.start().ge(now));
+					query.where(paper.published().eq(true), settings.start().ge(now));
 					break;
 				case PUBLISHED:
-					query.where(paper.published().eq(true), paper.start().le(now), paper.end().ge(now));
+					query.where(paper.published().eq(true), settings.start().le(now), settings.end().ge(now));
 					break;
 				case FINISHED:
-					query.where(paper.published().eq(true), paper.end().le(now));
+					query.where(paper.published().eq(true), settings.end().le(now));
 					break;
 				default:
 					break;
@@ -199,7 +249,7 @@ public class PaperService {
 		}
 		
 		var res = query
-				          .orderBy(paper.end().desc(), paper.published().asc(), paper.id().desc())
+				          .orderBy(settings.end().desc(), paper.published().asc(), paper.id().desc())
 				          .select(paper.fetch(fetcher))
 				          .fetchPage(page - 1, size);
 		
@@ -226,33 +276,26 @@ public class PaperService {
 	 * 更新试卷配置（**不含题目**）。
 	 */
 	@Transactional
-	public void updatePaperConfig(int id, PaperConfigInput input) {
+	public void updatePaperExamSettings(int id, PaperExamSettingsInput input) {
+		if (input == null) {
+			throw new BusinessException("考试设置不能为空");
+		}
 		requireValidDuration(input.getDuration());
-		
-		long me = StpUtil.getLoginIdAsLong();
-		
-		// 多用户改造：目标分类也必须是自己的
-		requireOwnedPaperCategory(me, input.getCategoryId());
-		
-		// 时间窗 / 参与方式 / 次数上限：配置是全量更新，三项都必须给
 		requireTimeWindow(input.getStart(), input.getEnd());
 		
+		long me = StpUtil.getLoginIdAsLong();
 		if (!paperRepository.existsByUserIdAndId(me, id)) {
-			throw new BusinessException("paper: 试卷不存在");
-		}
-		// 新名称不能重复
-		if (paperRepository.existsByNameAndUserIdAndIdNot(me, input.getName(), id)) {
-			throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
+			throw new BusinessException(MessageConstant.PAPER_NOT_FOUND);
 		}
 		
-		paperRepository.save(Immutables.createPaper(input.toEntity(), draft -> draft.setUserId(me).setId(id)));
+		// 只写设置表；试卷自身的名称/描述/分类/参与方式走 POST /paper/save
+		saveExamSettings(id, input, true);
 	}
 	
 	/**
 	 * **整体替换**试卷题目集（`PUT /paper/{id}/questions`）。
 	 * <p>
 	 * 与增量的 {@link #addPaperQuestions} 不同：先清空该卷题目，再按本次提交的顺序写入。
-	 * 已发布的试卷一律拒绝（{@link #requireQuestionEditable}）。
 	 * 写完后重算 `question_count` / `total_score`（原 updatePaper 漏了这步，会留脏值）。
 	 */
 	@Transactional
@@ -261,8 +304,6 @@ public class PaperService {
 		
 		// 多用户改造：试卷与要写入的题目都必须是自己的
 		requireOwnedPaper(paperId);
-		// 发布后题目冻结
-		requireQuestionEditable(paperId);
 		requireValidQuestions(input.questions());
 		requireOwnedQuestions(me, input.questions().stream().map(PaperQuestionsUpdateReq.Item::questionId).toList());
 		
@@ -284,8 +325,8 @@ public class PaperService {
 	@Transactional
 	public void removePaper(int id) {
 		// 多用户改造：只能删自己的卷
-		// 试卷本身允许删除（即使已发布、即使已被考试引用）—— 题目才受发布态冻结，
-		// 见 requireQuestionEditable。注意：删掉已被考过的卷会让历史考试记录的 paper 悬空。
+		// 试卷本身允许删除（即使已发布、即使已被考试引用）。
+		// 注意：删掉已被考过的卷会让历史考试记录的 paper 悬空。
 		requireOwnedPaper(id);
 		
 		paperRepository.deleteById(id);
@@ -300,30 +341,60 @@ public class PaperService {
 		return detail.getQuestions();
 	}
 	
+	/**
+	 * 保存试卷（**新增 / 更新合一**）：入参带 id = 更新该卷，不带 id = 新增。
+	 * <p>
+	 * 只处理 4 个基本字段（名称/描述/分类/参与方式）；考试设置（时长/起止/次数/及格分/开关）
+	 * 是 1:1 的另一张表 —— 新增时顺带落一行默认值，之后由
+	 * {@link #updatePaperExamSettings} 维护。
+	 *
+	 * @return 试卷 id（新增返回新 id，更新返回原 id）
+	 */
 	@Transactional
-	public int addPaper(PaperConfigInput input) {
+	public int savePaper(PaperSaveInput input) {
 		long userId = StpUtil.getLoginIdAsLong();
 		
-		// 多用户改造：① 判重按用户；② 分类必须是自己的；③ 考试时间窗必填
+		// 多用户改造：分类必须是自己的
+		requireOwnedPaperCategory(userId, input.getCategoryId());
+		
+		// 可空 id：null = 新增，非空 = 更新（存在性判断只用它，不信任前端其它字段）
+		Integer id = input.getId();
+		if (id != null) {
+			if (!paperRepository.existsByUserIdAndId(userId, id)) {
+				throw new BusinessException(MessageConstant.PAPER_NOT_FOUND);
+			}
+			// 同名不能是别的卷
+			if (paperRepository.existsByNameAndUserIdAndIdNot(userId, input.getName(), id)) {
+				throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
+			}
+			paperRepository.save(PaperDraft.$.produce(draft -> {
+				draft.setId(id);
+				draft.setUserId(userId);
+				draft.setName(input.getName());
+				draft.setDescription(input.getDescription());
+				draft.setCategoryId(input.getCategoryId());
+				draft.setParticipateMode(input.getParticipateMode());
+			}), SaveMode.UPDATE_ONLY);
+			return id;
+		}
+		
+		// 新增：判重按用户
 		if (paperRepository.existsByUserIdAndName(userId, input.getName())) {
 			throw new BusinessException(MessageConstant.PAPER_NAME_EXIST);
 		}
-		requireOwnedPaperCategory(userId, input.getCategoryId());
-		requireTimeWindow(input.getStart(), input.getEnd());
 		
-		// 参与方式与次数上限在 DTO 里是**可选**的（不传就用默认值），这样前端不传也不会把建卷打死
-		input.getParticipateMode();
-		ParticipateMode participateMode = input.getParticipateMode();
-		int maxAttempts = input.getMaxAttempts();
-		
-		Paper paper = paperRepository.save(PaperDraft.$.produce(input.toEntity(), draft -> {
+		Paper paper = paperRepository.save(PaperDraft.$.produce(draft -> {
 			draft.setUserId(userId);
-			draft.setParticipateMode(participateMode);
-			draft.setMaxAttempts(maxAttempts);
+			draft.setCategoryId(input.getCategoryId());
+			draft.setName(input.getName());
+			draft.setDescription(input.getDescription());
+			draft.setParticipateMode(input.getParticipateMode());
 			draft.setPublished(false);
 			draft.setQuestionCount(0);
 			draft.setTotalScore(0);
 		}), SaveMode.INSERT_ONLY);
+		// 考试设置跟着建：默认 60 分钟、now ~ now+7 天、1 次，开关全关
+		saveExamSettings(paper.id(), null, true);
 		return paper.id();
 	}
 	
@@ -343,37 +414,6 @@ public class PaperService {
 		}), SaveMode.UPDATE_ONLY);
 	}
 	
-	/**
-	 * 撤回发布：回到草稿态，并**物理删除**该卷的全部考试记录（含正在答题的 ONGOING）
-	 * 与它们的作答明细。
-	 * <p>
-	 * ⚠️ 记录是**硬删**（库里没有软删除列），不可恢复。
-	 * <p>
-	 * 之所以连带删记录：撤回后题目会被改，而判分读的是**当前题库**的正确答案与分值 ——
-	 * 若保留旧记录，考生看到的历史成绩会与「按新卷判」的结果自相矛盾。
-	 * 直接销毁整场考试，语义最干净（用户明确选择的口径）。
-	 * <p>
-	 * 副作用：正在答题的考生手里的 examRecordId 立即失效，下次存答案/交卷都会 422
-	 * 「考试记录不存在」。用户明确选择「照删」。
-	 */
-	@Transactional
-	public void unpublishPaper(int id) {
-		requireOwnedPaper(id);
-		
-		Paper paper = paperRepository.findById(id)
-				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
-		if (!paper.published()) {
-			throw new BusinessException(MessageConstant.PAPER_NOT_PUBLISH);
-		}
-		
-		// 先销毁考试记录（连带 answer_record），再把卷变回草稿
-		examRecordRepo.deleteByPaperId(id);
-		paperRepository.save(PaperDraft.$.produce(draft -> {
-			draft.setId(id);
-			draft.setPublished(false);
-		}), SaveMode.UPDATE_ONLY);
-	}
-	
 	@Transactional
 	public void addPaperQuestions(int paperId, PaperQuestionAddReq input) {
 		long me = StpUtil.getLoginIdAsLong();
@@ -384,8 +424,6 @@ public class PaperService {
 		
 		// 多用户改造：试卷与要加进去的题目都必须是自己的
 		requireOwnedPaper(paperId);
-		// 发布后题目冻结
-		requireQuestionEditable(paperId);
 		requireOwnedQuestions(me, items.stream().map(PaperQuestionAddReq.Item::questionId).toList());
 		
 		for (var item : items) {
@@ -411,8 +449,7 @@ public class PaperService {
 	/**
 	 * 从试卷中移除一道题。
 	 * <p>
-	 * 与其他改题操作口径一致：**已发布的卷不能移除题目**（{@link #requireQuestionEditable}），
-	 * 必须先调 {@link #unpublishPaper} 撤回发布。
+	 * 已发布的卷同样允许移除题目 —— 发布不再冻结题目。
 	 * <p>
 	 * ⚠️ 若该卷**已经被考过**，移除后历史答卷（{@code answer_record.question_id}）
 	 * 会指向一道不再属于本卷的题，卷面总分也不再等于那次考试的满分。这是有意接受的代价，
@@ -422,8 +459,6 @@ public class PaperService {
 	public void removePaperQuestion(int paperId, long questionId) {
 		// 多用户改造：只能改自己的卷
 		requireOwnedPaper(paperId);
-		// 发布后题目冻结
-		requireQuestionEditable(paperId);
 		
 		paperQuestionRepo.deleteByPaperIdAndQuestionId(paperId, questionId);
 		paperRepository.recalculateTotals(paperId);
@@ -433,8 +468,6 @@ public class PaperService {
 	public void updatePaperQuestionScore(int paperId, long questionId, int score) {
 		// 多用户改造：只能改自己的卷
 		requireOwnedPaper(paperId);
-		// 发布后题目冻结
-		requireQuestionEditable(paperId);
 		
 		var existing = paperQuestionRepo.findByPaperIdAndQuestionId(paperId, questionId);
 		if (existing == null) throw new BusinessException("试卷中不存在该题目");
@@ -489,18 +522,14 @@ public class PaperService {
 		
 		int finalQuestionCount = questionCount;
 		int finalTotalScore = totalScore;
-		return paperRepository.save(PaperDraft.$.produce(draft -> {
+		Paper saved = paperRepository.save(PaperDraft.$.produce(draft -> {
 			draft.setUserId(me);
 			draft.setCategoryId(dto.getCategoryId());
 			draft.setName(dto.getName());
 			draft.setDescription(dto.getDescription());
-			draft.setDuration(dto.getDuration());
-			draft.setStart(dto.getStart());
-			draft.setEnd(dto.getEnd());
 			draft.setPublished(false);
-			// 智能组卷路径暂不提供这两个参数的入口，用默认值（与 addPaper 不传时一致）
+			// 智能组卷路径暂不提供参与方式与开关的入口，用默认值（与 addPaper 不传时一致）
 			draft.setParticipateMode(DEFAULT_PARTICIPATE_MODE);
-			draft.setMaxAttempts(DEFAULT_MAX_ATTEMPTS);
 			draft.setQuestionCount(finalQuestionCount);
 			draft.setTotalScore(finalTotalScore);
 			for (Map.Entry<Long, Integer> entry : questionScores.entrySet()) {
@@ -510,5 +539,14 @@ public class PaperService {
 				});
 			}
 		}), SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
+		// 时长与起止时间落在设置表；智能组卷没有开关入口，其余走默认值
+		paperExamSettingsRepo.save(PaperExamSettingsDraft.$.produce(s -> {
+			s.setPaperId(saved.id());
+			s.setDuration(dto.getDuration());
+			s.setStart(dto.getStart());
+			s.setEnd(dto.getEnd());
+			s.setMaxAttempts(DEFAULT_MAX_ATTEMPTS);
+		}), SaveMode.INSERT_ONLY);
+		return saved;
 	}
 }

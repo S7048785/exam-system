@@ -11,12 +11,23 @@ PaperDetail {
     categoryId
     published
     participateMode
-    maxAttempts
     totalScore
     questionCount
-    duration
-    start
-    end
+    examSettings {
+        duration
+        start
+        end
+        passingScore
+        @Min(value = 1, message = ValidationMessage.PAPER_MAX_ATTEMPTS_INVALID)
+        maxAttempts
+        requireAllAnswered
+        hideQuestionScore
+        showRankAfterSubmit
+        showAnswerAfterSubmit
+        minAnswerMinutes
+        shuffleQuestions
+        shuffleChoices
+    }
     paperQuestions as questions {
         flat(question) {
             id
@@ -35,14 +46,10 @@ PaperDetail {
     createTime
 }
 
-input PaperConfigInput {
+input PaperSaveInput {
+    id
     name
     description
-    duration
     categoryId
-    start
-    end
     participateMode
-    @Min(value = 1, message = ValidationMessage.PAPER_MAX_ATTEMPTS_INVALID)
-    maxAttempts
 }

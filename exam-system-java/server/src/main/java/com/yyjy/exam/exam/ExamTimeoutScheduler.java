@@ -1,8 +1,10 @@
 package com.yyjy.exam.exam;
 
 import com.yyjy.exam.entity.exam.entity.ExamRecordStatus;
+import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.entity.ExamRecordsTable;
 import com.yyjy.exam.exam.service.ExamRecordService;
+import com.yyjy.exam.paper.repository.PaperExamSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.babyfish.jimmer.sql.JSqlClient;
@@ -25,6 +27,7 @@ public class ExamTimeoutScheduler {
 	
 	private final JSqlClient sqlClient;
 	private final ExamRecordService examRecordService;
+	private final PaperExamSettingsRepository paperExamSettingsRepo;
 	
 	@Scheduled(fixedRate = 60_000)
 	public void autoSubmitTimeoutExams() {
@@ -32,29 +35,26 @@ public class ExamTimeoutScheduler {
 		
 		// 找出所有因为异常（如考生未主动交卷、网络中断等）而“卡”在 ONGOING 状态的考试。
 		// 1. 超时 ONGOING → GRADING → 推送
-		var timeoutRecords = sqlClient.createQuery(examTable)
-				                     .where(examTable.status().eq(ExamRecordStatus.ONGOING))
-				                     .where(
-						                     Predicate.sql(
-// ⚠️ 参数顺序别写反：MySQL 签名是 TIMESTAMPADD(unit, interval, datetime)，
-// 下面两个 expression 必须是「时长(分钟)」在前、「起始时间」在后 ——
-// 写反了表达式恒为 NULL，条件永远不成立，超时自动交卷就静默失效了。
-								                     "TIMESTAMPADD(MINUTE, %e, %e) <= NOW()",
-								                     it -> it
-										                           .expression(examTable.paper().duration())
-										                           .expression(examTable.startTime())
-						                     )
-				                     )
-				                     .select(examTable, examTable.paper().duration())
-				                     .execute();
+		// 考试时长已搬到 paper_exam_settings，SQL 里没法再直接 TIMESTAMPADD(paper.duration)；
+		// 改成两步：先取全部 ONGOING 记录，再按 paperId 批量取时长，deadline 在 Java 里算
+		// （下面本来就会用 Java 复核 deadline，语义不变）
+		var ongoingRecords = sqlClient.createQuery(examTable)
+				                    .where(examTable.status().eq(ExamRecordStatus.ONGOING))
+				                    .select(examTable)
+				                    .execute();
+		
+		var durations = paperExamSettingsRepo.findDurationMapByPaperIds(
+				ongoingRecords.stream().map(ExamRecords::paperId).distinct().toList());
 		
 		var now = LocalDateTime.now();
 		int ongoingCount = 0;
 		
-		for (var tuple : timeoutRecords) {
-			var record = tuple.get_1();
-			var duration = tuple.get_2();
-			var deadline = Objects.requireNonNull(record.startTime()).plusMinutes(duration);
+		for (var record : ongoingRecords) {
+			var duration = durations.get(record.paperId());
+			if (duration == null || record.startTime() == null) {
+				continue;
+			}
+			var deadline = record.startTime().plusMinutes(duration);
 			if (now.isAfter(deadline)) {
 				// 批阅超时试卷
 				examRecordService.handleTimeoutSubmit(record.id());

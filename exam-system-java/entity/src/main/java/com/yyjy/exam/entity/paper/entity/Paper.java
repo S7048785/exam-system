@@ -39,24 +39,20 @@ public interface Paper {
 	ParticipateMode participateMode();
 	
 	/**
-	 * 允许的考试次数上限，默认 1（即不可重复）。
-	 * 口径：**开考即计入**（含中途放弃、状态仍为 ONGOING 的记录）；软删除的记录不计。
+	 * 考试设置（1:1，独立表 {@code paper_exam_settings}）：时长 / 起止时间 / 次数上限 / 及格分 +
+	 * 8 项开关（必须答完才能交卷、多选漏选得分、隐藏题目分数、交卷后显示名次 / 标准答案、
+	 * 最少作答分钟数、试题乱序、选项乱序），见 {@link PaperExamSettings}。
+	 * <p>
+	 * ⚠️ 开关项目前**只存储不执行**；由 Service 显式写入（不是靠级联）。
 	 */
-	int maxAttempts();
+	@Nullable
+	@OneToOne(mappedBy = "paper")
+	PaperExamSettings examSettings();
 	
 	int totalScore();
 	
 	@Nullable
-	Integer passingScore();
-	
-	@Nullable
 	Integer questionCount();
-	
-	int duration();
-	
-	LocalDateTime start();
-	
-	LocalDateTime end();
 	
 	@OneToMany(mappedBy = "paper")
 	List<PaperQuestion> paperQuestions();

@@ -1,0 +1,21 @@
+export com.yyjy.exam.entity.paper.entity.PaperExamSettings
+    -> package com.yyjy.exam.entity.paper.dto
+
+import jakarta.validation.constraints.Min
+import com.yyjy.exam.entity.constant.ValidationMessage
+
+input PaperExamSettingsInput {
+    duration
+    start
+    end
+    passingScore
+    @Min(value = 1, message = ValidationMessage.PAPER_MAX_ATTEMPTS_INVALID)
+    maxAttempts
+    requireAllAnswered
+    hideQuestionScore
+    showRankAfterSubmit
+    showAnswerAfterSubmit
+    minAnswerMinutes
+    shuffleQuestions
+    shuffleChoices
+}

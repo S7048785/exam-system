@@ -4,10 +4,12 @@ import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
-import com.yyjy.exam.entity.paper.dto.PaperConfigInput;
 import com.yyjy.exam.entity.paper.dto.PaperDetail;
+import com.yyjy.exam.entity.paper.dto.PaperExamSettingsInput;
+import com.yyjy.exam.entity.paper.dto.PaperSaveInput;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
+import com.yyjy.exam.entity.paper.entity.PaperExamSettingsFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.entity.paper.io.req.PaperListQuery;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
@@ -36,23 +38,26 @@ public class PaperController {
 					.category(PaperCategoriesFetcher.$.name())
 					.published()
 					.participateMode()
-					.maxAttempts()
 					.totalScore()
 					.questionCount()
-					.duration()
-					.start()
-					.end()
+					.examSettings(PaperExamSettingsFetcher.$
+							              .duration()
+							              .start()
+							              .end()
+							              .maxAttempts())
 					.createTime();
 	
 	private final PaperService paperService;
 	
 	
 	/**
-	 * 更新试卷配置（不含题目）
+	 * 更新考试设置（只含设置本身，不含题目）：时长 / 起止时间 / 次数上限 / 及格分 + 8 项开关。
+	 * <p>
+	 * 取代原 `PUT /paper/{id}/config`；试卷的名称/描述/分类/参与方式改走 `POST /paper/save`。
 	 */
-	@PutMapping("/{id}/config")
-	public R<Void> updatePaperConfig(@PathVariable int id, @RequestBody @Valid PaperConfigInput input) {
-		paperService.updatePaperConfig(id, input);
+	@PutMapping("/{id}/exam-settings")
+	public R<Void> updatePaperExamSettings(@PathVariable int id, @RequestBody @Valid PaperExamSettingsInput input) {
+		paperService.updatePaperExamSettings(id, input);
 		return R.ok();
 	}
 	
@@ -82,12 +87,17 @@ public class PaperController {
 	}
 	
 	/**
-	 * 新增试卷 v2（不含题目，返回试卷ID）
+	 * 保存试卷（**新增 / 更新合一**）：入参带 id = 更新该卷，不带 id = 新增。
+	 * <p>
+	 * 只收 4 个基本字段（名称 / 描述 / 分类 / 参与方式）；时长、起止时间、次数上限、及格分
+	 * 与 8 项开关在 1:1 的 `paper_exam_settings` 里，由
+	 * {@code PUT /paper/{id}/exam-settings} 维护。
+	 * <p>
+	 * 返回试卷 id（新增返回新 id，更新返回原 id）。
 	 */
-	@PostMapping("/add")
-	public R<Integer> addPaperV2(@Validated @RequestBody PaperConfigInput paper) {
-		int id = paperService.addPaper(paper);
-		return R.ok(id);
+	@PostMapping("/save")
+	public R<Integer> savePaperV2(@Validated @RequestBody PaperSaveInput paper) {
+		return R.ok(paperService.savePaper(paper));
 	}
 	
 	/**
@@ -96,17 +106,6 @@ public class PaperController {
 	@PostMapping("/{id}/publish")
 	public R<Void> publishPaper(@PathVariable int id) {
 		paperService.publishPaper(id);
-		return R.ok();
-	}
-	
-	/**
-	 * 撤回发布（is_published true -> false），回到草稿态。
-	 * <p>
-	 * ⚠️ 会**物理删除**该卷的全部考试记录与作答明细，不可恢复。
-	 */
-	@PostMapping("/{id}/unpublish")
-	public R<Void> unpublishPaper(@PathVariable int id) {
-		paperService.unpublishPaper(id);
 		return R.ok();
 	}
 	

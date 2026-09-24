@@ -10,12 +10,15 @@ import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.*;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
+import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.ParticipateMode;
 import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.user.entity.Users;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
 import com.yyjy.exam.exam.repository.ExamRecordsRepository;
+import com.yyjy.exam.entity.paper.entity.PaperExamSettings;
+import com.yyjy.exam.paper.repository.PaperExamSettingsRepository;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.user.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +56,7 @@ public class ExamRecordService {
 	private final ExamRecordsRepository examRecordsRepo;
 	private final AnswerRecordRepository answerRecordRepo;
 	private final PaperQuestionRepository paperQuestionRepo;
+	private final PaperExamSettingsRepository paperExamSettingsRepo;
 	private final UsersRepository usersRepo;
 	private final RabbitTemplate rabbitTemplate;
 	private final JSqlClient sqlClient;
@@ -88,11 +92,16 @@ public class ExamRecordService {
 		if (paperEntity == null || !paperEntity.published()) {
 			throw new BusinessException("试卷不存在或未发布");
 		}
+		// 时长 / 起止 / 次数 / 及格分都在 1:1 的 paper_exam_settings 里
+		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(paperId);
+		if (settings == null) {
+			throw new BusinessException("试卷考试设置缺失");
+		}
 		var now = LocalDateTime.now();
-		if (now.isBefore(paperEntity.start())) {
+		if (now.isBefore(settings.start())) {
 			throw new BusinessException(MessageConstant.EXAM_NOT_STARTED);
 		}
-		if (paperEntity.end().isBefore(now)) {
+		if (settings.end().isBefore(now)) {
 			throw new BusinessException("考试已结束");
 		}
 		
@@ -106,9 +115,9 @@ public class ExamRecordService {
 		// ---- 4. 次数校验（paper.max_attempts，默认 1 次）----
 		// 口径由用户指定：按**考生名**计数。所有状态都计（含中途放弃的 ONGOING），软删除的记录不计。
 		// 已知代价：登录用户换个 studentName 就能绕过；两个同名的人会共用这份额度。
-		if (examRecordsRepo.countByPaperIdAndStudentName(paperId, name) >= paperEntity.maxAttempts()) {
+		if (examRecordsRepo.countByPaperIdAndStudentName(paperId, name) >= settings.maxAttempts()) {
 			throw new BusinessException(MessageConstant.EXAM_ATTEMPT_LIMIT_REACHED
-					                            + "（上限 " + paperEntity.maxAttempts() + " 次）");
+					                            + "（上限 " + settings.maxAttempts() + " 次）");
 		}
 		
 		// ---- 5. 创建考试记录 ----
@@ -267,6 +276,37 @@ public class ExamRecordService {
 	}
 	
 	/**
+	 * 考试入口页：按 paperId 取试卷信息（**考生侧，免登录可访问，不做归属校验**）。
+	 * <p>
+	 * 口径：
+	 * - 试卷不存在、或**未发布** → 统一抛「考试不存在」（不区分两者，避免泄露未发布试卷的存在）；
+	 * - 已发布但**已过截止时间** → 抛「考试已结束」；
+	 * - 未开始 → 照常返回信息，由前端提示「未开始」并不放行。
+	 */
+	public ExamPaperInfoRes getPaperInfoForExaminee(int paperId) {
+		Paper paper = sqlClient.findById(Paper.class, paperId);
+		if (paper == null || !paper.published()) {
+			throw new BusinessException("考试不存在");
+		}
+		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(paperId);
+		if (settings == null) {
+			throw new BusinessException("考试不存在");
+		}
+		if (settings.end().isBefore(LocalDateTime.now())) {
+			throw new BusinessException("考试已结束");
+		}
+		return new ExamPaperInfoRes(
+				paper.id(),
+				paper.name(),
+				paper.description(),
+				settings.start(),
+				settings.end(),
+				paper.totalScore(),
+				settings.duration(),
+				paper.participateMode());
+	}
+	
+	/**
 	 * 请求时超时检测：若考试已超时则自动提交（主要防线）
 	 * 对比 startTime + duration 与当前时间
 	 */
@@ -274,10 +314,10 @@ public class ExamRecordService {
 		if (record.status() != ExamRecordStatus.ONGOING) return;
 		if (record.startTime() == null) return;
 		
-		Paper paper = sqlClient.findById(Paper.class, record.paperId());
-		if (paper == null) return;
+		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(record.paperId());
+		if (settings == null) return;
 		
-		LocalDateTime deadline = record.startTime().plusMinutes(paper.duration());
+		LocalDateTime deadline = record.startTime().plusMinutes(settings.duration());
 		if (LocalDateTime.now().isAfter(deadline)) {
 			examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
 				draft.setId(record.id());
