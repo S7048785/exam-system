@@ -41,9 +41,8 @@ export const api = new Api(async ({ uri, method, headers, body }) => {
     if (response.status === 403) {
       throw redirect({ to: '/login' })
     }
-    if (response.status / 100 === 5) {
-      throw redirect({ to: '/error' })
-    }
+    // 5xx 不再跳转：直接抛 ApiError，由路由的 errorComponent 统一渲染
+    // （loader / beforeLoad 里抛出会被 TanStack Router 捕获；React Query 那条路径见 `#/lib/auth-redirect.ts`）
     // 必须先把 body 当文本读出来：422 的业务错误是 text/plain，不能直接 .json()
     throw new ApiError(response.status, uri, parseBody(text, contentType))
   }
