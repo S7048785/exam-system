@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   useDeleteMutation,
   useUnpublishMutation,
-} from '../../usePaperActions.ts'
+} from '../usePaperActions.ts'
 import PaperRow from './PaperRow.tsx'
 
 interface Props {

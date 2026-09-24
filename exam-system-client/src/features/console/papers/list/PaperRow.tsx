@@ -14,7 +14,7 @@ import {
   getPaperPhase,
   PAPER_PHASE_LABEL,
   PAPER_PHASE_VARIANT,
-} from '../../constants.ts'
+} from '../constants.ts'
 import { Badge } from '#/components/ui/badge.tsx'
 import { formatDate, formatDateTime } from '#/lib/date-util.ts'
 import {
@@ -61,13 +61,13 @@ export default function PaperRow({ item, onDelete, onUnpublish }: Props) {
                 <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="">
+            <DropdownMenuContent align="start">
               <DropdownMenuItem onClick={() => editPaperAtStep(item.id, 0)}>
-                <Pencil className="" />
+                <Pencil size={16}/>
                 编辑试卷
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => editPaperAtStep(item.id, 1)}>
-                <Pencil className="" />
+                <Pencil size={16}/>
                 设计试卷
               </DropdownMenuItem>
               {/* 只有已发布的卷能撤回；草稿态没有「撤回」这个概念 */}
@@ -79,12 +79,12 @@ export default function PaperRow({ item, onDelete, onUnpublish }: Props) {
                     setUnpublishOpen(true)
                   }}
                 >
-                  <RotateCcw className="" />
+                  <RotateCcw size={16}/>
                   撤回发布
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => onDelete(item.id)}>
-                <Trash2 className="" />
+                <Trash2 size={16}/>
                 删除试卷
               </DropdownMenuItem>
             </DropdownMenuContent>
