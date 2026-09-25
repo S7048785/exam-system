@@ -12,14 +12,14 @@ import com.yyjy.exam.entity.exam.entity.*;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.entity.paper.entity.Paper;
-import com.yyjy.exam.entity.paper.entity.ParticipateMode;
+import com.yyjy.exam.entity.paper.entity.PaperExamSettings;
 import com.yyjy.exam.entity.question.entity.QuestionType;
-import com.yyjy.exam.entity.user.entity.Users;
+import com.yyjy.exam.entity.user.entity.UserStatus;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
 import com.yyjy.exam.exam.repository.ExamRecordsRepository;
-import com.yyjy.exam.entity.paper.entity.PaperExamSettings;
 import com.yyjy.exam.paper.repository.PaperExamSettingsRepository;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
+import com.yyjy.exam.paper.repository.PaperRepository;
 import com.yyjy.exam.user.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,70 +60,85 @@ public class ExamRecordService {
 	private final UsersRepository usersRepo;
 	private final RabbitTemplate rabbitTemplate;
 	private final JSqlClient sqlClient;
+	private final PaperRepository paperRepository;
 	
-	/**
-	 * 开始考试：支持登录用户和匿名用户两种模式
-	 * 登录用户自动从 Sa-Token 获取 userId 和姓名；
-	 * 匿名用户需提供 studentName (为将来免登录考试预留)
-	 */
 	@Transactional
 	public int startExam(int paperId, String studentName) {
-		// ---- 1. 确定用户身份 ----
+		// ---- 1. 校验试卷本身 ----
 		Long userId = null;
 		String name = studentName;
-		try {
-			// 优先从 Sa-Token 获取已登录用户
-			userId = StpUtil.getLoginIdAsLong();
-			if (name == null || name.isBlank()) {
-				// 未提供姓名时从用户表取 realName
-				name = usersRepo.findById(userId)
-						       .map(Users::realName)
-						       .orElseThrow(() -> new BusinessException("用户不存在"));
-			}
-		} catch (Exception e) {
-			// 未登录时必须提供 studentName
-			if (name == null || name.isBlank()) {
-				throw new BusinessException("未登录且未提供考生姓名");
-			}
+		
+		var paper = paperRepository.findById(paperId, Fetchers.PAPER_FETCHER.allScalarFields().examSettings(Fetchers.PAPER_EXAM_SETTINGS_FETCHER.allScalarFields()))
+				            .orElseThrow(() -> new BusinessException("paper: 试卷不存在"));
+		if (!paper.published()) {
+			throw new BusinessException("paper: 试卷未发布");
+		}
+		var settings = paper.examSettings();
+		if (settings == null) {
+			throw new BusinessException("paper: 试卷考试设置缺失");
 		}
 		
-		// ---- 2. 校验试卷状态和时间窗口 ----
-		var paperEntity = sqlClient.findById(Paper.class, paperId);
-		if (paperEntity == null || !paperEntity.published()) {
-			throw new BusinessException("试卷不存在或未发布");
-		}
-		// 时长 / 起止 / 次数 / 及格分都在 1:1 的 paper_exam_settings 里
-		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(paperId);
-		if (settings == null) {
-			throw new BusinessException("试卷考试设置缺失");
-		}
+		// ---- 2. 校验考试时间窗口（当前时间必须落在 [start, end] 内）----
+		// `end` 是**整场结束**，到点后所有人都不能再考，
+		// 手里那条 ONGOING 记录也不放行；`duration` 只是单场作答时长上限。
 		var now = LocalDateTime.now();
 		if (now.isBefore(settings.start())) {
 			throw new BusinessException(MessageConstant.EXAM_NOT_STARTED);
 		}
-		if (settings.end().isBefore(now)) {
-			throw new BusinessException("考试已结束");
+		if (now.isAfter(settings.end())) {
+			throw new BusinessException("exam: 考试已结束");
 		}
 		
-		// ---- 3. 参与方式校验（paper.participate_mode）----
-		// 放在身份解析之后：匿名且没填姓名时先报「未登录且未提供考生姓名」，
-		// 填了姓名但这份试卷要求登录时报这一条 —— 两条都是「你必须登录」的意思。
-		if (paperEntity.participateMode() == ParticipateMode.LOGIN_REQUIRED && userId == null) {
-			throw new BusinessException(MessageConstant.EXAM_LOGIN_REQUIRED);
+		// ---- 3. 解析身份 + 续考 / 次数校验 ----
+		switch (paper.participateMode()) {
+			case LOGIN_REQUIRED -> {
+				if (!StpUtil.isLogin()) {
+					throw new BusinessException(MessageConstant.EXAM_LOGIN_REQUIRED);
+				}
+				userId = StpUtil.getLoginIdAsLong();
+				// 姓名一律取账号里的，不信任请求体（否则登录考生能冒名顶替）
+				name = requireActiveRealName(userId);
+				
+				// 上次开考还没交卷 → 续考：不新建记录，也就不再占一次次数
+				ExamRecords ongoing = examRecordsRepo.findOngoingByPaperIdAndUserId(paperId, userId);
+				if (ongoing != null) {
+					return resume(ongoing, settings, now);
+				}
+				
+				// 校验考试次数：按 user_id 计（登录考生的 id 是确定的，改 studentName 绕不过去）
+				if (examRecordsRepo.countByPaperIdAndUserId(paperId, userId) >= settings.maxAttempts()) {
+					throw new BusinessException(MessageConstant.EXAM_ATTEMPT_LIMIT_REACHED
+							                            + "（上限 " + settings.maxAttempts() + " 次）");
+				}
+			}
+			case ANONYMOUS -> {
+				// 姓名是这张记录唯一的身份来源（NOT NULL 列），空值直接挡在这里，别让它变成 500
+				if (name == null || name.isBlank()) {
+					throw new BusinessException("exam: 未提供考生姓名");
+				}
+				name = name.trim();
+				
+				// 同上，先看有没有进行中的记录 → 有就续考（否则接着校验次数）
+				ExamRecords ongoing = examRecordsRepo.findOngoingByPaperIdAndStudentName(paperId, name);
+				if (ongoing != null) {
+					return resume(ongoing, settings, now);
+				}
+				
+				// 校验姓名的考试次数（口径：同名共用额度、换个名字就能换额度，均按用户要求忽略）
+				if (examRecordsRepo.countByPaperIdAndStudentName(paperId, name) >= settings.maxAttempts()) {
+					throw new BusinessException(MessageConstant.EXAM_ATTEMPT_LIMIT_REACHED
+							                            + "（上限 " + settings.maxAttempts() + " 次）");
+				}
+			}
+			// 枚举以后加值也走不到「静默当匿名处理」这条路
+			default -> throw new BusinessException("paper: 不支持的考生参与方式");
 		}
 		
-		// ---- 4. 次数校验（paper.max_attempts，默认 1 次）----
-		// 口径由用户指定：按**考生名**计数。所有状态都计（含中途放弃的 ONGOING），软删除的记录不计。
-		// 已知代价：登录用户换个 studentName 就能绕过；两个同名的人会共用这份额度。
-		if (examRecordsRepo.countByPaperIdAndStudentName(paperId, name) >= settings.maxAttempts()) {
-			throw new BusinessException(MessageConstant.EXAM_ATTEMPT_LIMIT_REACHED
-					                            + "（上限 " + settings.maxAttempts() + " 次）");
-		}
-		
-		// ---- 5. 创建考试记录 ----
+		// ---- 4. 创建考试记录 ----
+		// （now 在上面校验时间窗口时已取好，这里复用）
 		final Long finalUserId = userId;
 		final String finalName = name;
-		ExamRecords saved = examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
+		ExamRecords saved = examRecordsRepo.save(Immutables.createExamRecords(draft -> {
 			draft.setPaperId(paperId);
 			if (finalUserId != null) {
 				draft.setUserId(finalUserId);
@@ -135,6 +150,34 @@ public class ExamRecordService {
 			draft.setStatus(ExamRecordStatus.ONGOING);
 		}), SaveMode.INSERT_ONLY);
 		return saved.id();
+	}
+	
+	/**
+	 * 续考：把上次那条还没交卷的记录还给前端继续作答。
+	 * <p>
+	 * **先看这场自己有没有超时** —— `end` 没到不代表作答时长还没用完：
+	 * 超了就抛异常，不能让考生接着答（ExamTimeoutScheduler 随后会把它强制交卷）。
+	 */
+	private int resume(ExamRecords ongoing, PaperExamSettings settings, LocalDateTime now) {
+		if (ongoing.startTime() != null
+				    && now.isAfter(ongoing.startTime().plusMinutes(settings.duration()))) {
+			throw new BusinessException(MessageConstant.EXAM_ATTEMPT_TIMEOUT);
+		}
+		return ongoing.id();
+	}
+	
+	/**
+	 * 「账号登录考试」的考生姓名：取账号里的 `realName`，**不信任请求体**。
+	 * <p>
+	 * 顺带把关：用户必须存在（含未被软删）且状态为 {@link UserStatus#ACTIVE}。
+	 */
+	private String requireActiveRealName(long userId) {
+		var user = usersRepo.findById(userId)
+				           .orElseThrow(() -> new BusinessException(MessageConstant.USER_NOT_FOUND));
+		if (!UserStatus.ACTIVE.equals(user.status())) {
+			throw new BusinessException(MessageConstant.USER_STATUS_ABNORMAL);
+		}
+		return user.realName();
 	}
 	
 	/**
@@ -180,7 +223,7 @@ public class ExamRecordService {
 		assertOwned(record);
 		
 		if (record.status() != ExamRecordStatus.ONGOING) {
-			throw new BusinessException("考试已结束，无法保存答案");
+			throw new BusinessException("考试未开始，无法保存答案");
 		}
 		
 		// 构建现有答案的索引：questionId → AnswerRecord

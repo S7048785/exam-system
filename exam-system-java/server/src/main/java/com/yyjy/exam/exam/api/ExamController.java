@@ -10,6 +10,7 @@ import com.yyjy.exam.entity.exam.io.req.StartExamReq;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.exam.service.ExamRecordService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.springframework.web.bind.annotation.*;
@@ -46,8 +47,14 @@ public class ExamController {
 		return R.ok(examRecordService.getPaperInfoForExaminee(id));
 	}
 	
+	/**
+	 * 开考：返回考试记录 id（有没交卷的记录则直接返回那条，即「续考」）。
+	 * <p>
+	 * `studentName` 只有**免登录考试**才需要传（1~50 个字符）；账号登录考试的姓名取账号里的
+	 * `realName`，请求体里**不要传**（传空串会被 `@Size(min = 1)` 拦成 422，要么省略字段要么传 null）。
+	 */
 	@PostMapping("/start")
-	public R<Integer> startExam(@RequestBody StartExamReq req) {
+	public R<Integer> startExam(@RequestBody @Valid StartExamReq req) {
 		int examRecordId = examRecordService.startExam(req.paperId(), req.studentName());
 		return R.ok(examRecordId);
 	}

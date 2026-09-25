@@ -20,6 +20,7 @@ public final class MessageConstant {
 	public static final String PAPER_ALREADY_IN_EXAM = "paper: 该试卷已被考试引用，无法删除";
 	public static final String EXAM_LOGIN_REQUIRED = "exam: 该试卷要求登录后才能参加考试";
 	public static final String EXAM_ATTEMPT_LIMIT_REACHED = "exam: 已达到该试卷允许的考试次数上限";
+	public static final String EXAM_ATTEMPT_TIMEOUT = "exam: 本次考试已超时";
 	public static final String EXAM_DETAIL_NOT_AVAILABLE_ONGOING = "exam: 考试尚未结束，暂不能查看试卷详情";
 	public static final String EXAM_NOT_STARTED = "exam: 考试尚未开始";
 	public static final String EXAM_RECORD_NOT_FOUND = "exam: 考试记录不存在";
@@ -27,6 +28,8 @@ public final class MessageConstant {
 	public static final String QUESTION_TYPE_NOT_EXIST = "question: 题目类型不存在";
 	public static final String QUESTION_NOT_EXIST = "question: 题目不存在";
 	public static final String QUESTION_EXIST = "question: 同类型下已存在同名题目";
+	public static final String USER_NOT_FOUND = "user: 用户不存在";
+	public static final String USER_STATUS_ABNORMAL = "user: 账号状态异常";
 
 	private MessageConstant() {
 	}

@@ -23,6 +23,11 @@ public final class ValidationMessage {
 	public static final String QUESTION_CHOICE_MULTI_ANSWER_NOT_EMPTY = "question: 多选题只能有一个正确答案";
 	public static final String FILE_FORMAT_ERROR = "question: 批量导入的文件格式错误，必须是xlsx或xls格式";
 	public static final String FILE_NOT_EMPTY = "question: 文件不能为空";
+	/**
+	 * 免登录考试的考生姓名：**可以为 null**（账号登录考试不传），
+	 * 但只要传了就必须是 1~50 个字符（对齐 `exam_records.student_name varchar(50)`）。
+	 */
+	public static final String EXAM_STUDENT_NAME_INVALID = "exam: 学生姓名长度在1到50个字符之间";
 
 	private ValidationMessage() {
 	}
