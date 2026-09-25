@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -21,7 +21,12 @@ import { api } from '#/ApiInstance.ts'
 import { formatDateTime } from '#/lib/date-util.ts'
 import useUserStore from '#/stores/user.ts'
 import { examPaperInfoQueryOptions } from '#/features/exam/entry/examQueries.ts'
+import {
+  getSavedStudentName,
+  saveStudentName,
+} from '#/features/exam/entry/studentNameStorage.ts'
 import { toast } from 'sonner'
+import z from 'zod'
 
 /**
  * 考试入口页 `/exam/{paperId}`（免登录可访问 —— 发布步骤给出的链接就是它）。
@@ -120,6 +125,17 @@ function InfoTile({
   )
 }
 
+/**
+ * 考生姓名校验（免登录考试专用），口径与后端 `StartExamReq.studentName` 的
+ * `@Size(min = 1, max = 50)` 对齐：必填、最多 50 个字符（对齐 `student_name varchar(50)`）。
+ * `trim()` 顺带把首尾空格去掉，落库/记 localStorage 的都是清理过的值。
+ */
+const studentNameSchema = z
+  .string()
+  .trim()
+  .min(1, '请输入姓名')
+  .max(50, '姓名不能超过 50 个字符')
+
 function ExamEntryPage() {
   const { paperId } = Route.useParams()
   const id = Number(paperId)
@@ -130,9 +146,11 @@ function ExamEntryPage() {
     enabled: Number.isFinite(id),
   })
 
-  // 免登录考试才可能让考生填姓名；账号登录考试一律不显示输入框
+  // 免登录考试一律让考生填姓名；账号登录考试一律不显示输入框
   const [studentName, setStudentName] = useState('')
-  // 登录态：免登录考试下「已登录」就不需要填姓名；账号登录考试下「未登录」要提示去登录
+  // 姓名校验的即时提示（由 zod 产生），打字即清
+  const [nameError, setNameError] = useState('')
+  // 登录态：只用于「账号登录考试 + 未登录 → 提示去登录」
   const isLoggedIn = !!useUserStore((s) => s.user)
 
   const info = data?.data
@@ -141,10 +159,17 @@ function ExamEntryPage() {
   const now = Date.now()
   const notStarted = info ? now < new Date(info.start).getTime() : false
   const ended = info ? now > new Date(info.end).getTime() : false
-  const needNameInput =
-    !!info && info.participateMode === 'ANONYMOUS' && !isLoggedIn
+  // 免登录考试：一律显示姓名输入框（是否已登录都一样）
+  const needNameInput = !!info && info.participateMode === 'ANONYMOUS'
   const needLogin =
     !!info && info.participateMode === 'LOGIN_REQUIRED' && !isLoggedIn
+
+  // 免登录考试：自动填入上次「开始考试」时记住的姓名（考生自己已经打过字就不覆盖）
+  useEffect(() => {
+    if (needNameInput) {
+      setStudentName((prev) => prev || getSavedStudentName())
+    }
+  }, [needNameInput])
 
   const handleStart = () => {
     if (!info) return
@@ -156,9 +181,17 @@ function ExamEntryPage() {
       toast.error('考试已结束')
       return
     }
-    if (needNameInput && !studentName.trim()) {
-      toast.error('请输入姓名')
-      return
+    // 姓名用 zod 校验（必填 + 最长 50 个字符）：失败时 toast + 输入框下方提示
+    if (needNameInput) {
+      const parsed = studentNameSchema.safeParse(studentName)
+      if (!parsed.success) {
+        const message = parsed.error.issues[0]?.message ?? '姓名不合法'
+        setNameError(message)
+        toast.error(message)
+        return
+      }
+      // 校验过了才记姓名，下次进免登录考试自动填入（存 trim 后的值）
+      saveStudentName(parsed.data)
     }
     if (needLogin) {
       toast.info('该考试需要登录后参加，请先登录')
@@ -223,7 +256,8 @@ function ExamEntryPage() {
             </div>
           )}
 
-          {/* 免登录考试 + 未登录 → 让考生填姓名；已登录则不显示（直接用账号信息） */}
+          {/* 免登录考试 → 一律让考生填姓名（已登录也要填，成绩只记这里填的姓名；
+              上次填过的姓名会从 localStorage 自动填入） */}
           {needNameInput && (
             <div className="space-y-2">
               <Label htmlFor="studentName">
@@ -232,9 +266,20 @@ function ExamEntryPage() {
               <Input
                 id="studentName"
                 value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
+                onChange={(e) => {
+                  setStudentName(e.target.value)
+                  // 一开始打字就把上一轮的错误提示清掉
+                  if (nameError) setNameError('')
+                }}
                 placeholder="请输入你的姓名"
+                aria-invalid={!!nameError}
+                aria-describedby={nameError ? 'studentName-error' : undefined}
               />
+              {nameError && (
+                <p id="studentName-error" className="text-destructive text-sm">
+                  {nameError}
+                </p>
+              )}
             </div>
           )}
 
