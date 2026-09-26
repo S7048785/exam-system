@@ -10,18 +10,17 @@ const config = defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  optimizeDeps: {
-    include: ['@hugeicons/core-free-icons'],
-    exclude: [
-      '@tanstack/react-start',
-      '@tanstack/react-start-client',
-      '@tanstack/react-start-server',
-      '@tanstack/start-server-core',
-      '@tanstack/start-client-core',
-      '@tanstack/start-storage-context',
-      '@tanstack/start-plugin-core',
-    ],
-  },
+  // optimizeDeps: {
+  //   exclude: [
+  //     '@tanstack/react-start',
+  //     '@tanstack/react-start-client',
+  //     '@tanstack/react-start-server',
+  //     '@tanstack/start-server-core',
+  //     '@tanstack/start-client-core',
+  //     '@tanstack/start-storage-context',
+  //     '@tanstack/start-plugin-core',
+  //   ],
+  // },
   server: {
     proxy: {
       '/api': {
