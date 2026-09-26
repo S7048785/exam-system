@@ -10,9 +10,8 @@ import {
   SidebarMenuItem,
 } from '#/components/ui/sidebar.tsx'
 import { NavMain } from '#/features/console/sidebar/nav-main.tsx'
-import useUserStore from '#/stores/user.ts'
 
-import { Link } from '@tanstack/react-router'
+import { Link, useRouteContext } from '@tanstack/react-router'
 import {
   ChartBar,
   EqualApproximately,
@@ -59,7 +58,8 @@ const navMain = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const user = useUserStore((s) => s.user)
+  // 登录态取自路由上下文（根 beforeLoad 里 createServerFn 拉的用户信息），不再读 zustand
+  const { user } = useRouteContext({ from: '__root__' })
 
   const navUser = user
     ? { name: user.realName, email: user.email ?? '', avatar: '' }

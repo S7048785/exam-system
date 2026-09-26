@@ -1,18 +1,19 @@
 import { api } from '#/ApiInstance.ts'
-import useUserStore from '#/stores/user.ts'
 import ThemeToggle from '#/components/ThemeToggle.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouteContext, useRouter } from '@tanstack/react-router'
 
 export default function Header() {
-  const user = useUserStore((s) => s.user)
-  const logout = useUserStore((s) => s.logout)
+  // 登录态取自路由上下文（根 beforeLoad 里 createServerFn 拉的用户信息），不再读 zustand
+  const { user } = useRouteContext({ from: '__root__' })
+  const router = useRouter()
 
   const onLogout = async () => {
     try {
       await api.userController.logout()
     } finally {
-      logout()
+      // 刷新路由上下文 → 根 beforeLoad 重新 fetchUser()（cookie 已清）→ user 变 null
+      await router.invalidate()
     }
   }
 

@@ -10,12 +10,12 @@ import appCss from '../styles/styles.css?url'
 import { TooltipProvider } from '#/components/ui/tooltip'
 import type { QueryClient } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
-import type { UserInfo } from '#/stores/user.ts'
+import type { UserInfo } from '#/lib/user.ts'
 import { createServerFn } from '@tanstack/react-start'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+// import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+// import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { api } from '#/ApiInstance.ts'
-import { ClientOnly } from '#/components/ClientOnly.tsx'
+// import { ClientOnly } from '#/components/ClientOnly.tsx'
 
 interface MyRouterContext {
   queryClient: QueryClient

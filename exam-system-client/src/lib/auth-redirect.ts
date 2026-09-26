@@ -1,5 +1,4 @@
 import { ApiError } from '#/lib/api-error.ts'
-import useUserStore from '#/stores/user.ts'
 
 /**
  * 为什么 401/403 的跳转要放在这里，而不是像以前那样在 fetch 执行器里 `throw redirect`：
@@ -17,19 +16,30 @@ import useUserStore from '#/stores/user.ts'
 export type AuthRedirectTarget = '/login' | '/403'
 
 type NavigateFn = (options: { to: AuthRedirectTarget }) => unknown
+type RefreshFn = () => unknown
 
 let navigateImpl: NavigateFn | null = null
+let refreshImpl: RefreshFn | null = null
 
 /** 由 `src/router.tsx` 在创建 router 之后注入，避免模块间循环依赖 */
 export function registerAuthNavigate(fn: NavigateFn): void {
   navigateImpl = fn
 }
 
+/**
+ * 同上，注入 `router.invalidate()`。跳登录页之前必须先把**路由上下文**里的 user 刷成最新值：
+ * 用户信息现在只有路由上下文这一个来源（zustand store 已删），
+ * cookie 已经失效而上下文里还是旧用户时，`/login` 的 `beforeLoad`（已登录就弹走）会把人弹回去。
+ */
+export function registerAuthRefresh(fn: RefreshFn): void {
+  refreshImpl = fn
+}
+
 /** 多个 query 同时 401 时只跳一次 */
 let lastRedirectAt = 0
 const REDIRECT_COOLDOWN_MS = 1000
 
-export function handleApiError(error: unknown): void {
+export async function handleApiError(error: unknown): Promise<void> {
   if (!(error instanceof ApiError)) {
     return
   }
@@ -59,9 +69,10 @@ export function handleApiError(error: unknown): void {
   lastRedirectAt = now
 
   if (error.isUnauthorized) {
-    // 清掉本地 user，否则布局组件仍按「已登录」渲染，
-    // 会出现「已经跳到登录页但右上角还显示头像」的错乱
-    useUserStore.getState().logout()
+    // 刷新路由上下文里的 user：cookie 已失效 → fetchUser() 返回 null。
+    // 不刷新的话布局组件仍按「已登录」渲染（「已经跳到登录页但右上角还显示头像」），
+    // 而且 /login 的 beforeLoad 会把刚跳过去的人弹回来。
+    await refreshImpl?.()
   }
 
   navigateImpl({ to: target })

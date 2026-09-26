@@ -1,8 +1,12 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router'
 import LoginForm from '#/features/login/LoginForm.tsx'
 import ThemeToggle from '#/components/ThemeToggle.tsx'
 import { redirectIfAuthenticated } from '#/features/login/redirect-if-auth.ts'
-import useUserStore from '#/stores/user.ts'
 import type { UsersDto } from '#/__generated/model/dto'
 
 export const Route = createFileRoute('/_public/login')({
@@ -14,16 +18,18 @@ export const Route = createFileRoute('/_public/login')({
 })
 
 function SigninPage() {
-  const setUser = useUserStore((s) => s.setUser)
-
+  const router = useRouter()
   const navigate = useNavigate()
 
   const onLoginSuccess = async (user: UsersDto['UserController/USER_INFO']) => {
-    setUser(user)
+    // 登录成功只是把 cookie 写好了，路由上下文里的 user 还是旧的（未登录）。
+    // 必须 invalidate 让根 beforeLoad 重新 fetchUser()，否则紧接着跳 /dashboard 时
+    // `_auth` 的守卫看到的 context.user 仍是 null，会把刚登录的人弹回登录页（死循环）。
+    await router.invalidate()
     if (user.role === 'admin') {
-      navigate({ to: '/dashboard' })
+      await navigate({ to: '/dashboard' })
     } else {
-      navigate({ to: '/' })
+      await navigate({ to: '/' })
     }
   }
   return (

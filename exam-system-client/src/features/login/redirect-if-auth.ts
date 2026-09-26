@@ -1,5 +1,5 @@
 import { redirect } from '@tanstack/react-router'
-import type { UserInfo } from '#/stores/user.ts'
+import type { UserInfo } from '#/lib/user.ts'
 
 export function redirectIfAuthenticated(user: UserInfo | null): void {
   if (!user) return

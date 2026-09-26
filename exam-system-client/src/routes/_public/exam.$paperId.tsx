@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   CalendarDays,
-  CalendarClock,
   GraduationCap,
   Star,
   Timer,
@@ -12,14 +11,8 @@ import {
 import { Button } from '#/components/ui/button.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '#/components/ui/avatar.tsx'
-import { api } from '#/ApiInstance.ts'
+import { Avatar, AvatarFallback } from '#/components/ui/avatar.tsx'
 import { formatDateTime } from '#/lib/date-util.ts'
-import useUserStore from '#/stores/user.ts'
 import { examPaperInfoQueryOptions } from '#/features/exam/entry/examQueries.ts'
 import {
   getSavedStudentName,
@@ -44,6 +37,16 @@ export const Route = createFileRoute('/_public/exam/$paperId')({
     const id = Number(params.paperId)
     return context.queryClient.ensureQueryData(examPaperInfoQueryOptions(id))
   },
+  // params: {
+  //   parse: (rawParams) => {
+  //     const id = Number(rawParams.paperId)
+  //     if (isNaN(id)) throw notFound()
+  //     return { paperId: id }  // 转为 number
+  //   },
+  //   stringify: (params) => ({
+  //     paperId: String(params.paperId),
+  //   }),
+  // },
   component: ExamEntryPage,
   errorComponent: ({ error }) => (
     <PageShell>
@@ -61,13 +64,19 @@ export const Route = createFileRoute('/_public/exam/$paperId')({
   ),
 })
 
-/** 页面骨架：顶部导航栏（左 logo + 站名，右 用户名 + 头像）+ 居中内容区 */
+/**
+ * 页面骨架：顶部导航栏（左 logo + 站名，右 用户名 + 头像）+ 居中内容区。
+ *
+ * 登录态取自**路由上下文**（`__root.tsx` 的 `beforeLoad` 里用 `createServerFn` 带着 cookie
+ * 拉到的用户信息），不再读 zustand —— 那份是 localStorage 里的客户端副本，SSR 阶段拿不到，
+ * 会出现「服务端按未登录渲染、客户端接管后突然变成已登录」的跳变。
+ */
 function PageShell({ children }: { children: React.ReactNode }) {
-  const user = useUserStore((s) => s.user)
+  const { user } = Route.useRouteContext()
   const isLoggedIn = !!user
 
   return (
-    <div className="from-primary/10 via-background to-background flex min-h-screen flex-col bg-gradient-to-br">
+    <div className="from-primary/10 via-background to-background flex min-h-screen flex-col bg-linear-to-br">
       {/* 导航栏 */}
       <header className="bg-background/80 flex items-center justify-between border-b px-6 py-3 backdrop-blur">
         {/* 左侧：logo + 网站名 */}
@@ -85,9 +94,10 @@ function PageShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2.5">
             <span className="text-sm font-medium">{user!.realName}</span>
             <Avatar className="size-8 rounded-lg">
-              <AvatarImage src={user!.avatar} alt={user!.realName} />
+              {/* 后端 USER_INFO 只返回 id / email / realName / role，没有 avatar，
+                  所以这里不挂 AvatarImage，直接显示姓名首字 */}
               <AvatarFallback className="rounded-lg">
-                {(user!.realName ?? '?').slice(0, 1)}
+                {user!.realName.slice(0, 1)}
               </AvatarFallback>
             </Avatar>
           </div>
@@ -105,15 +115,16 @@ function PageShell({ children }: { children: React.ReactNode }) {
   )
 }
 
+type InfoTileType = {
+  icon: React.ReactNode
+  label: string
+  value: React.ReactNode
+}
 function InfoTile({
   icon,
   label,
   value,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: React.ReactNode
-}) {
+}: InfoTileType) {
   return (
     <div className="bg-muted/50 flex items-start gap-3 rounded-lg px-3 py-2.5">
       <div className="text-primary mt-0.5">{icon}</div>
@@ -137,21 +148,15 @@ const studentNameSchema = z
   .max(50, '姓名不能超过 50 个字符')
 
 function ExamEntryPage() {
-  const { paperId } = Route.useParams()
-  const id = Number(paperId)
-
+  const {paperId: id} = Route.useParams()
+  const user = Route.useRouteContext().user
   // loader 已 ensureQueryData，这里直接命中缓存
-  const { data } = useQuery({
-    ...examPaperInfoQueryOptions(id),
-    enabled: Number.isFinite(id),
-  })
+  const {data} = useSuspenseQuery(examPaperInfoQueryOptions(Number(id)))
 
   // 免登录考试一律让考生填姓名；账号登录考试一律不显示输入框
   const [studentName, setStudentName] = useState('')
   // 姓名校验的即时提示（由 zod 产生），打字即清
   const [nameError, setNameError] = useState('')
-  // 登录态：只用于「账号登录考试 + 未登录 → 提示去登录」
-  const isLoggedIn = !!useUserStore((s) => s.user)
 
   const info = data?.data
   // 时间显示不带年份（formatDateTime 是 YYYY-MM-DD HH:mm，去掉前 5 个字符即可）
@@ -162,7 +167,7 @@ function ExamEntryPage() {
   // 免登录考试：一律显示姓名输入框（是否已登录都一样）
   const needNameInput = !!info && info.participateMode === 'ANONYMOUS'
   const needLogin =
-    !!info && info.participateMode === 'LOGIN_REQUIRED' && !isLoggedIn
+    !!info && info.participateMode === 'LOGIN_REQUIRED' && !user
 
   // 免登录考试：自动填入上次「开始考试」时记住的姓名（考生自己已经打过字就不覆盖）
   useEffect(() => {
@@ -212,7 +217,7 @@ function ExamEntryPage() {
     <PageShell>
       <div className="bg-card w-full max-w-xl space-y-6 shadow-xl">
         {/* 顶部横幅 */}
-        <div className="from-primary to-primary/70 relative space-y-1.5 bg-gradient-to-r px-6 py-6 text-white">
+        <div className="from-primary to-primary/70 relative space-y-1.5 bg-linear-to-r px-6 py-6 text-white">
           <GraduationCap className="absolute top-4 right-5 size-16 opacity-15" />
           <div className="text-xs font-medium tracking-widest uppercase opacity-80">
             在线考试
@@ -289,9 +294,6 @@ function ExamEntryPage() {
               <TriangleAlert className="mt-0.5 size-4 shrink-0" />
               <div className="space-y-2">
                 <div>该考试要求登录后才能参加，请先登录。</div>
-                <Button size="sm" variant="outline" asChild>
-                  <Link to="/login">前往登录</Link>
-                </Button>
               </div>
             </div>
           )}

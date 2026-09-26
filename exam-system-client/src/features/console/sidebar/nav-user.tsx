@@ -15,7 +15,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '#/components/ui/sidebar.tsx'
-import useUserStore from '#/stores/user.ts'
 import type { ThemeMode } from '#/components/ThemeToggle.tsx'
 import { applyThemeMode, getInitialMode } from '#/components/ThemeToggle.tsx'
 import { LogOut, Monitor, Moon, MoveVertical, Sun } from 'lucide-react'
@@ -64,23 +63,24 @@ export function NavUser({
     setTheme(next)
   }
 
-  function handleLogout() {
-    // 1. 调用后端 logout API → 清除 Sa-Token session + cookie access_token
-    api.userController.logout()
+  async function handleLogout() {
+    try {
+      // 1. 调用后端 logout API → 清除 Sa-Token session + cookie access_token
+      //    必须 await：下面 invalidate 要带着「已失效的 cookie」去重新拉用户，
+      //    不等它返回就 invalidate，fetchUser 可能仍拿到用户 → 登录页把人弹回去
+      await api.userController.logout()
+    } finally {
+      // 2. 清除 TanStack Query 所有缓存 → 旧数据不再展示
+      queryClient.clear()
 
-    // 2. 清除 zustand 本地用户状态
-    useUserStore.getState().logout()
+      // 3. 重新执行所有路由的 beforeLoad → fetchUser() 返回 null
+      //    → 路由上下文 user 变 null，侧边栏 / Header 立刻变回未登录
+      //    （用户信息现在只有路由上下文这一份，不再需要手动清 zustand）
+      await router.invalidate()
 
-    // 3. 清除 TanStack Query 所有缓存 → 旧数据不再展示
-    queryClient.clear()
-
-    // 4. 重新执行所有路由的 beforeLoad →
-    //    fetchUser() 因 cookie 已清除 → 返回 null →
-    //    路由上下文 user 更新为 null
-    router.invalidate()
-
-    // 5. 跳转到登录页
-    navigate({ to: '/login' })
+      // 4. 跳转到登录页
+      navigate({ to: '/login' })
+    }
   }
 
   return (
