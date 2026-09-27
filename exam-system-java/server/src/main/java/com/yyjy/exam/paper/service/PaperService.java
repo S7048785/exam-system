@@ -19,10 +19,10 @@ import com.yyjy.exam.paper.repository.PaperQuestionRepository;
 import com.yyjy.exam.paper.repository.PaperRepository;
 import com.yyjy.exam.question.repository.QuestionsRepository;
 import lombok.RequiredArgsConstructor;
+import org.babyfish.jimmer.sql.JoinType;
 import org.babyfish.jimmer.sql.ast.mutation.AssociatedSaveMode;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
-import org.jetbrains.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,15 +34,9 @@ import java.util.*;
 public class PaperService {
 	
 	/**
-	 * 新建试卷时参与方式与次数上限的默认值（与 `paper` 两列的库默认值保持一致）。
+	 * 智能组卷时的参与方式默认值（与 `paper.participate_mode` 的库默认值保持一致）。
 	 */
 	private static final ParticipateMode DEFAULT_PARTICIPATE_MODE = ParticipateMode.LOGIN_REQUIRED;
-	private static final int DEFAULT_MAX_ATTEMPTS = 1;
-	/**
-	 * 建卷时的默认考试时长（分钟）与默认考试时间窗长度（天）
-	 */
-	private static final int DEFAULT_DURATION = 60;
-	private static final int DEFAULT_WINDOW_DAYS = 7;
 	
 	private final PaperRepository paperRepository;
 	private final PaperQuestionRepository paperQuestionRepo;
@@ -51,54 +45,37 @@ public class PaperService {
 	private final PaperExamSettingsRepository paperExamSettingsRepo;
 	
 	/**
-	 * 写入考试设置（1:1 子表 `paper_exam_settings`）。
+	 * 写入考试设置（1:1 子表 `paper_exam_settings`）：存在则更新、不存在则新增。
 	 * <p>
 	 * 显式 upsert、不依赖聚合级联：级联在不同 {@link SaveMode} 下行为不同
 	 * （INSERT_ONLY 会连带插子表、UPDATE_ONLY 不会），这里统一兜一次，
-	 * 保证**建卷与改配置两条路径都必然有且只有一行设置**。
-	 *
-	 * @param settings               前端传来的设置；null 表示这次没带这个字段
-	 * @param writeDefaultWhenAbsent true = 没带就写默认值（建卷路径）；
-	 *                               false = 没带就保留库里原值（改配置路径）
+	 * 保证**有且只有一行设置**。
+	 * <p>
+	 * 建卷不再预写默认行（发布前必须先配过设置），所以这里只剩「新建」与「更新」两种情况，
+	 * 没有「没带字段就写库默认值」的分支。
 	 */
-	private void saveExamSettings(
-			int paperId,
-			@Nullable PaperExamSettingsInput settings,
-			boolean writeDefaultWhenAbsent) {
+	private void saveExamSettings(int paperId, PaperExamSettingsInput settings) {
 		PaperExamSettings existing = paperExamSettingsRepo.findByPaperId(paperId);
-		if (settings == null && !writeDefaultWhenAbsent && existing != null) {
-			return;
-		}
 		
-		// settings 为 null 时只 set paperId，其余 8 列交给库默认值（全 0 / false）
 		PaperExamSettings draft = PaperExamSettingsDraft.$.produce(d -> {
 			if (existing != null) {
 				d.setId(existing.id());
 			}
 			d.setPaperId(paperId);
-			if (settings != null) {
-				d.setDuration(settings.getDuration());
-				d.setStart(settings.getStart());
-				d.setEnd(settings.getEnd());
-				// 及格分是必填（实体里是 int），DTO 的 getter 也是基本类型，别再判 null
-				d.setPassingScore(settings.getPassingScore());
-				d.setMaxAttempts(settings.getMaxAttempts());
-				// 8 项开关在实体里是 Boolean，生成的 DTO 访问器是 getXxx()（不是 isXxx()）
-				d.setRequireAllAnswered(settings.getRequireAllAnswered());
-				d.setHideQuestionScore(settings.getHideQuestionScore());
-				d.setShowRankAfterSubmit(settings.getShowRankAfterSubmit());
-				d.setShowAnswerAfterSubmit(settings.getShowAnswerAfterSubmit());
-				d.setMinAnswerMinutes(settings.getMinAnswerMinutes());
-				d.setShuffleQuestions(settings.getShuffleQuestions());
-				d.setShuffleChoices(settings.getShuffleChoices());
-			} else {
-				// 建卷默认值：60 分钟、now ~ now+7 天、1 次；及格分不设，开关全关
-				LocalDateTime now = LocalDateTime.now();
-				d.setDuration(DEFAULT_DURATION);
-				d.setStart(now);
-				d.setEnd(now.plusDays(DEFAULT_WINDOW_DAYS));
-				d.setMaxAttempts(DEFAULT_MAX_ATTEMPTS);
-			}
+			d.setDuration(settings.getDuration());
+			d.setStart(settings.getStart());
+			d.setEnd(settings.getEnd());
+			// 及格分是必填（实体里是 int），DTO 的 getter 也是基本类型，别再判 null
+			d.setPassingScore(settings.getPassingScore());
+			d.setMaxAttempts(settings.getMaxAttempts());
+			// 8 项开关在实体里是 Boolean，生成的 DTO 访问器是 getXxx()（不是 isXxx()）
+			d.setRequireAllAnswered(settings.getRequireAllAnswered());
+			d.setHideQuestionScore(settings.getHideQuestionScore());
+			d.setShowRankAfterSubmit(settings.getShowRankAfterSubmit());
+			d.setShowAnswerAfterSubmit(settings.getShowAnswerAfterSubmit());
+			d.setMinAnswerMinutes(settings.getMinAnswerMinutes());
+			d.setShuffleQuestions(settings.getShuffleQuestions());
+			d.setShuffleChoices(settings.getShuffleChoices());
 		});
 		paperExamSettingsRepo.save(draft, SaveMode.UPSERT);
 	}
@@ -206,17 +183,18 @@ public class PaperService {
 	 * 「我的试卷」列表：强制按 `user_id` 过滤（含未发布草稿）。公开广场走 listPublishedPapers。
 	 */
 	public PageRes<Paper> listPapersByNameAndStatus(PaperListQuery conditions, Fetcher<Paper> fetcher) {
-		// 时长/起止/次数/及格分搬进了 1:1 的设置表，所以以**设置表**为查询根，
-		// 用正向关联 settings.paper() 往上取名称/分类/发布态（避免反向关联进查询）。
-		// 代价：没有设置行的卷不会出现在列表里 —— 建卷必然写设置行，历史数据也已回填。
-		PaperExamSettingsTable settings = PaperExamSettingsTable.$;
-		PaperTable paper = settings.paper();
+		// 以 **paper** 为查询根：建卷不再预写设置行，未配设置的卷也必须能出现在「我的试卷」里
+		// （否则用户看不见它，也就永远进不了设置页去创建）。设置表走**左连接**：
+		// 未配设置时 settings 侧全为 NULL —— 状态条件因此不成立（不会混进 进行中/已结束），
+		// 排序里 end 为 NULL 在 MySQL DESC 下排最后，正好把「待配置」的卷沉底。
+		PaperTable paper = PaperTable.$;
+		PaperExamSettingsTable settings = paper.examSettings(JoinType.LEFT);
 		
 		// 缺省：page=1、size=10；显式传入的非法值由记录类上的 @Min/@Max 拦成 422
 		int page = conditions.page();
 		int size = conditions.size();
 		
-		var query = paperRepository.sql().createQuery(settings)
+		var query = paperRepository.sql().createQuery(paper)
 				            .where(paper.userId().eq(StpUtil.getLoginIdAsLong()));
 		
 		var now = LocalDateTime.now();
@@ -249,7 +227,7 @@ public class PaperService {
 		}
 		
 		var res = query
-				          .orderBy(settings.end().desc(), paper.published().asc(), paper.id().desc())
+				          .orderBy(paper.id().desc(), settings.end().desc())
 				          .select(paper.fetch(fetcher))
 				          .fetchPage(page - 1, size);
 		
@@ -273,7 +251,7 @@ public class PaperService {
 	}
 	
 	/**
-	 * 更新试卷配置（**不含题目**）。
+	 * 写入考试设置（**不含题目**）：存在则更新、不存在则新增（upsert）。
 	 */
 	@Transactional
 	public void updatePaperExamSettings(int id, PaperExamSettingsInput input) {
@@ -289,7 +267,7 @@ public class PaperService {
 		}
 		
 		// 只写设置表；试卷自身的名称/描述/分类/参与方式走 POST /paper/save
-		saveExamSettings(id, input, true);
+		saveExamSettings(id, input);
 	}
 	
 	/**
@@ -345,8 +323,8 @@ public class PaperService {
 	 * 保存试卷（**新增 / 更新合一**）：入参带 id = 更新该卷，不带 id = 新增。
 	 * <p>
 	 * 只处理 4 个基本字段（名称/描述/分类/参与方式）；考试设置（时长/起止/次数/及格分/开关）
-	 * 是 1:1 的另一张表 —— 新增时顺带落一行默认值，之后由
-	 * {@link #updatePaperExamSettings} 维护。
+	 * 是 1:1 的另一张表 —— 由 {@link #updatePaperExamSettings} 维护；
+	 * 新增时**不再**预写该行，发布前必须先配过设置（见 {@link #publishPaper}）。
 	 *
 	 * @return 试卷 id（新增返回新 id，更新返回原 id）
 	 */
@@ -393,8 +371,6 @@ public class PaperService {
 			draft.setQuestionCount(0);
 			draft.setTotalScore(0);
 		}), SaveMode.INSERT_ONLY);
-		// 考试设置跟着建：默认 60 分钟、now ~ now+7 天、1 次，开关全关
-		saveExamSettings(paper.id(), null, true);
 		return paper.id();
 	}
 	
@@ -407,6 +383,10 @@ public class PaperService {
 				              .orElseThrow(() -> new BusinessException(MessageConstant.PAPER_NOT_FOUND));
 		if (paper.published()) {
 			throw new BusinessException(MessageConstant.PAPER_IS_PUBLISHED);
+		}
+		// 发布前置条件：必须先配过考试设置 —— 没有设置行就没有时长/时间窗，发布了也无法开考
+		if (!paperExamSettingsRepo.existsByPaperId(id)) {
+			throw new BusinessException("请先完成考试设置再发布");
 		}
 		paperRepository.save(PaperDraft.$.produce(draft -> {
 			draft.setId(id);
@@ -539,14 +519,6 @@ public class PaperService {
 				});
 			}
 		}), SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
-		// 时长与起止时间落在设置表；智能组卷没有开关入口，其余走默认值
-		paperExamSettingsRepo.save(PaperExamSettingsDraft.$.produce(s -> {
-			s.setPaperId(saved.id());
-			s.setDuration(dto.getDuration());
-			s.setStart(dto.getStart());
-			s.setEnd(dto.getEnd());
-			s.setMaxAttempts(DEFAULT_MAX_ATTEMPTS);
-		}), SaveMode.INSERT_ONLY);
 		return saved;
 	}
 }

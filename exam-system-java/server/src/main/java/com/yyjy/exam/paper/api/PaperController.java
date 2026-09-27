@@ -51,13 +51,17 @@ public class PaperController {
 	
 	
 	/**
-	 * 更新考试设置（只含设置本身，不含题目）：时长 / 起止时间 / 次数上限 / 及格分 + 8 项开关。
+	 * 写入考试设置（只含设置本身，不含题目）：时长 / 起止时间 / 次数上限 / 及格分 + 8 项开关。
 	 * <p>
-	 * 取代原 `PUT /paper/{id}/config`；试卷的名称/描述/分类/参与方式改走 `POST /paper/save`。
+	 * **存在则更新、不存在则新增**（upsert）。取代原 `PUT /paper/{id}/config`；
+	 * 试卷的名称/描述/分类/参与方式改走 `POST /paper/save`。
+	 * <p>
+	 * ⚠️ 建卷不再预写设置行，发布前必须先调过这个接口（见 `POST /paper/{id}/publish` 的前置检查）。
 	 */
-	@PutMapping("/{id}/exam-settings")
+	@PostMapping("/{id}/exam-settings")
 	public R<Void> updatePaperExamSettings(@PathVariable int id, @RequestBody @Valid PaperExamSettingsInput input) {
 		paperService.updatePaperExamSettings(id, input);
+		
 		return R.ok();
 	}
 	
@@ -91,7 +95,7 @@ public class PaperController {
 	 * <p>
 	 * 只收 4 个基本字段（名称 / 描述 / 分类 / 参与方式）；时长、起止时间、次数上限、及格分
 	 * 与 8 项开关在 1:1 的 `paper_exam_settings` 里，由
-	 * {@code PUT /paper/{id}/exam-settings} 维护。
+	 * {@code POST /paper/{id}/exam-settings} 维护（不存在则新增、存在则更新）。
 	 * <p>
 	 * 返回试卷 id（新增返回新 id，更新返回原 id）。
 	 */

@@ -22,6 +22,16 @@ public interface PaperExamSettingsRepository extends JRepository<PaperExamSettin
 	}
 	
 	/**
+	 * 该试卷是否已有考试设置行（发布前置检查用）。
+	 */
+	default boolean existsByPaperId(int paperId) {
+		PaperExamSettingsTable t = PaperExamSettingsTable.$;
+		return sql().createQuery(t)
+				       .where(t.paper().id().eq(paperId))
+				       .exists();
+	}
+	
+	/**
 	 * 批量取「试卷 id → 考试时长（分钟）」，给超时扫描用（时长现在在设置表里）。
 	 */
 	default Map<Integer, Integer> findDurationMapByPaperIds(Collection<Integer> paperIds) {
