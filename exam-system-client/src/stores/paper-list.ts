@@ -13,7 +13,7 @@ interface PaperListState {
 }
 
 /**
- * 控制paper-list页面EditDialog组件状态
+ * 控制 paper-list 页面的「新增/编辑试卷」弹窗（`SaveDialog`）状态
  */
 export const usePaperListStore = create<PaperListState>()((set) => ({
   dialogMode: 'create',

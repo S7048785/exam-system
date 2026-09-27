@@ -38,6 +38,11 @@ interface PaperSettingsDialogProps {
   paperId: number
   open: boolean
   onOpenChange: (open: boolean) => void
+  /**
+   * 保存成功（试卷基本信息 + 考试设置两个请求都 200）后回调。
+   * 供父组件串接后续动作 —— 目前用于「发布试卷前必须先配设置」的流程。
+   */
+  onSaved?: () => void
 }
 
 /**
@@ -105,6 +110,7 @@ export default function PaperSettingsDialog({
   paperId,
   open,
   onOpenChange,
+  onSaved,
 }: PaperSettingsDialogProps) {
   const queryClient = useQueryClient()
 
@@ -134,10 +140,7 @@ export default function PaperSettingsDialog({
   })
   const categoryTree = treeData?.data ?? []
 
-  const { data: detailData } = useQuery({
-    ...paperQueries.detail(paperId),
-    enabled: open,
-  })
+  const { data: detailData } = useQuery(paperQueries.detail(paperId, open))
 
   // 打开时用详情回填（考试设置是 1:1 子表，字段都在 examSettings 里）
   useEffect(() => {
@@ -227,6 +230,8 @@ export default function PaperSettingsDialog({
       await queryClient.invalidateQueries({ queryKey: ['listPapers'] })
       toast.success('试卷设置已保存')
       onOpenChange(false)
+      // 两个保存请求都已 200 —— 通知父组件（发布流程据此继续）
+      onSaved?.()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '保存失败')
     }

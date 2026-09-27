@@ -28,8 +28,9 @@ interface StepBasicInfoProps {
  * 向导第 0 步「考试信息」：只收试卷自身的 4 个字段。
  *
  * 时长 / 起止时间 / 次数上限 / 及格分 / 8 项开关都属于「考试设置」，存在 1:1 的
- * `paper_exam_settings` 里：新建时后端落默认值，之后在**列表页行的「设置」弹窗**里改
- * （`POST /paper/save` 只负责这 4 个字段）。
+ * `paper_exam_settings` 里：建卷**不再**预写设置行，发布前必须先配好（见 SaveDialog 的
+ * goPublish），之后也可以在**列表页行的「设置」弹窗**里改。
+ * （`POST /paper/save` 只负责这 4 个字段。）
  */
 export default function StepBasicInfo({
   name,

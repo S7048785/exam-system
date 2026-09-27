@@ -88,8 +88,14 @@ export default function PaperRow({ item, onDelete }: Props) {
               {PAPER_PHASE_LABEL[phase]}
             </Badge>
             <div className="ml-2 text-xs">
-              <span>{formatDateTime(item.examSettings!.start)}</span> ~{' '}
-              <span>{formatDateTime(item.examSettings!.end)}</span>
+              {item.examSettings ? (
+                <>
+                  <span>{formatDateTime(item.examSettings.start)}</span> ~{' '}
+                  <span>{formatDateTime(item.examSettings.end)}</span>
+                </>
+              ) : (
+                <span>未设置考试时间</span>
+              )}
             </div>
           </div>
           <DotIcon />

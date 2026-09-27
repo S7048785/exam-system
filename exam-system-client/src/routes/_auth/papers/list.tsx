@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { api } from '#/ApiInstance.ts'
 import { papersQueryOptions } from '#/features/console/papers/paperQueries.ts'
-import PaperInfoDialog from '#/features/console/papers/list/EditDialog'
+import SaveDialog from '#/features/console/papers/list/SaveDialog'
 import { PaperFilters } from '#/features/console/papers/list/PaperFilters.tsx'
 import { PaperPagination } from '#/features/console/papers/list/PaperPagination.tsx'
 import PaperList from '#/features/console/papers/list/PaperList.tsx'
@@ -16,7 +16,7 @@ import Loading from '#/components/Loading.tsx'
 export const Route = createFileRoute('/_auth/papers/list')({
   component: PapersPage,
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(
+    return context.queryClient.ensureQueryData(
       papersQueryOptions({
         name: '',
         page: 1,
@@ -67,10 +67,10 @@ function PapersPage() {
   const { data: listData, isPending } = useQuery(
     papersQueryOptions(queryParams),
   )
-
+  const q = Route.useRouteContext().queryClient
   const handleRefresh = () => {
     setPageCondition((state) => ({ ...state, page: 1 }))
-    // q.invalidateQueries({queryKey: ['']})
+    q.invalidateQueries({queryKey: ['listPapers']})
   }
 
   // 筛选变化
@@ -131,7 +131,7 @@ function PapersPage() {
         </div>
       )}
 
-      <PaperInfoDialog />
+      <SaveDialog />
     </div>
   )
 }

@@ -9,11 +9,12 @@ export const papersQueryOptions = (filters: PaperListQuery) =>
     staleTime: 30 * 1000,
   })
 
-export const paperDetailQueryOptions = (id: number) =>
+export const paperDetailQueryOptions = (id: number, enabled: boolean) =>
   queryOptions({
     queryKey: ['paperDetail', id],
     queryFn: () => api.paperController.getPaper({ id }),
     staleTime: 30 * 1000,
+    enabled,
   })
 
 export const paperQueries = {

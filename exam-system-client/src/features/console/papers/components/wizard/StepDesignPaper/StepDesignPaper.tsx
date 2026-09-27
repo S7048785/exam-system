@@ -13,7 +13,7 @@ import { api } from '#/ApiInstance.ts'
 import { cn } from '#/lib/utils.ts'
 import CreateQuestionInPaperDialog from './CreateQuestionInPaperDialog.tsx'
 import SelectQuestionFromBankDialog from './SelectQuestionFromBankDialog.tsx'
-import MemoTable from '#/features/console/papers/list/EditDialog/StepDesignPaper/MemoTable.tsx'
+import MemoTable from './MemoTable.tsx'
 
 interface StepDesignPaperProps {
   paperId: number
@@ -87,7 +87,7 @@ export default function StepDesignPaper({ paperId }: StepDesignPaperProps) {
     <div className="h-full">
       <div className="flex h-full gap-4">
         {/* 左侧：总览 + 题号列表 */}
-        <div className="bg-popover flex shrink-0 flex-col rounded-lg">
+        <div className="bg-popover w-60 flex shrink-0 flex-col rounded-lg">
           <div className="flex items-center gap-2 border-b px-4 py-3">
             <div className="text-muted-foreground text-xs">总计</div>
             <div className="text-lg font-semibold">

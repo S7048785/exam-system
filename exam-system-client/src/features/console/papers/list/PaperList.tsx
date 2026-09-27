@@ -12,9 +12,9 @@ export default function PaperList({ papers }: Props) {
   // 删除试卷
   const deleteMutation = useDeleteMutation()
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id)
-    queryClient.invalidateQueries({
+  const handleDelete = async (id: number) => {
+    await deleteMutation.mutateAsync(id)
+    await queryClient.invalidateQueries({
       queryKey: ['listPapers'],
     })
   }
