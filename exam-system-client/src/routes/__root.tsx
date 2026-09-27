@@ -12,10 +12,10 @@ import type { QueryClient } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import type { UserInfo } from '#/lib/user.ts'
 import { createServerFn } from '@tanstack/react-start'
-// import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 // import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { api } from '#/ApiInstance.ts'
-// import { ClientOnly } from '#/components/ClientOnly.tsx'
+import { ClientOnly } from '#/components/ClientOnly.tsx'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -90,12 +90,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
         <Scripts />
-        {/*{import.meta.env.DEV && (*/}
-        {/*  <ClientOnly>*/}
-        {/*    <ReactQueryDevtools buttonPosition="top-right" />*/}
-        {/*    <TanStackRouterDevtools position="bottom-right" />*/}
-        {/*  </ClientOnly>*/}
-        {/*)}*/}
+        {import.meta.env.DEV && (
+          <ClientOnly>
+            <ReactQueryDevtools buttonPosition="top-right" />
+            {/*<TanStackRouterDevtools position="bottom-right" />*/}
+          </ClientOnly>
+        )}
       </body>
     </html>
   )
