@@ -10,13 +10,13 @@ import java.util.List;
 
 public interface AnswerRecordRepository extends JRepository<AnswerRecord, Long> {
 	
-	List<AnswerRecord> findByExamRecordId(int examRecordId);
+	List<AnswerRecord> findByExamRecordId(long examRecordId);
 	
 	/**
 	 * 带 fetch 图谱的版本：批改需要 question.type / question.score / question.questionAnswers.answer，
 	 * 而上面的派生查询只带回关联对象的 id，直接访问 question().type() 会抛 UnloadedException。
 	 */
-	default List<AnswerRecord> findByExamRecordId(int examRecordId, Fetcher<AnswerRecord> fetcher) {
+	default List<AnswerRecord> findByExamRecordId(long examRecordId, Fetcher<AnswerRecord> fetcher) {
 		var t = Tables.ANSWER_RECORD_TABLE;
 		return sql().createQuery(t)
 				       .where(t.examRecordId().eq(examRecordId))
@@ -29,7 +29,7 @@ public interface AnswerRecordRepository extends JRepository<AnswerRecord, Long> 
 	 * 用于在「客观题小计」之上累加。未批改的题 score 为 NULL，SUM 会忽略（等价于 0 分）；
 	 * Jimmer 的聚合查询固定返回一行，没有任何答案时该行是 NULL。
 	 */
-	default int sumTextScoreByExamRecordId(int examRecordId) {
+	default int sumTextScoreByExamRecordId(long examRecordId) {
 		var t = Tables.ANSWER_RECORD_TABLE;
 		List<Integer> totals = sql().createQuery(t)
 				                    .where(t.examRecordId().eq(examRecordId))

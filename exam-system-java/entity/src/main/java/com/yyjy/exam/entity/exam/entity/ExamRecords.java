@@ -1,7 +1,10 @@
 package com.yyjy.exam.entity.exam.entity;
 
+import com.yyjy.exam.entity.id.SnowflakeIdGenerator;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.user.entity.Users;
+import org.babyfish.jimmer.jackson.JsonConverter;
+import org.babyfish.jimmer.jackson.LongToStringConverter;
 import org.babyfish.jimmer.sql.*;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,8 +15,9 @@ import java.util.List;
 public interface ExamRecords {
 	
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	int id();
+	@GeneratedValue(strategy = GenerationType.USER, generatorType = SnowflakeIdGenerator.class)
+	@JsonConverter(LongToStringConverter.class)
+	long id();
 	
 	@Nullable
 	@ManyToOne

@@ -54,16 +54,17 @@ public class ExamController {
 	 * `realName`，请求体里**不要传**（传空串会被 `@Size(min = 1)` 拦成 422，要么省略字段要么传 null）。
 	 */
 	@PostMapping("/start")
-	public R<Integer> startExam(@RequestBody @Valid StartExamReq req) {
-		int examRecordId = examRecordService.startExam(req.paperId(), req.studentName());
-		return R.ok(examRecordId);
+	public R<String> startExam(@RequestBody @Valid StartExamReq req) {
+		long examRecordId = examRecordService.startExam(req.paperId(), req.studentName());
+		// 雪花 id 有 19 位，超过 JS 的 Number.MAX_SAFE_INTEGER，按字符串返回才不会掉精度
+		return R.ok(String.valueOf(examRecordId));
 	}
 	
 	/**
 	 * 获取答题页数据（无正确答案，供考试中展示题目）
 	 */
 	@GetMapping("/{id}/taking")
-	public R<ExamTakingView> getExamTaking(@PathVariable int id) {
+	public R<ExamTakingView> getExamTaking(@PathVariable long id) {
 		return R.ok(examRecordService.getExamTaking(id));
 	}
 	
@@ -71,7 +72,7 @@ public class ExamController {
 	 * 获取考试详情（含答题记录、评分结果、AI 批注）
 	 */
 	@GetMapping("/{id}/detail")
-	public R<ExamRecordDetail> getExamDetail(@PathVariable int id) {
+	public R<ExamRecordDetail> getExamDetail(@PathVariable long id) {
 		return R.ok(examRecordService.getExamDetail(id));
 	}
 	
@@ -80,7 +81,7 @@ public class ExamController {
 	 */
 	@PostMapping("/{examRecordId}/answers")
 	public R<Void> saveAnswers(
-			@PathVariable int examRecordId,
+			@PathVariable long examRecordId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
 		examRecordService.saveAnswers(examRecordId, answers);
@@ -93,7 +94,7 @@ public class ExamController {
 	 */
 	@PostMapping("/submit/{examRecordId}")
 	public R<Void> submitAnswers(
-			@PathVariable int examRecordId,
+			@PathVariable long examRecordId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
 		examRecordService.submitAnswers(examRecordId, answers);

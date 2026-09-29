@@ -8,7 +8,7 @@ import org.babyfish.jimmer.sql.fetcher.Fetcher;
 
 import java.util.List;
 
-public interface ExamRecordsRepository extends JRepository<ExamRecords, Integer> {
+public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 	
 	/**
 	 * 该「考生名」在这份试卷上已经开考的次数。

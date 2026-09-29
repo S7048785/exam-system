@@ -63,7 +63,7 @@ public class ExamRecordService {
 	private final PaperRepository paperRepository;
 	
 	@Transactional
-	public int startExam(int paperId, String studentName) {
+	public long startExam(int paperId, String studentName) {
 		// ---- 1. 校验试卷本身 ----
 		Long userId = null;
 		String name = studentName;
@@ -136,6 +136,8 @@ public class ExamRecordService {
 		
 		// ---- 4. 创建考试记录 ----
 		// （now 在上面校验时间窗口时已取好，这里复用）
+		// id 不在这里给：ExamRecords.id 标了 @GeneratedValue(generatorType = SnowflakeIdGenerator.class)，
+		// Jimmer 插入前会用 Hutool 雪花生成并回填（库里这列已没有自增）
 		final Long finalUserId = userId;
 		final String finalName = name;
 		ExamRecords saved = examRecordsRepo.save(Immutables.createExamRecords(draft -> {
@@ -158,7 +160,7 @@ public class ExamRecordService {
 	 * **先看这场自己有没有超时** —— `end` 没到不代表作答时长还没用完：
 	 * 超了就抛异常，不能让考生接着答（ExamTimeoutScheduler 随后会把它强制交卷）。
 	 */
-	private int resume(ExamRecords ongoing, PaperExamSettings settings, LocalDateTime now) {
+	private long resume(ExamRecords ongoing, PaperExamSettings settings, LocalDateTime now) {
 		if (ongoing.startTime() != null
 				    && now.isAfter(ongoing.startTime().plusMinutes(settings.duration()))) {
 			throw new BusinessException(MessageConstant.EXAM_ATTEMPT_TIMEOUT);
@@ -183,7 +185,7 @@ public class ExamRecordService {
 	/**
 	 * 获取答题页数据（不含正确答案，仅用于考试中展示题目）
 	 */
-	public ExamTakingView getExamTaking(int id) {
+	public ExamTakingView getExamTaking(long id) {
 		ExamRecords record = findRecordOrThrow(id);
 		assertOwned(record);
 		
@@ -202,7 +204,7 @@ public class ExamRecordService {
 	 * —— 返回类型 `ExamRecordDetail` 含 `questionChoices.correct` 与 `questionAnswers.answer`（整套答案），
 	 * 不挡的话考生开考后立刻调本接口就能拿答案。
 	 */
-	public ExamRecordDetail getExamDetail(int id) {
+	public ExamRecordDetail getExamDetail(long id) {
 		ExamRecords record = findRecordOrThrow(id);
 		assertOwned(record);
 		checkAndHandleTimeout(record);
@@ -218,7 +220,7 @@ public class ExamRecordService {
 	 * 手动保存答案（upsert）：答题过程中允许考生随时保存
 	 * 已存在的记录按 questionId 更新，不存在的插入
 	 */
-	public void saveAnswers(int examRecordId, List<SubmitAnswerReq> answers) {
+	public void saveAnswers(long examRecordId, List<SubmitAnswerReq> answers) {
 		ExamRecords record = findRecordOrThrow(examRecordId);
 		assertOwned(record);
 		
@@ -255,7 +257,7 @@ public class ExamRecordService {
 	 * 3. 无简答题 → 状态直接置为 GRADED
 	 */
 	@Transactional
-	public void submitAnswers(int examRecordId, List<SubmitAnswerReq> answers) {
+	public void submitAnswers(long examRecordId, List<SubmitAnswerReq> answers) {
 		ExamRecords record = findRecordOrThrow(examRecordId);
 		assertOwned(record);
 		
@@ -284,7 +286,7 @@ public class ExamRecordService {
 	 * 不含简答题 → 直接 GRADED；含简答题 → GRADING 并投递异步 AI 批改，
 	 * 简答分出来后由 ExamGradingQueueConsumer 累加到客观题小计上再置 GRADED。
 	 */
-	private void finishGrading(int examRecordId, boolean hasTextQuestions) {
+	private void finishGrading(long examRecordId, boolean hasTextQuestions) {
 		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
 			draft.setId(examRecordId);
 			draft.setEndTime(LocalDateTime.now());
@@ -298,7 +300,7 @@ public class ExamRecordService {
 	/**
 	 * 发送阅卷消息到 RabbitMQ
 	 */
-	private void sendGradingMessage(int examRecordId) {
+	private void sendGradingMessage(long examRecordId) {
 		try {
 			rabbitTemplate.convertAndSend(
 					RabbitMQConfig.GRADING_EXCHANGE,
@@ -372,7 +374,7 @@ public class ExamRecordService {
 	/**
 	 * 超时处理：批改客观题 + 更新状态 + 推送阅卷消息
 	 */
-	public void handleTimeoutSubmit(int examRecordId) {
+	public void handleTimeoutSubmit(long examRecordId) {
 		gradeNonTextQuestions(examRecordId);
 		boolean hasTextQuestions = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING).stream()
 				                           .anyMatch(ar -> QuestionType.TEXT.equals(ar.question().type()));
@@ -382,7 +384,7 @@ public class ExamRecordService {
 	/**
 	 * 同步批改选择题和判断题（不处理简答题），结果**一次性批量写回**
 	 */
-	private void gradeNonTextQuestions(int examRecordId) {
+	private void gradeNonTextQuestions(long examRecordId) {
 		List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING);
 		// 分值口径：优先用「试卷配分」(paper_question.score)，取不到才回落「题目分值」(questions.score)。
 		// 只查一次，避免逐题打库。
@@ -469,7 +471,7 @@ public class ExamRecordService {
 	 * 某场考试所用试卷的「题目 → 配分」映射（`paper_question.score`）。
 	 * 考试记录不存在时返回空表，调用方会回落到「题目分值」。
 	 */
-	private Map<Long, Integer> resolvePaperScores(int examRecordId) {
+	private Map<Long, Integer> resolvePaperScores(long examRecordId) {
 		ExamRecords record = examRecordsRepo.findById(examRecordId).orElse(null);
 		if (record == null) {
 			return Map.of();
@@ -520,7 +522,7 @@ public class ExamRecordService {
 	/**
 	 * 通用查找，不存在时抛异常
 	 */
-	private ExamRecords findRecordOrThrow(int id) {
+	private ExamRecords findRecordOrThrow(long id) {
 		return examRecordsRepo.findById(id)
 				       .orElseThrow(() -> new BusinessException("考试记录不存在"));
 	}

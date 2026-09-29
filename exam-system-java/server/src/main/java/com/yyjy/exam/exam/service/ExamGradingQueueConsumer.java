@@ -37,7 +37,7 @@ public class ExamGradingQueueConsumer {
 	
 	@RabbitListener(queues = RabbitMQConfig.GRADING_QUEUE)
 	public void consumeGradingMessage(String examRecordIdStr) {
-		int examRecordId = Integer.parseInt(examRecordIdStr);
+		long examRecordId = Long.parseLong(examRecordIdStr);
 		log.info("收到阅卷消息, 考试记录ID: {}", examRecordId);
 		try {
 			processGrading(examRecordId);
@@ -51,7 +51,7 @@ public class ExamGradingQueueConsumer {
 		}
 	}
 	
-	private void processGrading(int examRecordId) {
+	private void processGrading(long examRecordId) {
 		//List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId);
 		var table = Tables.ANSWER_RECORD_TABLE;
 		List<AnswerRecord> textAnswers = answerRecordRepo.sql().createQuery(table)
@@ -120,7 +120,7 @@ public class ExamGradingQueueConsumer {
 	 * 某场考试所用试卷的「题目 → 配分」映射（`paper_question.score`）。
 	 * 考试记录不存在时返回空表，调用方会回落到「题目分值」。
 	 */
-	private Map<Long, Integer> resolvePaperScores(int examRecordId) {
+	private Map<Long, Integer> resolvePaperScores(long examRecordId) {
 		ExamRecords record = examRecordsRepo.findById(examRecordId).orElse(null);
 		if (record == null) {
 			return Map.of();

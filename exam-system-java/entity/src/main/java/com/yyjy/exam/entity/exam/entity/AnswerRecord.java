@@ -20,7 +20,7 @@ public interface AnswerRecord {
 	ExamRecords examRecord();
 	
 	@IdView
-	int examRecordId();
+	long examRecordId();
 	
 	@Key
 	@ManyToOne
