@@ -7,6 +7,9 @@ export const Route = createFileRoute('/_public/')({
 })
 
 function App() {
+  // 登录态来自根路由 beforeLoad 注入的 context（见 __root.tsx），不读 zustand
+  const { user } = Route.useRouteContext()
+
   return (
     <main className="page-wrap px-4 pt-14 pb-8">
       <section className="rise-in rounded-lg border px-6 py-10 sm:px-10 sm:py-14">
@@ -19,12 +22,23 @@ function App() {
         <p className="text-muted-foreground mb-8 max-w-2xl text-base sm:text-lg">
           快速创建和管理试卷，支持多种题型，智能组卷，在线考试。
         </p>
-        <Button asChild size="lg">
-          <Link to="/dashboard">
-            进入控制台
-            <ArrowRightIcon data-icon="inline-end" />
-          </Link>
-        </Button>
+        {user ? (
+          <Button asChild size="lg">
+            <Link to="/questions/list">
+              进入控制台
+              <ArrowRightIcon data-icon="inline-end" />
+            </Link>
+          </Button>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button asChild size="lg">
+              <Link to="/login">登录</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/register">注册</Link>
+            </Button>
+          </div>
+        )}
       </section>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
