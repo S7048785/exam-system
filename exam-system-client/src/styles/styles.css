@@ -191,12 +191,6 @@ cap-widget {
   --cap-spinner-thickness: 5px;
 }
 
-cap-widget::part(label) {
-  font-size: 14px;
-  flex: none;
-  display: inline-grid;
-  place-items: center;
-}
 
 cap-widget::part(attribution) {
   color: transparent !important;

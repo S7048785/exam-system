@@ -1,6 +1,5 @@
 import type { RefObject } from 'react'
-import { useEffect, useState } from 'react'
-
+import('cap-widget')
 const capUrl = import.meta.env.VITE_CAP_URL
 const capSiteKey = import.meta.env.VITE_CAP_SITE_KEY
 
@@ -9,38 +8,6 @@ type CapWidgetProps = {
   onSetCaptchaToken: (token: string) => void
 }
 export default function CapWidget({ ref, onSetCaptchaToken }: CapWidgetProps) {
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    import('cap-widget').then(() => setReady(true))
-  }, [])
-
-  // 验证码样式
-  useEffect(() => {
-    if (!ready) return
-    const cap = document.querySelector('cap-widget')
-    const sheet = new CSSStyleSheet()
-    sheet.replaceSync(`
-      .label {
-        position: static !important;
-      }
-        .captcha {
-        display: flex;
-        justify-content: center;
-    }
-    `)
-    if (cap) {
-      cap.shadowRoot!.adoptedStyleSheets = [sheet]
-    }
-  }, [ready])
-
-  if (!ready) {
-    return (
-      <div className="border-border flex h-[50px] w-[382px] items-center justify-center border">
-        <span className="text-muted-foreground text-xs">加载中...</span>
-      </div>
-    )
-  }
 
   return (
     <>
