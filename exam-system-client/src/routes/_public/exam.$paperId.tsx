@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import {
   CalendarDays,
   GraduationCap,
@@ -13,11 +13,17 @@ import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { Avatar, AvatarFallback } from '#/components/ui/avatar.tsx'
 import { formatDateTime } from '#/lib/date-util.ts'
-import { examPaperInfoQueryOptions } from '#/features/exam/entry/examQueries.ts'
+import { cn } from '#/lib/utils.ts'
+import {
+  examHistoryQueryOptions,
+  examPaperInfoQueryOptions,
+} from '#/features/exam/entry/examQueries.ts'
 import {
   getSavedStudentName,
   saveStudentName,
 } from '#/features/exam/entry/studentNameStorage.ts'
+import type { Dynamic_ExamRecords } from '#/__generated/model/dynamic'
+import type { ExamPaperInfoRes } from '#/__generated/model/static'
 import { toast } from 'sonner'
 import z from 'zod'
 
@@ -33,9 +39,19 @@ import z from 'zod'
  * 直接吃缓存；失败时走本路由的 `errorComponent`（不再各自渲染错误块）。
  */
 export const Route = createFileRoute('/_public/exam/$paperId')({
-  loader: ({ context, params }) => {
+  loader: async ({ context, params }) => {
     const id = Number(params.paperId)
-    return context.queryClient.ensureQueryData(examPaperInfoQueryOptions(id))
+    const info = await context.queryClient.ensureQueryData(
+      examPaperInfoQueryOptions(id),
+    )
+    // 「我」的考试记录只有**账号登录考试 + 已登录**才查得到：免登录考试的记录
+    // `user_id` 为空，而 /exams/history 是按 userId 查的，查了也只会是空数组。
+    // 用 prefetchQuery 而不是 ensureQueryData —— 这份数据只用来把按钮切成「继续考试」，
+    // 拿不到（未登录 / 403 / 网络抖动）就按「未考试」渲染，不该把整个入口页推进 errorComponent。
+    if (context.user && info.data?.participateMode === 'LOGIN_REQUIRED') {
+      await context.queryClient.prefetchQuery(examHistoryQueryOptions)
+    }
+    return info
   },
   // params: {
   //   parse: (rawParams) => {
@@ -147,6 +163,33 @@ const studentNameSchema = z
   .min(1, '请输入姓名')
   .max(50, '姓名不能超过 50 个字符')
 
+/**
+ * 「我」在这张试卷上的状态：
+ * - 一条记录都没有 → 未考试
+ * - 有 `ONGOING` 记录且还在作答时限内 → 考试中（按钮切「继续考试」）
+ * - 其余（已交卷，或 `ONGOING` 但已超时）→ 考试结束
+ *
+ * 时限取 `min(记录开始时间 + 试卷时长, 试卷截止时间)`：前者是**单场作答时长**，
+ * 后者是**整场窗口** —— 窗口到点后谁都不能再考，手里那条 ONGOING 也不放行。
+ */
+function resolveExamUserState(
+  records: ReadonlyArray<Dynamic_ExamRecords>,
+  info: ExamPaperInfoRes,
+  now: number,
+): 'NOT_ATTEMPTED' | 'ONGOING' | 'FINISHED' {
+  const ongoing = records.find((r) => r.status === 'ONGOING')
+  if (!ongoing) {
+    return records.length > 0 ? 'FINISHED' : 'NOT_ATTEMPTED'
+  }
+  // 记录缺开始时间就按还在考处理（后端 startTime 是 NOT NULL，这里只是兜底）
+  if (!ongoing.startTime) return 'ONGOING'
+  const deadline = Math.min(
+    new Date(ongoing.startTime).getTime() + info.duration * 60_000,
+    new Date(info.end).getTime(),
+  )
+  return now >= deadline ? 'FINISHED' : 'ONGOING'
+}
+
 function ExamEntryPage() {
   const {paperId: id} = Route.useParams()
   const user = Route.useRouteContext().user
@@ -168,6 +211,18 @@ function ExamEntryPage() {
   const needNameInput = !!info && info.participateMode === 'ANONYMOUS'
   const needLogin =
     !!info && info.participateMode === 'LOGIN_REQUIRED' && !user
+
+  // 只有「账号登录考试 + 已登录」才拿得到「我」的记录（见 loader 里的说明）
+  const canCheckHistory = !!user && info?.participateMode === 'LOGIN_REQUIRED'
+  const { data: history } = useQuery({
+    ...examHistoryQueryOptions,
+    enabled: canCheckHistory,
+  })
+  // 同一张试卷下「我」的记录；查不到时按未考试处理
+  const myRecords = (history ?? []).filter((r) => r.paperId === info?.paperId)
+  const examState: 'NOT_ATTEMPTED' | 'ONGOING' | 'FINISHED' = info
+    ? resolveExamUserState(myRecords, info, now)
+    : 'NOT_ATTEMPTED'
 
   // 免登录考试：自动填入上次「开始考试」时记住的姓名（考生自己已经打过字就不覆盖）
   useEffect(() => {
@@ -211,6 +266,20 @@ function ExamEntryPage() {
         <div className="text-muted-foreground text-sm">加载中…</div>
       </PageShell>
     )
+  }
+
+  // 主按钮：先看试卷窗口（未开始 / 已结束），再看「我」的状态（未考试 / 考试中 / 考试结束）
+  let buttonLabel = '开始考试'
+  let buttonClass = ''
+  if (notStarted) {
+    buttonLabel = '考试未开始'
+  } else if (ended || examState === 'FINISHED') {
+    buttonLabel = '考试已结束'
+  } else if (examState === 'ONGOING') {
+    buttonLabel = '继续考试'
+    // 考试中 → 警告色（amber），盖掉 Button 默认的 primary 底色
+    buttonClass =
+      'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500'
   }
 
   return (
@@ -299,11 +368,13 @@ function ExamEntryPage() {
           )}
 
           <Button
-            className="h-11 w-full text-base"
+            className={cn('h-11 w-full text-base', buttonClass)}
             onClick={handleStart}
-            disabled={notStarted || ended || needLogin}
+            disabled={
+              notStarted || ended || needLogin || examState === 'FINISHED'
+            }
           >
-            {notStarted ? '考试未开始' : ended ? '考试已结束' : '开始考试'}
+            {buttonLabel}
           </Button>
 
           <p className="text-muted-foreground text-center text-xs">
