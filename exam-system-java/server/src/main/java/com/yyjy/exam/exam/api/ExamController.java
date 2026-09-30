@@ -69,7 +69,7 @@ public class ExamController {
 	}
 	
 	/**
-	 * 获取考试详情（含答题记录、评分结果、AI 批注）
+	 * 获取考试详情（含答题记录、评分结果、阅卷批注）
 	 */
 	@GetMapping("/{id}/detail")
 	public R<ExamRecordDetail> getExamDetail(@PathVariable long id) {
@@ -90,7 +90,7 @@ public class ExamController {
 	
 	/**
 	 * 提交答案：
-	 * 同步批改选择/判断题，简答题触发异步 AI 批改
+	 * 同步批改选择/判断题，简答题留待人工批改
 	 */
 	@PostMapping("/submit/{examRecordId}")
 	public R<Void> submitAnswers(

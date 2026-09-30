@@ -1,7 +1,6 @@
 package com.yyjy.exam.exam.service;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.yyjy.exam.common.config.RabbitMQConfig;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.Fetchers;
@@ -26,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.babyfish.jimmer.sql.JSqlClient;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +56,6 @@ public class ExamRecordService {
 	private final PaperQuestionRepository paperQuestionRepo;
 	private final PaperExamSettingsRepository paperExamSettingsRepo;
 	private final UsersRepository usersRepo;
-	private final RabbitTemplate rabbitTemplate;
 	private final JSqlClient sqlClient;
 	private final PaperRepository paperRepository;
 	
@@ -197,7 +194,7 @@ public class ExamRecordService {
 	}
 	
 	/**
-	 * 获取考试详情（含答题记录、评分、AI 批注；用于成绩展示页）
+	 * 获取考试详情（含答题记录、评分、批注；用于成绩展示页）
 	 * 访问时触发请求时超时检测
 	 * <p>
 	 * 多用户改造：① 校验归属；② **考试还在进行中（ONGOING）时不返回详情**
@@ -253,7 +250,7 @@ public class ExamRecordService {
 	/**
 	 * 提交考试并进入评分流程（**本身不落库答案**，答案由 POST /exams/{examRecordId}/answers 先保存）：
 	 * 1. 选择题/判断题 → 同步即时批改
-	 * 2. 有简答题 → 状态置为 GRADING，触发异步 AI 批改
+	 * 2. 有简答题 → 状态置为 GRADING（**等待人工阅卷**）
 	 * 3. 无简答题 → 状态直接置为 GRADED
 	 */
 	@Transactional
@@ -273,7 +270,7 @@ public class ExamRecordService {
 		// 同步批改非简答题
 		gradeNonTextQuestions(examRecordId);
 		
-		// 判断是否有简答题需要异步 AI 批改
+		// 判断是否有简答题需要人工阅卷
 		boolean hasTextQuestions = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING).stream()
 				                           .anyMatch(ar -> QuestionType.TEXT.equals(ar.question().type()));
 		
@@ -283,8 +280,8 @@ public class ExamRecordService {
 	/**
 	 * 批改收尾（submitAnswers 与 handleTimeoutSubmit 两条路径共用）：
 	 * 客观题总分已由 gradeNonTextQuestions 写进 exam_records，这里只切状态 ——
-	 * 不含简答题 → 直接 GRADED；含简答题 → GRADING 并投递异步 AI 批改，
-	 * 简答分出来后由 ExamGradingQueueConsumer 累加到客观题小计上再置 GRADED。
+	 * 不含简答题 → 直接 GRADED；含简答题 → GRADING（**等待人工阅卷**），
+	 * 简答题分数由后续人工批改接口累加到客观题小计上后再置 GRADED。
 	 */
 	private void finishGrading(long examRecordId, boolean hasTextQuestions) {
 		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
@@ -292,24 +289,6 @@ public class ExamRecordService {
 			draft.setEndTime(LocalDateTime.now());
 			draft.setStatus(hasTextQuestions ? ExamRecordStatus.GRADING : ExamRecordStatus.GRADED);
 		}), SaveMode.UPDATE_ONLY);
-		if (hasTextQuestions) {
-			sendGradingMessage(examRecordId);
-		}
-	}
-	
-	/**
-	 * 发送阅卷消息到 RabbitMQ
-	 */
-	private void sendGradingMessage(long examRecordId) {
-		try {
-			rabbitTemplate.convertAndSend(
-					RabbitMQConfig.GRADING_EXCHANGE,
-					RabbitMQConfig.GRADING_ROUTING_KEY,
-					String.valueOf(examRecordId)
-			);
-		} catch (Exception e) {
-			log.error("发送阅卷消息失败, examRecordId: {}", examRecordId, e);
-		}
 	}
 	
 	/**
@@ -372,7 +351,7 @@ public class ExamRecordService {
 	}
 	
 	/**
-	 * 超时处理：批改客观题 + 更新状态 + 推送阅卷消息
+	 * 超时处理：批改客观题 + 更新状态（简答题留待人工批改）
 	 */
 	public void handleTimeoutSubmit(long examRecordId) {
 		gradeNonTextQuestions(examRecordId);
@@ -401,7 +380,7 @@ public class ExamRecordService {
 				score = computeJudgeScore(ar, scoreOf(ar, paperScores));
 			}
 			if (score == null) {
-				// 简答题等非选择题，交给异步 AI 批改，这里不碰
+				// 简答题等主观题不在此判分，留给人工阅卷
 				continue;
 			}
 			totalScore += score;
@@ -416,7 +395,7 @@ public class ExamRecordService {
 			answerRecordRepo.saveEntities(graded, SaveMode.UPDATE_ONLY);
 		}
 		// 客观题（选择/判断）的总分**直接写进 exam_records**；
-		// 简答题的分数等异步 AI 批改完成后由 ExamGradingQueueConsumer 再累加上去
+		// 简答题的分数等人工批改完成后由批改接口再累加上去
 		final int objectiveScore = totalScore;
 		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
 			draft.setId(examRecordId);

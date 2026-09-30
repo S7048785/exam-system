@@ -25,7 +25,7 @@ public interface AnswerRecordRepository extends JRepository<AnswerRecord, Long> 
 	}
 	
 	/**
-	 * 简答题已批改部分的得分合计（异步 AI 批改写回之后才非 0），
+	 * 简答题已批改部分的得分合计（**人工批改**写回之后才非 0，供后续人工批改接口累加）。
 	 * 用于在「客观题小计」之上累加。未批改的题 score 为 NULL，SUM 会忽略（等价于 0 分）；
 	 * Jimmer 的聚合查询固定返回一行，没有任何答案时该行是 NULL。
 	 */

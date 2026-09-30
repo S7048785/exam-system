@@ -16,4 +16,6 @@ public final class CacheConstant {
     public static final long DEFAULT_EXPIRE_SECONDS = 1800;
     public static final long HOT_DATA_EXPIRE_SECONDS = 3600;
     public static final String DASHBOARD_STATS_KEY = "dashboard:stats";
+    /** 注册验证邮件冷却，后面拼小写邮箱。 */
+    public static final String REGISTER_MAIL_COOLDOWN_KEY = "register:mail:cooldown:";
 }

@@ -16,9 +16,8 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * 定时任务：
- * 1. 超时 ONGOING 记录 → 强制交卷 → 阅卷
- * 2. SUBMITTED 记录（消费者失败回退）→ 重新推送阅卷
+ * 定时任务：超时的 ONGOING 记录 → 强制交卷 →
+ * 批改客观题并切状态（不含简答题 → GRADED；含简答题 → GRADING，等人工阅卷）。
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -34,7 +33,7 @@ public class ExamTimeoutScheduler {
 		var examTable = ExamRecordsTable.$;
 		
 		// 找出所有因为异常（如考生未主动交卷、网络中断等）而“卡”在 ONGOING 状态的考试。
-		// 1. 超时 ONGOING → GRADING → 推送
+		// 超时 ONGOING → 自动交卷（客观题即判，简答题待人工）
 		// 考试时长已搬到 paper_exam_settings，SQL 里没法再直接 TIMESTAMPADD(paper.duration)；
 		// 改成两步：先取全部 ONGOING 记录，再按 paperId 批量取时长，deadline 在 Java 里算
 		// （下面本来就会用 Java 复核 deadline，语义不变）
@@ -63,18 +62,6 @@ public class ExamTimeoutScheduler {
 		}
 		if (ongoingCount > 0) {
 			log.info("定时任务：超时自动交卷 {} 份", ongoingCount);
-		}
-		
-		// 2. SUBMITTED 记录补偿（消费者失败后回退至此）
-		var submittedRecords = sqlClient.createQuery(examTable)
-				                       .where(examTable.status().eq(ExamRecordStatus.SUBMITTED))
-				                       .select(examTable)
-				                       .execute();
-		for (var record : submittedRecords) {
-			examRecordService.handleTimeoutSubmit(record.id());
-		}
-		if (!submittedRecords.isEmpty()) {
-			log.info("定时任务：重新推送 {} 份阅卷失败的记录", submittedRecords.size());
 		}
 	}
 }

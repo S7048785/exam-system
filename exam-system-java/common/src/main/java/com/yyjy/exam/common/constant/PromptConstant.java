@@ -5,48 +5,6 @@ public final class PromptConstant {
     private PromptConstant() {
     }
 
-    /**
-     * 简答题阅卷提示词。
-     * <p>
-     * 🔴 本模板由 Spring AI 的 ST 模板渲染，**花括号一律是占位符语法**：
-     * 凡是不属于 `{title}` / `{answer}` / `{score}` / `{userAnswer}` 这四个占位符的字面花括号，
-     * 都必须转义成 `\{` / `\}`，否则渲染时抛
-     * `'x' came as a complete surprise to me`，导致整条 AI 批改链路失败。
-     * <p>
-     * ⚠️ 在 Java 文本块里，要写出**两个字符** `\{`，源码必须写 **`\\{`**
-     * （单个 `\{` 是 Java 非法转义，直接编译不过）。
-     * <p>
-     * ⚠️ 模板内**不能写算术表达式**（`{score * 0.6}` 不是合法占位符），百分比只能用文字描述，
-     * 由模型自己按 `{score}` 折算。
-     */
-    public static final String QUESTION_GRADE_USER_PROMPT = """
-            你是一位严谨的考试阅卷老师。请根据题目标准答案的关键词，对学生的简答题答案进行评分并给出具体批改评语。
-
-            ## 题目信息
-            - 题目内容: {title}
-            - 标准答案: {answer}
-            - 满分: {score} 分
-
-            ## 学生答案
-            {userAnswer}
-
-            ## 评分标准
-            1. 关键词覆盖率 >= 80%，得满分 {score} 分
-            2. 关键词覆盖率 >= 50%，得满分的 60%
-            3. 关键词覆盖率 >= 30%，得满分的 30%
-            4. 关键词覆盖率 < 30%，得 0 分
-            5. 若答案完全不相关或空白，得 0 分
-
-            ## 输出要求
-            请以JSON格式返回：
-            \\{
-              "score": 计算得到的分数（整数）,
-              "correction": "简要评语，不超过50字"
-            \\}
-
-            请严格按JSON格式返回，不要有其他内容。
-            """;
-
     public static final String QUESTION_GENERATE_SYSTEM_PROMPT = "你是一个专业的题目出题专家，严格按用户要求生成高质量题目。";
 
     public static final String QUESTION_GENERATE_USER_PROMPT = """
