@@ -23,11 +23,12 @@ function SigninPage() {
 
   const onLoginSuccess = async (user: UsersDto['UserController/USER_INFO']) => {
     // 登录成功只是把 cookie 写好了，路由上下文里的 user 还是旧的（未登录）。
-    // 必须 invalidate 让根 beforeLoad 重新 fetchUser()，否则紧接着跳 /dashboard 时
+    // 必须 invalidate 让根 beforeLoad 重新 fetchUser()，否则紧接着跳控制台时
     // `_auth` 的守卫看到的 context.user 仍是 null，会把刚登录的人弹回登录页（死循环）。
     await router.invalidate()
+    // /dashboard 已从路由树移除，admin 改落试卷列表
     if (user.role === 'admin') {
-      await navigate({ to: '/dashboard' })
+      await navigate({ to: '/papers/list' })
     } else {
       await navigate({ to: '/' })
     }

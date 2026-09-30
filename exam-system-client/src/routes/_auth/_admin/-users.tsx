@@ -23,9 +23,6 @@ import { Loader2, Plus, Search, X } from 'lucide-react'
 export const Route = createFileRoute('/_auth/_admin/users')({
   component: UsersPage,
   ssr: false,
-  pendingComponent: () => {
-    return <div>加载中</div>
-  },
 })
 
 function UsersPage() {

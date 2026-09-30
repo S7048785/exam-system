@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '#/components/ui/card.tsx'
 import { ClipboardList, FileQuestion, ScrollText, Users } from 'lucide-react'
 
-export const Route = createFileRoute('/_auth/dashboard')({
+export const Route = createFileRoute('/_auth/_admin/dashboard')({
   component: DashboardPage,
   // ⚠️ 必须 return：不返回的话 loader 立刻 resolve，SSR 阶段组件里的 useSuspenseQuery
   // 才去等这个 Promise —— 一旦它 reject，错误已经跑到 React 外面（`ApiInstance.ts` 里

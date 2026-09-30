@@ -12,25 +12,11 @@ import {
 import { NavMain } from '#/features/console/sidebar/nav-main.tsx'
 
 import { Link, useRouteContext } from '@tanstack/react-router'
-import {
-  ChartBar,
-  EqualApproximately,
-  LayoutDashboard,
-  ScrollText,
-  Users,
-} from 'lucide-react'
+import { ChartBar, EqualApproximately, ScrollText } from 'lucide-react'
 
+// ⚠️ /dashboard 与 /users 已从路由树移除（路由文件加了 `-` 前缀，见 _auth/_admin/）：
+// 不要再往这里加这两项，点了会 404。
 const navMain = [
-  {
-    title: '仪表盘',
-    url: '/dashboard',
-    icon: <LayoutDashboard strokeWidth={2} />,
-  },
-  {
-    title: '用户',
-    url: '/users',
-    icon: <Users strokeWidth={2} />,
-  },
   {
     title: '试卷',
     url: '/papers',

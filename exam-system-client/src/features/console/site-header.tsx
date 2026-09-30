@@ -6,13 +6,11 @@ import { useMatches } from '@tanstack/react-router'
 // 所以子路径条目必须排在它的父前缀之前（如 /questions/categories 在 /questions 之前），
 // 否则子页标题会被父前缀吃掉，永远显示父级标题。
 const routeTitles: Record<string, string> = {
-  '/dashboard': '仪表盘',
   '/questions/categories': '分类管理',
   '/questions/list': '题目管理',
   '/papers/list': '试卷列表',
   '/papers/rule': '规则创建',
   '/papers/categories': '试卷分类',
-  '/users': '用户',
   '/about': '关于',
 }
 
