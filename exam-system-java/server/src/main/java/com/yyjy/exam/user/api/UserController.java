@@ -14,14 +14,14 @@ import com.yyjy.exam.entity.user.io.req.UserRegisterReq;
 import com.yyjy.exam.common.property.MailProperties;
 import com.yyjy.exam.user.service.AdminUserService;
 import com.yyjy.exam.user.service.UserService;
+import com.yyjy.exam.user.view.ConfirmPage;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -34,6 +34,10 @@ public class UserController {
                     .email()
                     .realName()
                     .role();
+
+    /** 结果页响应用的 Content-Type，charset 必须显式写死 UTF-8。 */
+    private static final MediaType TEXT_HTML_UTF8 = MediaType.parseMediaType("text/html;charset=UTF-8");
+
     private final UserService userService;
     private final MailProperties mailProperties;
     private final AdminUserService adminUserService;
@@ -58,18 +62,43 @@ public class UserController {
         return R.ok();
     }
 
+    /**
+     * 邮箱验证落地页（邮件里的验证链接，无 @SaCheckLogin，游客可访问）。
+     * <p>
+     * 直接返回一张自包含的 HTML 结果页，而不是 302 回首页 —— 原来成功和失败都跳首页，
+     * 用户根本看不出验证到底成没成。失败也不再抛给全局异常处理（那会返回 422 纯文本）。
+     * <p>
+     * ⚠️ 必须显式指定 charset=UTF-8：StringHttpMessageConverter 在 Content-Type 没带 charset 时
+     * 会用默认字符集编码，页面里的中文会变乱码。
+     */
     @GetMapping("/confirm")
-    public ResponseEntity<Void> confirmUser(@RequestParam String id) {
+    public ResponseEntity<String> confirmUser(@RequestParam(required = false) String id) {
+        // id 缺失/空白不走仓储查询（findByUuid(null) 的行为不可依赖），直接当失效处理
+        if (id == null || id.isBlank()) {
+            return failPage();
+        }
         try {
             userService.confirmUser(id);
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(mailProperties.frontUrl()))
-                    .build();
+            return html(ConfirmPage.success(frontUrl() + "/login"));
         } catch (BusinessException e) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(mailProperties.frontUrl()))
-                    .build();
+            return failPage();
         }
+    }
+
+    private ResponseEntity<String> failPage() {
+        return html(ConfirmPage.failure(frontUrl() + "/register"));
+    }
+
+    private ResponseEntity<String> html(String body) {
+        return ResponseEntity.ok()
+                       .contentType(TEXT_HTML_UTF8)
+                       .body(body);
+    }
+
+    /** front-url 有可能被配成带结尾斜杠，统一去掉再拼，避免拼出 {@code //login}。 */
+    private String frontUrl() {
+        String url = mailProperties.frontUrl();
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
     @GetMapping("/info")
