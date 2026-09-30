@@ -34,8 +34,8 @@ public interface Users {
 	@Nullable
 	LocalDateTime updateTime();
 	
-	@Column(name = "deleted_at")
-	@LogicalDeleted("now")
-	@Nullable
-	LocalDateTime delFlag();
+	//@Column(name = "deleted_at")
+	//@LogicalDeleted("now")
+	//@Nullable
+	//LocalDateTime delFlag();
 }

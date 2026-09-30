@@ -11,6 +11,7 @@ import com.yyjy.exam.entity.paper.entity.PaperCategories;
 import com.yyjy.exam.entity.paper.entity.PaperCategoriesDraft;
 import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.paper.repository.PaperCategoriesRepository;
+import com.yyjy.exam.paper.service.PaperCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.client.FetchBy;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
@@ -39,10 +40,17 @@ public class PaperCategoryController {
 					.recursiveChildren();
 	
 	private final PaperCategoriesRepository paperCategoriesRepository;
+	private final PaperCategoryService paperCategoryService;
 	
 	@PostMapping("/add")
 	public R<Void> addCategory(@RequestBody PaperCategorySaveInput category) {
 		long me = StpUtil.getLoginIdAsLong();
+		// 根分类由系统兜底建：查询接口发现该用户一条分类都没有时，会自动补一个「试卷分类」
+		// （PaperCategoryService#ensureRootCategory）。所以不允许手工加根 ——
+		// 否则前端分类树会多出顶层入口，和自动建的那个语义重叠。
+		if (category.getParentId() == 0L) {
+			throw new BusinessException("不能手动添加根分类");
+		}
 		requireOwnedParentIfPresent(category.getParentId(), me);
 		if (paperCategoriesRepository.existsByUserIdAndParentIdAndName(me, category.getParentId(), category.getName())) {
 			throw new BusinessException("分类名已存在");
@@ -59,6 +67,12 @@ public class PaperCategoryController {
 	public R<Void> updateCategory(@RequestBody PaperCategoryUpdateInput category) {
 		long me = StpUtil.getLoginIdAsLong();
 		requireOwnedCategory(category.getId(), me);
+		// 把子分类挪到根级 = 换着法子手工造根分类，同样拦掉。
+		// 判据带「当前不是根」这一半：本来就是根的分类（自动建的「试卷分类」）得允许改名，
+		// 那种情况下前端回传的 parentId 也是 0。
+		if (category.getParentId() == 0L && paperCategoriesRepository.currentParentId(category.getId(), me) != 0L) {
+			throw new BusinessException("不能把分类移到根级");
+		}
 		requireOwnedParentIfPresent(category.getParentId(), me);
 		// 排除自身，否则"不改名只改排序"会被自己拦住
 		if (paperCategoriesRepository.existsByUserIdAndParentIdAndNameExcludingId(
@@ -92,12 +106,17 @@ public class PaperCategoryController {
 	
 	@GetMapping("/list")
 	public R<List<@FetchBy("CATEGORY_INFO") PaperCategories>> listCategories() {
-		return R.ok(paperCategoriesRepository.findAllByUserWithFetcher(StpUtil.getLoginIdAsLong(), CATEGORY_INFO));
+		long me = StpUtil.getLoginIdAsLong();
+		paperCategoryService.ensureRootCategory(me);
+		return R.ok(paperCategoriesRepository.findAllByUserWithFetcher(me, CATEGORY_INFO));
 	}
 	
 	@GetMapping("/tree")
 	public R<List<PaperCategoriesTree>> tree() {
-		return R.ok(paperCategoriesRepository.findTree(StpUtil.getLoginIdAsLong()));
+		long me = StpUtil.getLoginIdAsLong();
+		// 兜底：一条分类都没有的用户，返回前先给他建好默认根分类「试卷分类」
+		paperCategoryService.ensureRootCategory(me);
+		return R.ok(paperCategoriesRepository.findTree(me));
 	}
 	
 	/** 多用户改造：写操作前必须确认这条分类是自己的。Jimmer 会自动过滤软删除行。 */
@@ -107,7 +126,10 @@ public class PaperCategoryController {
 		}
 	}
 	
-	/** 多用户改造：不能把分类挂到别人的分类下。parentId = 0 表示根节点，无需校验。 */
+	/**
+	 * 多用户改造：不能把分类挂到别人的分类下。parentId = 0 表示根节点，无需校验
+	 * （现在只有 update 会带 0 进来 —— add 已经在入口把根分类拦掉了）。
+	 */
 	private void requireOwnedParentIfPresent(long parentId, long me) {
 		if (parentId != 0L && !paperCategoriesRepository.ownedBy(parentId, me)) {
 			throw new BusinessException("父分类不存在");

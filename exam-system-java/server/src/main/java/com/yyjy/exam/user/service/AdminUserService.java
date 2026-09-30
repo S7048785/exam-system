@@ -6,6 +6,8 @@ import com.yyjy.exam.entity.user.dto.UserSaveInput;
 import com.yyjy.exam.entity.user.dto.UserUpdateInput;
 import com.yyjy.exam.entity.user.entity.UsersDraft;
 import com.yyjy.exam.entity.user.entity.UsersTable;
+import com.yyjy.exam.paper.repository.PaperCategoriesRepository;
+import com.yyjy.exam.question.repository.CategoriesRepository;
 import com.yyjy.exam.user.repository.UsersRepository;
 import org.apache.commons.lang3.StringUtils;
 import org.babyfish.jimmer.sql.JSqlClient;
@@ -21,10 +23,16 @@ public class AdminUserService {
 	
 	private final UsersRepository usersRepository;
 	private final JSqlClient sqlClient;
+	private final CategoriesRepository questionCategoriesRepository;
+	private final PaperCategoriesRepository paperCategoriesRepository;
 	
-	public AdminUserService(UsersRepository usersRepository, JSqlClient sqlClient) {
+	public AdminUserService(UsersRepository usersRepository, JSqlClient sqlClient,
+	                        CategoriesRepository questionCategoriesRepository,
+	                        PaperCategoriesRepository paperCategoriesRepository) {
 		this.usersRepository = usersRepository;
 		this.sqlClient = sqlClient;
+		this.questionCategoriesRepository = questionCategoriesRepository;
+		this.paperCategoriesRepository = paperCategoriesRepository;
 	}
 	
 	/**
@@ -65,6 +73,7 @@ public class AdminUserService {
 			draft.setRole(input.getRole());
 			draft.setStatus(input.getStatus());
 		}));
+		// 不建试题根分类：由查询接口兜底懒建（QuestionCategoryService#ensureRootCategory）
 	}
 	
 	/**
@@ -89,13 +98,26 @@ public class AdminUserService {
 	}
 	
 	/**
-	 * 软删除用户
+	 * 删除用户，并级联清掉该用户的两棵分类树（试题分类 + 试卷分类）。
+	 * <p>
+	 * 🔴 删除语义：users 和两张分类表**现在都是硬删**——分类表的 deleted_at 早已移除，
+	 * 而 {@code Users.delFlag} 上的 {@code @LogicalDeleted} 目前是被注释掉的状态（见实体）。
+	 * 所以删了就回不来，且 users.email 会真正释放（普通唯一索引不含 deleted_at）。
+	 * ⚠️ 若哪天把 Users 上的 {@code @LogicalDeleted} 恢复，users 会变回软删而分类仍是硬删，两者就不一致了。
+	 * <p>
+	 * 🔴 库内没有任何外键，级联只能应用层显式做，所以这里必须手写。
+	 * <p>
+	 * ⚠️ 只清分类，**不动**该用户遗留的题目 / 试卷 / 考试记录：那些表的 category_id 会变成指向
+	 * 已删分类的悬空值（前端取分类名会拿到空）。要一起清得另说。
 	 */
 	@Transactional
 	public void remove(Long id) {
 		if (usersRepository.findById(id).isEmpty()) {
 			throw new BusinessException("用户不存在");
 		}
+		// 先清子树再删主表。没有外键约束，顺序其实无所谓，但按「先子后父」更符合直觉。
+		questionCategoriesRepository.deleteByUserId(id);
+		paperCategoriesRepository.deleteByUserId(id);
 		usersRepository.deleteById(id);
 	}
 	
