@@ -39,14 +39,8 @@ export const Route = createFileRoute('/_auth/questions/list')({
       }),
     )
   },
-  pendingComponent: () => {
-    return <div>加载中</div>
-  },
   // pendingMs: 0, // 设置为0, 只要路由跳转，立刻显示 pendingComponent
   // pendingMinMs: 0, // pendingComponent最小显示时间
-  // pendingComponent: () => (
-  //   <div className="p-8 text-center">加载题目列表中...</div>
-  // ), // 可替换成骨架屏
 })
 
 function QuestionsPage() {

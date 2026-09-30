@@ -16,6 +16,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 // import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { api } from '#/ApiInstance.ts'
 import { ClientOnly } from '#/components/ClientOnly.tsx'
+import Loading from '#/components/Loading.tsx'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -71,11 +72,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       </div>
     )
   },
-  pendingComponent: () => {
-    return <div className="flex min-h-screen items-center justify-center text-sm">
-      加载中…
-    </div>
-  },
+  // 顶层 Suspense fallback：整棵路由树挂起时显示
+  pendingComponent: () => <Loading className="h-screen" />,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {

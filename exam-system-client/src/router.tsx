@@ -3,6 +3,7 @@ import { routeTree } from './routeTree.gen'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { getContext } from './integrations/tanstack-query/root-provider'
 import { registerAuthNavigate, registerAuthRefresh } from '#/lib/auth-redirect.ts'
+import Loading from '#/components/Loading.tsx'
 
 export function getRouter() {
   const context = getContext()
@@ -13,6 +14,8 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    // 所有未自带 pendingComponent 的路由统一用这个加载动画
+    defaultPendingComponent: () => <Loading className="h-screen" />,
   })
   // 把 router 注入给 React Query 的全局错误处理，用于 401/403 跳转。
   // 之所以要这样绕一下：root-provider 需要 router 的 navigate 能力，
