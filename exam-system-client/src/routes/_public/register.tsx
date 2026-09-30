@@ -8,6 +8,7 @@ export const Route = createFileRoute('/_public/register')({
   beforeLoad: ({ context }) => {
     redirectIfAuthenticated(context.user)
   },
+  ssr: false
 })
 
 function SignupPage() {
