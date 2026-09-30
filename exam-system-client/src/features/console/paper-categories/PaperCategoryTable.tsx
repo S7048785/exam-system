@@ -76,10 +76,6 @@ export default function PaperCategoryTable({
           <RotateCw className="mr-1 h-4 w-4" />
           刷新
         </Button>
-        <Button variant="default" size="sm" onClick={() => onAddChild(0)}>
-          <Plus className="mr-1 h-4 w-4" />
-          添加根分类
-        </Button>
         <span className="text-muted-foreground text-sm">
           共 {countAll(data)} 个分类
         </span>
@@ -93,7 +89,7 @@ export default function PaperCategoryTable({
               <TableHead className="w-16">ID</TableHead>
               <TableHead>分类名称</TableHead>
               <TableHead className="w-20">排序</TableHead>
-              <TableHead className="max-w-[200px]">描述</TableHead>
+              <TableHead className="max-w-50">描述</TableHead>
               <TableHead className="w-56">操作</TableHead>
             </TableRow>
           </TableHeader>
