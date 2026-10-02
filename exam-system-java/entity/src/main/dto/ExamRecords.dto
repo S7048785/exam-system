@@ -20,7 +20,11 @@ ExamTakingView {
     studentName
     startTime
     status
-    windowSwitches
+    answerRecords {
+        id
+        questionId
+        userAnswer
+    }
     paper {
         id
         name
@@ -36,7 +40,6 @@ ExamTakingView {
                 id
                 title
                 type
-                difficulty
                 score
                 questionChoices as choices {
                     content
@@ -55,7 +58,6 @@ ExamRecordDetail {
     startTime
     endTime
     status
-    windowSwitches
     answerRecords {
         id
         examRecordId

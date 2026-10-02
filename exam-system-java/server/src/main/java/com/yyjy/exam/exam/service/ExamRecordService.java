@@ -214,37 +214,40 @@ public class ExamRecordService {
 	}
 	
 	/**
-	 * 手动保存答案（upsert）：答题过程中允许考生随时保存
-	 * 已存在的记录按 questionId 更新，不存在的插入
+	 * 手动保存答案（**全量覆盖**）：先删掉这场考试的旧答案，再按请求体整份重建。
+	 * <p>
+	 * 为什么「先删后插」：只做 upsert 的话，请求体里没有的题会保留旧答案 —— 考生把多选题的
+	 * 选项全部取消勾选之后就再也改不回去了（旧答案会一直留着参与判分）。删掉重插则
+	 * 「请求体里没有 = 这题没答」。
+	 * <p>
+	 * ⚠️ 因此请求体必须是**整份答卷**，不能只传改动的那几题，否则其余答案会被清空。
 	 */
+	@Transactional
 	public void saveAnswers(long examRecordId, List<SubmitAnswerReq> answers) {
 		ExamRecords record = findRecordOrThrow(examRecordId);
 		assertOwned(record);
-		
+
 		if (record.status() != ExamRecordStatus.ONGOING) {
 			throw new BusinessException("考试未开始，无法保存答案");
 		}
-		
-		// 构建现有答案的索引：questionId → AnswerRecord
-		var existingAnswers = answerRecordRepo.findByExamRecordId(examRecordId);
-		var answerMap = new HashMap<Long, AnswerRecord>();
-		for (AnswerRecord ar : existingAnswers) {
-			answerMap.put(ar.questionId(), ar);
+
+		// 全量覆盖：先清空，再按请求体重建
+		answerRecordRepo.deleteByExamRecordId(examRecordId);
+
+		if (answers.isEmpty()) {
+			return;
 		}
-		// 先更新已存在的答案记录
-		var updateAnswers = new ArrayList<AnswerRecord>();
+
+		List<AnswerRecord> insertAnswers = new ArrayList<>(answers.size());
 		for (SubmitAnswerReq answer : answers) {
-			if (answerMap.containsKey(answer.questionId())) {
-				AnswerRecord existing = answerMap.get(answer.questionId());
-				updateAnswers.add(Immutables.createAnswerRecord(existing, draft -> draft.setUserAnswer(answer.userAnswer())));
-			} else {
-				updateAnswers.add(Immutables.createAnswerRecord(draft -> draft.setScore(null).setUserAnswer(answer.userAnswer())
-						                                                         .setExamRecordId(examRecordId)
-						                                                         .setQuestionId(answer.questionId())));
-			}
-			
+			insertAnswers.add(Immutables.createAnswerRecord(draft -> draft
+					                                              .setScore(null)
+					                                              .setUserAnswer(answer.userAnswer())
+					                                              .setExamRecordId(examRecordId)
+					                                              .setQuestionId(answer.questionId())));
 		}
-		answerRecordRepo.saveEntities(updateAnswers, SaveMode.UPSERT);
+		// 刚删干净，必然全是新增；表上有 uk_exam_record_question，请求体若有重复 questionId 会直接报错
+		answerRecordRepo.saveEntities(insertAnswers, SaveMode.INSERT_ONLY);
 	}
 	
 	/**

@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Size;
  */
 public record StartExamReq(
 		@NotNull int paperId,
+		@NotNull
 		@Size(min = 1, max = 50, message = ValidationMessage.EXAM_STUDENT_NAME_INVALID)
 		String studentName
 ) {

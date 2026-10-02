@@ -64,16 +64,16 @@ public class ExamController {
 	 * 获取答题页数据（无正确答案，供考试中展示题目）
 	 */
 	@GetMapping("/{id}/taking")
-	public R<ExamTakingView> getExamTaking(@PathVariable long id) {
-		return R.ok(examRecordService.getExamTaking(id));
+	public R<ExamTakingView> getExamTaking(@PathVariable String id) {
+		return R.ok(examRecordService.getExamTaking(Long.parseLong(id)));
 	}
 	
 	/**
 	 * 获取考试详情（含答题记录、评分结果、阅卷批注）
 	 */
 	@GetMapping("/{id}/detail")
-	public R<ExamRecordDetail> getExamDetail(@PathVariable long id) {
-		return R.ok(examRecordService.getExamDetail(id));
+	public R<ExamRecordDetail> getExamDetail(@PathVariable String id) {
+		return R.ok(examRecordService.getExamDetail(Long.parseLong(id)));
 	}
 	
 	/**
@@ -81,10 +81,10 @@ public class ExamController {
 	 */
 	@PostMapping("/{examRecordId}/answers")
 	public R<Void> saveAnswers(
-			@PathVariable long examRecordId,
+			@PathVariable String examRecordId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
-		examRecordService.saveAnswers(examRecordId, answers);
+		examRecordService.saveAnswers(Long.parseLong(examRecordId), answers);
 		return R.ok();
 	}
 	
@@ -94,10 +94,10 @@ public class ExamController {
 	 */
 	@PostMapping("/submit/{examRecordId}")
 	public R<Void> submitAnswers(
-			@PathVariable long examRecordId,
+			@PathVariable String examRecordId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
-		examRecordService.submitAnswers(examRecordId, answers);
+		examRecordService.submitAnswers(Long.parseLong(examRecordId), answers);
 		return R.ok();
 	}
 	

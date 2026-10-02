@@ -11,6 +11,19 @@ import java.util.List;
 public interface AnswerRecordRepository extends JRepository<AnswerRecord, Long> {
 	
 	List<AnswerRecord> findByExamRecordId(long examRecordId);
+
+	/**
+	 * 清掉某场考试的全部答案。
+	 * <p>
+	 * 保存答案是「先删后插」的全量覆盖（见 {@code ExamRecordService#saveAnswers}），
+	 * 所以这里只需要按考试记录整批删——请求体里没有的题，答案就真的没了。
+	 */
+	default void deleteByExamRecordId(long examRecordId) {
+		var t = Tables.ANSWER_RECORD_TABLE;
+		sql().createDelete(t)
+				.where(t.examRecordId().eq(examRecordId))
+				.execute();
+	}
 	
 	/**
 	 * 带 fetch 图谱的版本：批改需要 question.type / question.score / question.questionAnswers.answer，
