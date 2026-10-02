@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import {
   CalendarDays,
   GraduationCap,
@@ -22,8 +22,9 @@ import {
   getSavedStudentName,
   saveStudentName,
 } from '#/features/exam/entry/studentNameStorage.ts'
+import { api } from '#/ApiInstance.ts'
 import type { Dynamic_ExamRecords } from '#/__generated/model/dynamic'
-import type { ExamPaperInfoRes } from '#/__generated/model/static'
+import type { ExamPaperInfoRes, StartExamReq } from '#/__generated/model/static'
 import { toast } from 'sonner'
 import z from 'zod'
 
@@ -38,7 +39,7 @@ import z from 'zod'
  * 数据请求：`loader` 里 `ensureQueryData` 预取（请求只发一次），组件里的 `useQuery`
  * 直接吃缓存；失败时走本路由的 `errorComponent`（不再各自渲染错误块）。
  */
-export const Route = createFileRoute('/_public/exam/$paperId')({
+export const Route = createFileRoute('/_public/exam/$paperId/')({
   loader: async ({ context, params }) => {
     const id = Number(params.paperId)
     const info = await context.queryClient.ensureQueryData(
@@ -97,11 +98,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
       <header className="bg-background/80 flex items-center justify-between border-b px-6 py-3 backdrop-blur">
         {/* 左侧：logo + 网站名 */}
         <Link to="/" className="flex items-center gap-2.5">
-          <img
-            src="/favicon.ico"
-            alt="logo"
-            className="size-8 rounded-md"
-          />
+          <img src="/favicon.ico" alt="logo" className="size-8 rounded-md" />
           <span className="text-base font-semibold">在线考试系统</span>
         </Link>
 
@@ -136,11 +133,7 @@ type InfoTileType = {
   label: string
   value: React.ReactNode
 }
-function InfoTile({
-  icon,
-  label,
-  value,
-}: InfoTileType) {
+function InfoTile({ icon, label, value }: InfoTileType) {
   return (
     <div className="bg-muted/50 flex items-start gap-3 rounded-lg px-3 py-2.5">
       <div className="text-primary mt-0.5">{icon}</div>
@@ -191,10 +184,10 @@ function resolveExamUserState(
 }
 
 function ExamEntryPage() {
-  const {paperId: id} = Route.useParams()
+  const { paperId: id } = Route.useParams()
   const user = Route.useRouteContext().user
   // loader 已 ensureQueryData，这里直接命中缓存
-  const {data} = useSuspenseQuery(examPaperInfoQueryOptions(Number(id)))
+  const { data } = useSuspenseQuery(examPaperInfoQueryOptions(Number(id)))
 
   // 免登录考试一律让考生填姓名；账号登录考试一律不显示输入框
   const [studentName, setStudentName] = useState('')
@@ -209,8 +202,7 @@ function ExamEntryPage() {
   const ended = info ? now > new Date(info.end).getTime() : false
   // 免登录考试：一律显示姓名输入框（是否已登录都一样）
   const needNameInput = !!info && info.participateMode === 'ANONYMOUS'
-  const needLogin =
-    !!info && info.participateMode === 'LOGIN_REQUIRED' && !user
+  const needLogin = !!info && info.participateMode === 'LOGIN_REQUIRED' && !user
 
   // 只有「账号登录考试 + 已登录」才拿得到「我」的记录（见 loader 里的说明）
   const canCheckHistory = !!user && info?.participateMode === 'LOGIN_REQUIRED'
@@ -223,6 +215,32 @@ function ExamEntryPage() {
   const examState: 'NOT_ATTEMPTED' | 'ONGOING' | 'FINISHED' = info
     ? resolveExamUserState(myRecords, info, now)
     : 'NOT_ATTEMPTED'
+
+  const navigate = useNavigate()
+
+  /**
+   * 开考：`POST /exams/start`（这场还有没交卷的记录 → 后端直接返回那条，即「续考」）。
+   *
+   * 返回的考试记录 id 是雪花 id、**字符串**（19 位，超过 JS 的 `Number.MAX_SAFE_INTEGER`），
+   * 一路按字符串带到答题页的 `?recordId=` 上。
+   */
+  const startExam = useMutation({
+    mutationFn: (body: StartExamReq) => api.examController.startExam({ body }),
+    onSuccess: async (res) => {
+      await navigate({
+        to: '/exam/paper/$paperId',
+        params: { paperId: id },
+        search: { recordId: res.data },
+      })
+    },
+    onError: (err) => {
+      toast.error(
+        err instanceof Error && err.message
+          ? err.message
+          : '开考失败，请稍后重试',
+      )
+    },
+  })
 
   // 免登录考试：自动填入上次「开始考试」时记住的姓名（考生自己已经打过字就不覆盖）
   useEffect(() => {
@@ -241,7 +259,12 @@ function ExamEntryPage() {
       toast.error('考试已结束')
       return
     }
-    // 姓名用 zod 校验（必填 + 最长 50 个字符）：失败时 toast + 输入框下方提示
+    if (needLogin) {
+      toast.info('该考试需要登录后参加，请先登录')
+      return
+    }
+    // 免登录考试：姓名必填（1~50 个字符），用 zod 校验；过了才记下来，下次自动填入
+    let name = ''
     if (needNameInput) {
       const parsed = studentNameSchema.safeParse(studentName)
       if (!parsed.success) {
@@ -250,14 +273,16 @@ function ExamEntryPage() {
         toast.error(message)
         return
       }
-      // 校验过了才记姓名，下次进免登录考试自动填入（存 trim 后的值）
+      // 存 trim 后的值
       saveStudentName(parsed.data)
+      name = parsed.data
+    } else {
+      // 账号登录考试：后端一律取账号里的 realName，请求体里的姓名会被忽略。
+      // 但生成的类型把 studentName 标成了必填，而空串会被 @Size(min = 1) 拦成 422，
+      // 所以带上真实姓名 —— 后端不看它（TODO：后端把它标成可空后这里就能直接省掉）。
+      name = user?.realName ?? ''
     }
-    if (needLogin) {
-      toast.info('该考试需要登录后参加，请先登录')
-      return
-    }
-    toast.info('开始考试的接口下一步接入')
+    startExam.mutate({ paperId: info.paperId, studentName: name })
   }
 
   if (!info) {
@@ -371,10 +396,14 @@ function ExamEntryPage() {
             className={cn('h-11 w-full text-base', buttonClass)}
             onClick={handleStart}
             disabled={
-              notStarted || ended || needLogin || examState === 'FINISHED'
+              notStarted ||
+              ended ||
+              needLogin ||
+              examState === 'FINISHED' ||
+              startExam.isPending
             }
           >
-            {buttonLabel}
+            {startExam.isPending ? '正在开考…' : buttonLabel}
           </Button>
 
           <p className="text-muted-foreground text-center text-xs">
