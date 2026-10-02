@@ -33,7 +33,7 @@ const navMain = [
     icon: <ChartBar strokeWidth={2} />,
     submenu: [
       { title: '题目列表', url: '/questions/list' },
-      { title: '分类管理', url: '/questions/categories' },
+      { title: '试题分类', url: '/questions/categories' },
     ],
   },
   {

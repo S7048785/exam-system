@@ -3,3 +3,6 @@
 *.xlsx
 .reasonix/
 reasonix.toml
+.workbuddy/
+gitignore/
+exam-system-java/data/

@@ -23,11 +23,6 @@ export default function CategoriesPage() {
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit'>('add')
   const [drawerParentId, setDrawerParentId] = useState<number>(0)
 
-  // 获取树形数据
-  // const { data: treeData, refetch } = useQuery({
-  //   queryKey: ['categoryTree'],
-  //   queryFn: () => api.categoryController.tree(),
-  // })
   const { data: treeData, refetch } = useSuspenseQuery(categoryTreeOptions)
 
   // 新增分类

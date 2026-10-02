@@ -24,7 +24,7 @@ function App() {
         </p>
         {user ? (
           <Button asChild size="lg">
-            <Link to="/questions/list">
+            <Link to="/papers/list">
               进入控制台
               <ArrowRightIcon data-icon="inline-end" />
             </Link>
