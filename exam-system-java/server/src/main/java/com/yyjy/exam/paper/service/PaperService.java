@@ -5,14 +5,14 @@ import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.constant.ValidationMessage;
-import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
-import com.yyjy.exam.entity.paper.dto.PaperDetail;
-import com.yyjy.exam.entity.paper.dto.PaperExamSettingsInput;
-import com.yyjy.exam.entity.paper.dto.PaperSaveInput;
+import com.yyjy.exam.entity.exam.dto.ExamStats;
+import com.yyjy.exam.entity.paper.dto.*;
 import com.yyjy.exam.entity.paper.entity.*;
 import com.yyjy.exam.entity.paper.io.req.PaperListQuery;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
+import com.yyjy.exam.entity.paper.io.req.PaperReportListQuery;
+import com.yyjy.exam.exam.repository.ExamRecordsRepository;
 import com.yyjy.exam.paper.repository.PaperCategoriesRepository;
 import com.yyjy.exam.paper.repository.PaperExamSettingsRepository;
 import com.yyjy.exam.paper.repository.PaperQuestionRepository;
@@ -43,39 +43,19 @@ public class PaperService {
 	private final PaperCategoriesRepository paperCategoriesRepository;
 	private final QuestionsRepository questionsRepository;
 	private final PaperExamSettingsRepository paperExamSettingsRepo;
+	private final ExamRecordsRepository examRecordsRepository;
 	
 	/**
 	 * 写入考试设置（1:1 子表 `paper_exam_settings`）：存在则更新、不存在则新增。
-	 * <p>
-	 * 显式 upsert、不依赖聚合级联：级联在不同 {@link SaveMode} 下行为不同
-	 * （INSERT_ONLY 会连带插子表、UPDATE_ONLY 不会），这里统一兜一次，
-	 * 保证**有且只有一行设置**。
-	 * <p>
-	 * 建卷不再预写默认行（发布前必须先配过设置），所以这里只剩「新建」与「更新」两种情况，
-	 * 没有「没带字段就写库默认值」的分支。
 	 */
 	private void saveExamSettings(long paperId, PaperExamSettingsInput settings) {
 		PaperExamSettings existing = paperExamSettingsRepo.findByPaperId(paperId);
 		
-		PaperExamSettings draft = PaperExamSettingsDraft.$.produce(d -> {
+		PaperExamSettings draft = PaperExamSettingsDraft.$.produce(settings.toEntity(), d -> {
 			if (existing != null) {
 				d.setId(existing.id());
 			}
 			d.setPaperId(paperId);
-			d.setDuration(settings.getDuration());
-			d.setStart(settings.getStart());
-			d.setEnd(settings.getEnd());
-			// 及格分是必填（实体里是 int），DTO 的 getter 也是基本类型，别再判 null
-			d.setPassingScore(settings.getPassingScore());
-			d.setMaxAttempts(settings.getMaxAttempts());
-			// 8 项开关在实体里是 Boolean，生成的 DTO 访问器是 getXxx()（不是 isXxx()）
-			d.setRequireAllAnswered(settings.getRequireAllAnswered());
-			d.setHideQuestionScore(settings.getHideQuestionScore());
-			d.setShowRankAfterSubmit(settings.getShowRankAfterSubmit());
-			d.setShowAnswerAfterSubmit(settings.getShowAnswerAfterSubmit());
-			d.setMinAnswerMinutes(settings.getMinAnswerMinutes());
-			d.setShuffleQuestions(settings.getShuffleQuestions());
-			d.setShuffleChoices(settings.getShuffleChoices());
 		});
 		paperExamSettingsRepo.save(draft, SaveMode.UPSERT);
 	}
@@ -227,6 +207,82 @@ public class PaperService {
 				          .select(paper.fetch(fetcher))
 				          .fetchPage(page - 1, size);
 		return PageRes.<Paper>builder().page(page).pageSize(size).total(res.getTotalRowCount()).list(res.getRows()).build();
+	}
+	
+	/**
+	 * 「试卷考试报表」列表（控制台）：每张卷 + 交卷数 / 未评卷数 / 已评卷数。
+	 * <p>
+	 * 🔴 **刻意拆成两条 SQL，不用 BaseQuery 把统计 join 进一条**（2026-10-04 拍板）：
+	 * 聚合派生表带 `GROUP BY` 会被 `Materialize`，而 LEFT JOIN 的 join 条件**不能下推**到派生表里
+	 * ⇒ 单条 SQL 的写法每次请求都要把整张 `exam_records` 聚合一遍。
+	 * 这里第 2 条 SQL 带 `WHERE paper_id IN (本页 id)`，只扫当前页那几张卷。
+	 * <p>
+	 * 筛选（都可空）：`name` 模糊、`categoryId` 精确、以及**两个独立的时间区间** ——
+	 * `startFrom` / `startTo` 打 `settings.start`，`endFrom` / `endTo` 打 `settings.end`，闭区间。
+	 * <p>
+	 * ⚠️ 这里**没有**用 Super QBE 的 `specification PaperReportQuery`（虽然 0.12.2 支持它）：
+	 * specification 的自定义字段生成的是 `int getPage()` 这种**字段未设置就抛 `IllegalStateException`**
+	 * 的访问器，而 Hibernate Validator 校验 `@Min` / `@Max` 时必须先读 getter
+	 * ⇒ **缺参会变成 `HV000090: Unable to access getPage` → 500**，挂 `@NotNull` 也救不了。
+	 * 用 record + `@NotNull` 才能把「缺参 / 越界」稳定拦成 422。
+	 */
+	public PageRes<PaperReportView> listPaperReports(PaperReportListQuery conditions) {
+		// 以 **paper** 为查询根：设置行可能不存在（建卷不预写），未配设置的卷也必须出现在报表里
+		PaperTable paper = PaperTable.$;
+		PaperExamSettingsTable settings = paper.examSettings(JoinType.LEFT);
+		
+		// page / size 是 @NotNull，@Validated 已把缺参拦成 422，这里拆箱安全
+		int page = conditions.page();
+		int size = conditions.size();
+		
+		var query = paperRepository.sql().createQuery(paper)
+				            .where(paper.userId().eq(StpUtil.getLoginIdAsLong()));
+		
+		if (conditions.name() != null && !conditions.name().isBlank()) {
+			query.where(paper.name().like(conditions.name().trim()));
+		}
+		if (conditions.categoryId() != null) {
+			query.where(paper.categoryId().eq(conditions.categoryId()));
+		}
+		// 时间：两个独立区间，每一端都可空 ⇒ 逐端加条件
+		if (conditions.startFrom() != null) {
+			query.where(settings.start().ge(conditions.startFrom()));
+		}
+		if (conditions.startTo() != null) {
+			query.where(settings.start().le(conditions.startTo()));
+		}
+		if (conditions.endFrom() != null) {
+			query.where(settings.end().ge(conditions.endFrom()));
+		}
+		if (conditions.endTo() != null) {
+			query.where(settings.end().le(conditions.endTo()));
+		}
+		
+		// ① 第 1 条 SQL：列表页（含分页 / 总数）
+		var rows = query
+				           .orderBy(paper.id().desc(), settings.end().desc())
+				           .select(paper.fetch(PaperReportView.class))
+				           .fetchPage(page - 1, size);
+		
+		// ② 第 2 条 SQL：只对本页的卷聚合（没有记录的卷不会出现在 Map 里）
+		Map<Long, ExamStats> stats = examRecordsRepository.countStatsByPaperIds(
+				rows.getRows().stream().map(PaperReportView::getId).toList());
+		
+		var list = rows.getRows();
+		for (PaperReportView row : list) {
+			// ⚠️ stats 里**只含「至少有一条考试记录」的卷**：没记录的卷必须兜 0，否则这里 NPE
+			ExamStats stat = stats.get(row.getId());
+			row.setSubmittedCount(stat == null ? 0L : stat.getSubmittedCount());
+			row.setGradingCount(stat == null ? 0L : stat.getGradingCount());
+			row.setGradedCount(stat == null ? 0L : stat.getGradedCount());
+		}
+		
+		return PageRes.<PaperReportView>builder()
+				       .page(page)
+				       .pageSize(size)
+				       .total(rows.getTotalRowCount())
+				       .list(list)
+				       .build();
 	}
 	
 	public PaperDetail getPaper(int id) {
@@ -497,7 +553,8 @@ public class PaperService {
 		
 		int finalQuestionCount = questionCount;
 		int finalTotalScore = totalScore;
-		Paper saved = paperRepository.save(PaperDraft.$.produce(draft -> {
+		// 智能组卷路径暂不提供参与方式与开关的入口，用默认值（与 addPaper 不传时一致）
+		return paperRepository.save(PaperDraft.$.produce(draft -> {
 			draft.setUserId(me);
 			draft.setCategoryId(dto.getCategoryId());
 			draft.setName(dto.getName());
@@ -514,6 +571,5 @@ public class PaperService {
 				});
 			}
 		}), SaveMode.INSERT_ONLY, AssociatedSaveMode.APPEND);
-		return saved;
 	}
 }

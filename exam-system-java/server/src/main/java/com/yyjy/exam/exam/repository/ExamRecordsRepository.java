@@ -1,12 +1,19 @@
 package com.yyjy.exam.exam.repository;
 
 import com.yyjy.exam.entity.Tables;
+import com.yyjy.exam.entity.exam.dto.ExamStats;
+import com.yyjy.exam.entity.exam.dto.ExamStatsMapper;
 import com.yyjy.exam.entity.exam.entity.ExamRecordStatus;
 import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import org.babyfish.jimmer.spring.repository.JRepository;
+import org.babyfish.jimmer.sql.ast.Expression;
+import org.babyfish.jimmer.sql.ast.Predicate;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 	
@@ -84,5 +91,39 @@ public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 				       .where(t.userId().eq(userId))
 				       .orderBy(t.id().desc())
 				       .select(t.fetch(fetcher)).execute();
+	}
+	
+	/**
+	 * 批量取「试卷 id → 交卷 / 未评 / 已评次数」，给试卷考试报表用（见 {@code PaperService#listPaperReports}）。
+	 * 返回的 Map **只含至少有一条记录的卷**：没有记录的卷不会出现，调用方按 0 兜底。
+	 *
+	 * @param paperIds 试卷 id 集合；空集合直接返回空 Map（不发 SQL）
+	 */
+	default Map<Long, ExamStats> countStatsByPaperIds(Collection<Long> paperIds) {
+		if (paperIds.isEmpty()) {
+			return Map.of();
+		}
+		var t = Tables.EXAM_RECORDS_TABLE;
+		// 条件计数：Jimmer 没有 sumIf，用 sum(case when 条件 then 1 else 0 end)
+		Predicate submitted = t.status().in(List.of(ExamRecordStatus.GRADING, ExamRecordStatus.GRADED));
+		Predicate grading = t.status().eq(ExamRecordStatus.GRADING);
+		Predicate graded = t.status().eq(ExamRecordStatus.GRADED);
+		
+		Map<Long, ExamStats> result = new HashMap<>();
+		for (ExamStats row : sql().createQuery(t)
+				                     .where(t.paperId().in(paperIds))
+				                     .groupBy(t.paperId())
+				                     .select(ExamStatsMapper
+						                             .paperId(t.paperId())
+						                             .submittedCount(Expression.numeric().caseBuilder(Long.class)
+								                                             .when(submitted, 1L).otherwise(0L).sum())
+						                             .gradingCount(Expression.numeric().caseBuilder(Long.class)
+								                                           .when(grading, 1L).otherwise(0L).sum())
+						                             .gradedCount(Expression.numeric().caseBuilder(Long.class)
+								                                          .when(graded, 1L).otherwise(0L).sum()))
+				                     .execute()) {
+			result.put(row.getPaperId(), row);
+		}
+		return result;
 	}
 }

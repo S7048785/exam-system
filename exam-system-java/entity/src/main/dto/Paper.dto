@@ -53,3 +53,17 @@ input PaperSaveInput {
     categoryId
     participateMode
 }
+
+PaperReportView {
+    id
+    name
+    flat(examSettings) {
+        start
+        end
+        passingScore
+    }
+    totalScore
+    submittedCount: Long
+    gradingCount: Long
+    gradedCount: Long
+}

@@ -3,10 +3,7 @@ package com.yyjy.exam.paper.api;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.convention.result.R;
-import com.yyjy.exam.entity.paper.dto.PaperAiSaveDto;
-import com.yyjy.exam.entity.paper.dto.PaperDetail;
-import com.yyjy.exam.entity.paper.dto.PaperExamSettingsInput;
-import com.yyjy.exam.entity.paper.dto.PaperSaveInput;
+import com.yyjy.exam.entity.paper.dto.*;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperCategoriesFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperExamSettingsFetcher;
@@ -14,6 +11,7 @@ import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.entity.paper.io.req.PaperListQuery;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionAddReq;
 import com.yyjy.exam.entity.paper.io.req.PaperQuestionsUpdateReq;
+import com.yyjy.exam.entity.paper.io.req.PaperReportListQuery;
 import com.yyjy.exam.paper.service.PaperService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -53,11 +51,7 @@ public class PaperController {
 	
 	/**
 	 * 写入考试设置（只含设置本身，不含题目）：时长 / 起止时间 / 次数上限 / 及格分 + 8 项开关。
-	 * <p>
-	 * **存在则更新、不存在则新增**（upsert）。取代原 `PUT /paper/{id}/config`；
-	 * 试卷的名称/描述/分类/参与方式改走 `POST /paper/save`。
-	 * <p>
-	 * ⚠️ 建卷不再预写设置行，发布前必须先调过这个接口（见 `POST /paper/{id}/publish` 的前置检查）。
+	 * 试卷发布前必须先调过这个接口（见 `POST /paper/{id}/publish` 的前置检查）。
 	 */
 	@PostMapping("/{id}/exam-settings")
 	public R<Void> updatePaperExamSettings(@PathVariable int id, @RequestBody @Valid PaperExamSettingsInput input) {
@@ -92,12 +86,22 @@ public class PaperController {
 	}
 	
 	/**
+	 * 试卷考试报表（**控制台**）：每张卷 + 交卷数 / 未评卷数 / 已评卷数。
+	 * <p>
+	 * 与 {@code GET /paper/list} 的区别：返回值换成报表行（`PaperReportView`，含三个统计列，不再是 `Paper` 实体），
+	 * 筛选多了**考试开始 / 结束时间**——而且是两个独立区间。分页返回 `PageRes`（不套 `R`，与 `/paper/list` 一致）。
+	 * <p>
+	 * 查询参数 `PaperReportListQuery`：`name`(模糊) / `categoryId` / `startFrom` / `startTo` /
+	 * `endFrom` / `endTo` / `page` / `size`，筛选都可空；`page` / `size` 必填（缺参 / 越界 → 422）。
+	 * 时间走 ISO-8601（`2026-10-01T00:00:00`）。
+	 */
+	@GetMapping("/report/list")
+	public PageRes<PaperReportView> listPaperReports(@Validated PaperReportListQuery query) {
+		return paperService.listPaperReports(query);
+	}
+	
+	/**
 	 * 保存试卷（**新增 / 更新合一**）：入参带 id = 更新该卷，不带 id = 新增。
-	 * <p>
-	 * 只收 4 个基本字段（名称 / 描述 / 分类 / 参与方式）；时长、起止时间、次数上限、及格分
-	 * 与 8 项开关在 1:1 的 `paper_exam_settings` 里，由
-	 * {@code POST /paper/{id}/exam-settings} 维护（不存在则新增、存在则更新）。
-	 * <p>
 	 * 返回试卷 id（新增返回新 id，更新返回原 id）。
 	 */
 	@PostMapping("/save")
