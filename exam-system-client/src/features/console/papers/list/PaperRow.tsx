@@ -8,6 +8,7 @@ import {
   Pencil,
   Settings,
   Trash2,
+  TrendingUp,
 } from 'lucide-react'
 import {
   getPaperPhase,
@@ -25,6 +26,7 @@ import {
 import { usePaperListStore } from '#/stores/paper-list.ts'
 import { useState } from 'react'
 import PaperSettingsDialog from './PaperSettingsDialog.tsx'
+import GradeDialog from './GradeDialog.tsx'
 
 interface Props {
   item: PaperDto['PaperController/PAPER_ITEM']
@@ -35,6 +37,8 @@ export default function PaperRow({ item, onDelete }: Props) {
   const editPaperAtStep = usePaperListStore((state) => state.editPaperAtStep)
   // 起止时间已随「考试设置」搬到 1:1 的 paper_exam_settings，列表里是嵌套字段且可能为空
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // 「成绩」和「设置」是两个弹窗，各自独立开关（此前两者共用一个 state）
+  const [gradeOpen, setGradeOpen] = useState(false)
   const phase = getPaperPhase(
     item.published,
     item.examSettings?.start,
@@ -46,6 +50,15 @@ export default function PaperRow({ item, onDelete }: Props) {
       <div className="flex items-center justify-between">
         <div>{item.name}</div>
         <div className="inline-flex items-center">
+          <Button
+            size="sm"
+            className="mr-4 p-2"
+            variant="outline"
+            onClick={() => setGradeOpen(true)}
+          >
+            <TrendingUp />
+            <span className="">成绩({item.scoreCount})</span>
+          </Button>
           <Button
             size="sm"
             className="h-4 p-0"
@@ -116,6 +129,14 @@ export default function PaperRow({ item, onDelete }: Props) {
           </button>
         </div>
       </div>
+
+      {/* 成绩弹窗（列表行「成绩」入口）：该试卷全部考试记录 */}
+      <GradeDialog
+        paperId={item.id}
+        paperNmae={item.name}
+        open={gradeOpen}
+        onOpenChange={setGradeOpen}
+      />
 
       {/* 试卷配置弹窗（列表行「设置」入口） */}
       <PaperSettingsDialog

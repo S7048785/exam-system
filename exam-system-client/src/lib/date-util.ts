@@ -35,6 +35,17 @@ export function formatDateTime(datetimeStr: string) {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
+/**
+ * 将 ISO 8601 日期字符串格式化为 'MM-DD HH:mm'（省掉年份）。
+ * 用于「开始 ~ 交卷」并排放在同一列的场景：年份重复且挤，短格式更清爽。
+ * @param {string} datetimeStr - 如 '2026-09-30T16:23:00'
+ * @returns {string} 如 '09-30 16:23'
+ */
+export function formatDateTimeShort(datetimeStr: string) {
+  const [, month, day, hours, minutes] = format(datetimeStr)
+  return `${month}-${day} ${hours}:${minutes}`
+}
+
 // 测试
 // console.log(formatDateTime('2026-07-08T18:38:56'))
 // 输出: "2026-07-08 18:38"
