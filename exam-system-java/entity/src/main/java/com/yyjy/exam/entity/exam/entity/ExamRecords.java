@@ -26,26 +26,26 @@ public interface ExamRecords {
 	@IdView
 	Long userId();
 	
+	@Key
 	// 删试卷时连带删除该卷的考试记录（否则 Jimmer 以 CHECK 模式拒删，模型见笔记 删除.md）
 	@ManyToOne
 	@OnDissociate(DissociateAction.DELETE)
 	Paper paper();
 	
 	@IdView
-	int paperId();
+	long paperId();
 	
 	String studentName();
 	
 	@Nullable
 	Integer score();
 	
-	
 	LocalDateTime startTime();
 	
 	@Nullable
 	LocalDateTime endTime();
 	
-	@Nullable
+	@Key
 	ExamRecordStatus status();
 	
 	@Nullable

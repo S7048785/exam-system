@@ -277,12 +277,12 @@ public class QuestionService {
 		requireOwnedQuestion(id);
 		
 		// 先摘引用并拿到受影响的试卷，再删题目本体（顺序无所谓，但要同一个事务）
-		List<Integer> affectedPaperIds = paperQuestionRepository.deleteByQuestionId(id);
+		List<Long> affectedPaperIds = paperQuestionRepository.deleteByQuestionId(id);
 		questionChoicesRepository.deleteByQuestionId(id);
 		questionAnswersRepository.deleteByQuestionId(id);
 		questionsRepository.deleteById(id);
 		
-		for (int paperId : affectedPaperIds) {
+		for (long paperId : affectedPaperIds) {
 			paperRepository.recalculateTotals(paperId);
 		}
 	}

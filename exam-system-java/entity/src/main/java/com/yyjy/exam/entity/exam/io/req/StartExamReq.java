@@ -15,7 +15,7 @@ import jakarta.validation.constraints.Size;
  * ⚠️ 空串（`""`）长度 0，会被拦下 —— 不传就传 null，**别传空串**。
  */
 public record StartExamReq(
-		@NotNull int paperId,
+		@NotNull long paperId,
 		@NotNull
 		@Size(min = 1, max = 50, message = ValidationMessage.EXAM_STUDENT_NAME_INVALID)
 		String studentName

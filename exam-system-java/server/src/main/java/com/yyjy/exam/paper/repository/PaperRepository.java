@@ -9,7 +9,7 @@ import com.yyjy.exam.entity.paper.entity.PaperTable;
 import org.babyfish.jimmer.spring.repository.JRepository;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
 
-public interface PaperRepository extends JRepository<Paper, Integer> {
+public interface PaperRepository extends JRepository<Paper, Long> {
 	
 	/**
 	 * 多用户改造：判重必须按 owner 作用域。
@@ -26,7 +26,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				        .isEmpty();
 	}
 	
-	default boolean existsByUserIdAndId(long userId, Integer id) {
+	default boolean existsByUserIdAndId(long userId, Long id) {
 		PaperTable t = PaperTable.$;
 		return sql().createQuery(t)
 				       .where(t.userId().eq(userId))
@@ -34,7 +34,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				       .exists();
 	}
 	
-	default PaperDetail findDetailById(int id) {
+	default PaperDetail findDetailById(long id) {
 		PaperTable paper = PaperTable.$;
 		return sql().createQuery(paper)
 				       .where(paper.id().eq(id))
@@ -42,7 +42,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				       .fetchFirstOrNull();
 	}
 	
-	default boolean hasExamRecords(int paperId) {
+	default boolean hasExamRecords(long paperId) {
 		ExamRecordsTable t = ExamRecordsTable.$;
 		return !sql().createQuery(t)
 				        .where(t.paperId().eq(paperId))
@@ -52,7 +52,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 				        .isEmpty();
 	}
 	
-	default void recalculateTotals(int paperId) {
+	default void recalculateTotals(long paperId) {
 		PaperQuestionTable t = PaperQuestionTable.$;
 		var row = sql().createQuery(t)
 				          .where(t.paperId().eq(paperId))
@@ -67,7 +67,7 @@ public interface PaperRepository extends JRepository<Paper, Integer> {
 		}), SaveMode.UPDATE_ONLY);
 	}
 	
-	default boolean existsByNameAndUserIdAndIdNot(long me, String name, int id) {
+	default boolean existsByNameAndUserIdAndIdNot(long me, String name, long id) {
 		var t = PaperTable.$;
 		return sql().createQuery(t)
 				       .where(t.name().eq(name))

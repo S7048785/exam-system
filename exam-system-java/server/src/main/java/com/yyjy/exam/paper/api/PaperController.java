@@ -40,6 +40,7 @@ public class PaperController {
 					.participateMode()
 					.totalScore()
 					.questionCount()
+					.scoreCount()
 					.examSettings(PaperExamSettingsFetcher.$
 							              .duration()
 							              .start()
@@ -100,7 +101,7 @@ public class PaperController {
 	 * 返回试卷 id（新增返回新 id，更新返回原 id）。
 	 */
 	@PostMapping("/save")
-	public R<Integer> savePaperV2(@Validated @RequestBody PaperSaveInput paper) {
+	public R<Long> savePaperV2(@Validated @RequestBody PaperSaveInput paper) {
 		return R.ok(paperService.savePaper(paper));
 	}
 	

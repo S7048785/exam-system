@@ -8,12 +8,10 @@ import com.yyjy.exam.paper.repository.PaperExamSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.babyfish.jimmer.sql.JSqlClient;
-import org.babyfish.jimmer.sql.ast.Predicate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 /**
  * 定时任务：超时的 ONGOING 记录 → 强制交卷 →
@@ -38,9 +36,9 @@ public class ExamTimeoutScheduler {
 		// 改成两步：先取全部 ONGOING 记录，再按 paperId 批量取时长，deadline 在 Java 里算
 		// （下面本来就会用 Java 复核 deadline，语义不变）
 		var ongoingRecords = sqlClient.createQuery(examTable)
-				                    .where(examTable.status().eq(ExamRecordStatus.ONGOING))
-				                    .select(examTable)
-				                    .execute();
+				                     .where(examTable.status().eq(ExamRecordStatus.ONGOING))
+				                     .select(examTable)
+				                     .execute();
 		
 		var durations = paperExamSettingsRepo.findDurationMapByPaperIds(
 				ongoingRecords.stream().map(ExamRecords::paperId).distinct().toList());

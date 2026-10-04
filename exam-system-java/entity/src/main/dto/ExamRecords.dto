@@ -83,7 +83,6 @@ ExamRecordDetail {
                 title
                 type
                 difficulty
-                score
                 questionChoices as choices {
                     content
                     correct
@@ -93,6 +92,7 @@ ExamRecordDetail {
                     answer
                 }
             }
+            score
         }
     }
 }

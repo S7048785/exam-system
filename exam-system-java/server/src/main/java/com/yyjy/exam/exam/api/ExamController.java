@@ -1,18 +1,24 @@
 package com.yyjy.exam.exam.api;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.convention.result.R;
 import com.yyjy.exam.entity.Fetchers;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.ExamRecords;
+import com.yyjy.exam.entity.exam.io.req.ExamRecordListQuery;
+import com.yyjy.exam.entity.exam.io.req.ExamRecordStatsQuery;
 import com.yyjy.exam.entity.exam.io.req.StartExamReq;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
+import com.yyjy.exam.entity.exam.io.res.ExamRecordListItemRes;
+import com.yyjy.exam.entity.exam.io.res.ExamRecordStatsRes;
 import com.yyjy.exam.exam.service.ExamRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -108,5 +114,43 @@ public class ExamController {
 	@GetMapping("/history")
 	public R<List<ExamRecords>> getExamHistory() {
 		return R.ok(examRecordService.getExamHistory(EXAM_RECORD_ITEM));
+	}
+	
+	/**
+	 * 成绩列表（**控制台**：试卷作者查看本卷全部考试记录，含排名 / 用时 / 及格分）。
+	 * <p>
+	 * 路径是字面量 `/exams/records`，与 `/{id}/taking`、`/{id}/detail`（两段）不冲突。
+	 * 分页返回 `PageRes`（不套 `R`，与 `GET /paper/list` 一致）。
+	 */
+	@SaCheckLogin
+	@GetMapping("/records")
+	public PageRes<ExamRecordListItemRes> listPaperRecords(@Validated ExamRecordListQuery query) {
+		return examRecordService.listPaperRecords(query);
+	}
+	
+	/**
+	 * 成绩统计（**控制台**：表格上方的汇总数字）。
+	 * <p>
+	 * **整卷**口径，与列表的姓名筛选无关，也不分页 —— 故单独一个接口，
+	 * 前端只在打开弹窗时拉一次。路径 `/records/stats`（两段字面量）与
+	 * `/{id}/taking`、`/{id}/detail` 不冲突。
+	 */
+	@SaCheckLogin
+	@GetMapping("/records/stats")
+	public R<ExamRecordStatsRes> getExamRecordStats(@Validated ExamRecordStatsQuery query) {
+		return R.ok(examRecordService.getRecordStats(query));
+	}
+	
+	/**
+	 * 考生的答题详情（**控制台**：「成绩」弹窗里点某一行看作答，**只读**）。
+	 * <p>
+	 * 与考生侧 `GET /{id}/detail` 的区别：归属校验看的是**试卷作者**（老师要看学生），
+	 * 两者都拦 ONGOING。雪花 id 走字符串入参（与 `/{id}/taking` 同一套处理）。
+	 * 路径三段，与 `/records`、`/records/stats` 不冲突。
+	 */
+	@SaCheckLogin
+	@GetMapping("/records/{recordId}/detail")
+	public R<ExamRecordDetail> getRecordDetail(@PathVariable String recordId) {
+		return R.ok(examRecordService.getRecordDetailForAuthor(Long.parseLong(recordId)));
 	}
 }

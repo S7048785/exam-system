@@ -15,7 +15,7 @@ public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 	 * 口径由用户指定：**按 `student_name` 计数**（匿名考生没有 `user_id`，只有名字可用）。
 	 * 软删除的记录不计（Jimmer 的 `@LogicalDeleted` 自动加 `deleted_at is null`），所有状态都计。
 	 */
-	default long countByPaperIdAndStudentName(int paperId, String studentName) {
+	default long countByPaperIdAndStudentName(long paperId, String studentName) {
 		var t = Tables.EXAM_RECORDS_TABLE;
 		return sql().createQuery(t)
 				       .where(t.paperId().eq(paperId))
@@ -28,7 +28,7 @@ public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 	 * 同上，但按 `user_id` 计数（**账号登录考试**用）。
 	 * 与按姓名计数互补：登录考生的 `user_id` 是确定的，改 `student_name` 绕不过去。
 	 */
-	default long countByPaperIdAndUserId(int paperId, long userId) {
+	default long countByPaperIdAndUserId(long paperId, long userId) {
 		var t = Tables.EXAM_RECORDS_TABLE;
 		return sql().createQuery(t)
 				       .where(t.paperId().eq(paperId))
@@ -45,7 +45,7 @@ public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 	 *
 	 * @return 没有进行中的记录时返回 {@code null}
 	 */
-	default ExamRecords findOngoingByPaperIdAndStudentName(int paperId, String studentName) {
+	default ExamRecords findOngoingByPaperIdAndStudentName(long paperId, String studentName) {
 		var t = Tables.EXAM_RECORDS_TABLE;
 		List<ExamRecords> rows = sql().createQuery(t)
 				                         .where(t.paperId().eq(paperId))
@@ -63,7 +63,7 @@ public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 	 *
 	 * @return 没有进行中的记录时返回 {@code null}
 	 */
-	default ExamRecords findOngoingByPaperIdAndUserId(int paperId, long userId) {
+	default ExamRecords findOngoingByPaperIdAndUserId(long paperId, long userId) {
 		var t = Tables.EXAM_RECORDS_TABLE;
 		List<ExamRecords> rows = sql().createQuery(t)
 				                         .where(t.paperId().eq(paperId))

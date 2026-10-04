@@ -2,16 +2,23 @@ package com.yyjy.exam.exam.service;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
+import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.exception.BusinessException;
 import com.yyjy.exam.entity.Fetchers;
 import com.yyjy.exam.entity.Immutables;
+import com.yyjy.exam.entity.Tables;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.*;
+import com.yyjy.exam.entity.exam.io.req.ExamRecordListQuery;
+import com.yyjy.exam.entity.exam.io.req.ExamRecordStatsQuery;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
+import com.yyjy.exam.entity.exam.io.res.ExamRecordListItemRes;
+import com.yyjy.exam.entity.exam.io.res.ExamRecordStatsRes;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperExamSettings;
+import com.yyjy.exam.entity.paper.entity.PaperTable;
 import com.yyjy.exam.entity.question.entity.QuestionType;
 import com.yyjy.exam.entity.user.entity.UserStatus;
 import com.yyjy.exam.exam.repository.AnswerRecordRepository;
@@ -23,11 +30,14 @@ import com.yyjy.exam.user.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.babyfish.jimmer.sql.JSqlClient;
+import org.babyfish.jimmer.sql.ast.Predicate;
 import org.babyfish.jimmer.sql.ast.mutation.SaveMode;
+import org.babyfish.jimmer.sql.ast.tuple.Tuple2;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -51,6 +61,27 @@ public class ExamRecordService {
 									.type()
 									.score()
 									.questionAnswers(Fetchers.QUESTION_ANSWERS_FETCHER.answer()));
+	/**
+	 * 成绩列表取数图谱：只带列表要展示的标量列。
+	 * 卷面总分（paper.total_score）与及格分（paper_exam_settings.passing_score）单独查，
+	 * 避免为了两个标量去 join 两张表。
+	 */
+	private static final Fetcher<ExamRecords> RECORD_LIST_ITEM =
+			Fetchers.EXAM_RECORDS_FETCHER
+					.studentName()
+					.score()
+					.startTime()
+					.endTime()
+					.status();
+	
+	/**
+	 * 成绩统计取数图谱：只要三个标量列（成绩 / 交卷时间 / 状态）就够算「展示成绩」。
+	 */
+	private static final Fetcher<ExamRecords> RECORD_STATS_ITEM =
+			Fetchers.EXAM_RECORDS_FETCHER
+					.score()
+					.endTime()
+					.status();
 	private final ExamRecordsRepository examRecordsRepo;
 	private final AnswerRecordRepository answerRecordRepo;
 	private final PaperQuestionRepository paperQuestionRepo;
@@ -59,8 +90,26 @@ public class ExamRecordService {
 	private final JSqlClient sqlClient;
 	private final PaperRepository paperRepository;
 	
+	/**
+	 * 「这场的成绩还没定稿」：状态为 ONGOING、或没有交卷时间。
+	 * <p>
+	 * 两个条件都要判 —— 超时检测 {@code checkAndHandleTimeout} 只写 `endTime` 不改状态，
+	 * 所以库里可能存在「状态 ONGOING 但已有 endTime」的记录，那条同样算没定稿。
+	 */
+	private static boolean isNotFinished(ExamRecords r) {
+		return r.endTime() == null || ExamRecordStatus.ONGOING.equals(r.status());
+	}
+	
+	/**
+	 * 「展示成绩」口径的唯一实现 —— 列表与统计**共用**，两处永远不会漂移：
+	 * 未定稿 ⇒ 0；否则取记录里的分数（NULL 按 0）。
+	 */
+	private static int displayScore(ExamRecords r) {
+		return isNotFinished(r) ? 0 : (r.score() == null ? 0 : r.score());
+	}
+	
 	@Transactional
-	public long startExam(int paperId, String studentName) {
+	public long startExam(long paperId, String studentName) {
 		// ---- 1. 校验试卷本身 ----
 		Long userId = null;
 		String name = studentName;
@@ -148,6 +197,13 @@ public class ExamRecordService {
 			draft.setWindowSwitches(0);
 			draft.setStatus(ExamRecordStatus.ONGOING);
 		}), SaveMode.INSERT_ONLY);
+		
+		var paperTable = Tables.PAPER_TABLE;
+		// 更新试卷的 score_count
+		paperRepository.sql().createUpdate(paperTable)
+				.where(Tables.PAPER_TABLE.id().eq(paperId))
+				.set(paperTable.scoreCount(), paperTable.scoreCount().plus(1))
+				.execute();
 		return saved.id();
 	}
 	
@@ -214,6 +270,48 @@ public class ExamRecordService {
 	}
 	
 	/**
+	 * 考生的答题详情（**控制台侧**：试卷作者查看本卷任意一条记录的作答，**只读**）。
+	 * <p>
+	 * 与考生侧 {@link #getExamDetail} 的三点区别，都是刻意的：
+	 * <ul>
+	 *   <li><b>归属</b>：校验的是**试卷作者**（{@link #requireOwnedPaper}），不是记录本人 ——
+	 *       老师要看的是学生；考生侧那个接口走 {@code assertOwned} 只放行本人，因此不能复用。</li>
+	 *   <li><b>不调 {@code checkAndHandleTimeout}</b>：那是个**写**操作（补 `endTime`），
+	 *       不该因为老师点开看一眼就改考生的记录；超时交卷交给 {@code ExamTimeoutScheduler}。</li>
+	 *   <li><b>同样拦 ONGOING</b>（用户拍板）：考试中的作答不给看 —— 考生侧拦是防偷答案，
+	 *       这边是口径统一、避免监考争议。</li>
+	 * </ul>
+	 */
+	public ExamRecordDetail getRecordDetailForAuthor(long recordId) {
+		ExamRecords record = findRecordOrThrow(recordId);
+		long paperId = record.paperId();
+		requireOwnedPaper(paperId);
+		
+		if (ExamRecordStatus.ONGOING.equals(record.status())) {
+			throw new BusinessException(MessageConstant.EXAM_DETAIL_NOT_AVAILABLE_ONGOING);
+		}
+		
+		ExamRecordDetail detail = sqlClient.findById(ExamRecordDetail.class, recordId);
+		if (detail == null) {
+			throw new BusinessException("考试记录不存在");
+		}
+		
+		// 题目顺序：DTO 取数不带 ORDER BY，`paper_question` 也没有排序列 ⇒
+		// 按「题目加进试卷的先后」重排一遍，题号才稳定；已从试卷移除的题排到最后。
+		List<Long> orderedIds = paperQuestionRepo.findOrderedQuestionIdsByPaperId(paperId);
+		List<ExamRecordDetail.TargetOf_paper.TargetOf_questions> questions =
+				new ArrayList<>(detail.getPaper().getQuestions());
+		questions.sort(Comparator.comparingInt(
+				(ExamRecordDetail.TargetOf_paper.TargetOf_questions q) -> {
+					int index = orderedIds.indexOf(q.getId());
+					return index < 0 ? Integer.MAX_VALUE : index;
+				}));
+		detail.getPaper().setQuestions(questions);
+		
+		return detail;
+	}
+	
+	/**
 	 * 手动保存答案（**全量覆盖**）：先删掉这场考试的旧答案，再按请求体整份重建。
 	 * <p>
 	 * 为什么「先删后插」：只做 upsert 的话，请求体里没有的题会保留旧答案 —— 考生把多选题的
@@ -226,25 +324,25 @@ public class ExamRecordService {
 	public void saveAnswers(long examRecordId, List<SubmitAnswerReq> answers) {
 		ExamRecords record = findRecordOrThrow(examRecordId);
 		assertOwned(record);
-
+		
 		if (record.status() != ExamRecordStatus.ONGOING) {
 			throw new BusinessException("考试未开始，无法保存答案");
 		}
-
+		
 		// 全量覆盖：先清空，再按请求体重建
 		answerRecordRepo.deleteByExamRecordId(examRecordId);
-
+		
 		if (answers.isEmpty()) {
 			return;
 		}
-
+		
 		List<AnswerRecord> insertAnswers = new ArrayList<>(answers.size());
 		for (SubmitAnswerReq answer : answers) {
 			insertAnswers.add(Immutables.createAnswerRecord(draft -> draft
-					                                              .setScore(null)
-					                                              .setUserAnswer(answer.userAnswer())
-					                                              .setExamRecordId(examRecordId)
-					                                              .setQuestionId(answer.questionId())));
+					                                                         .setScore(null)
+					                                                         .setUserAnswer(answer.userAnswer())
+					                                                         .setExamRecordId(examRecordId)
+					                                                         .setQuestionId(answer.questionId())));
 		}
 		// 刚删干净，必然全是新增；表上有 uk_exam_record_question，请求体若有重复 questionId 会直接报错
 		answerRecordRepo.saveEntities(insertAnswers, SaveMode.INSERT_ONLY);
@@ -303,6 +401,183 @@ public class ExamRecordService {
 	}
 	
 	/**
+	 * 成绩列表（**控制台**：试卷作者查看本卷全部考试记录）。
+	 * <p>
+	 * 口径：
+	 * <ul>
+	 *   <li><b>归属</b>：先查试卷作者，非本人 → 422（与其他控制台接口一致）；</li>
+	 *   <li><b>排序</b>：成绩降序，同分按 id 降序。未交卷的记录 `score` 为 NULL，
+	 *       用 `coalesce(score, 0)` 参与排序 —— 与前端展示的「成绩 0」落在同一档，
+	 *       且不依赖各数据库对 NULL 的默认排序；</li>
+	 *   <li><b>名次</b>：顺序名次（1,2,3…，不并列）= 分页偏移 + 页内下标 + 1。
+	 *       排序确定则名次确定，故不查库、不引窗口函数；</li>
+	 *   <li><b>用时 / 成绩</b>：状态为 ONGOING 或没有交卷时间 ⇒ 0（见 {@link #toListItem}）。</li>
+	 *   <li><b>筛选</b>：姓名（模糊）/ 状态 / 是否及格，三者都是「可空 = 不筛」，全部下推到 SQL
+	 *       —— 所以<b>名次是筛选结果集内</b>的顺序名次（与姓名筛选同口径）。</li>
+	 * </ul>
+	 */
+	public PageRes<ExamRecordListItemRes> listPaperRecords(ExamRecordListQuery query) {
+		long paperId = query.paperId();
+		
+		// ---- 1. 归属校验 + 取卷面总分（一次查询两个标量）----
+		int totalScore = requireOwnedPaper(paperId);
+		
+		// ---- 2. 及格分：设置行可能不存在（建卷不再预写），缺失按 0 ----
+		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(paperId);
+		int passingScore = settings == null ? 0 : settings.passingScore();
+		
+		// ---- 3. 分页查记录（成绩降序，同分按 id 降序）----
+		int page = query.page();
+		int size = query.size();
+		ExamRecordsTable t = Tables.EXAM_RECORDS_TABLE;
+		var q = examRecordsRepo.sql().createQuery(t)
+				        .where(t.paperId().eq(paperId));
+		String name = query.name();
+		if (name != null && !name.isBlank()) {
+			// like 默认 LikeMode.ANYWHERE（两侧 %），与试卷列表的名称搜索口径一致
+			q.where(t.studentName().like(name.trim()));
+		}
+		if (query.status() != null) {
+			q.where(t.status().eq(query.status()));
+		}
+		Boolean passed = query.passed();
+		if (passed != null) {
+			// 及格判据与表格展示、统计**同源**：`coalesce(score, 0)` 就是「展示成绩」——
+			// 未交卷的记录 score 为 NULL，coalesce 成 0，自然落到「未及格」一侧。
+			// 及格分 0 的卷里「未及格」会筛不到任何记录，这是数据本身决定的，不是 bug。
+			var isPassed = t.score().coalesce(0).ge(passingScore);
+			q.where(passed ? isPassed : Predicate.not(isPassed));
+		}
+		var res = q.orderBy(t.score().coalesce(0).desc(), t.id().desc())
+				          .select(t.fetch(RECORD_LIST_ITEM))
+				          .fetchPage(page - 1, size);
+		
+		// ---- 4. 组装返回：名次 = 全局位置 ----
+		int offset = (page - 1) * size;
+		List<ExamRecordListItemRes> list = new ArrayList<>(res.getRows().size());
+		for (int i = 0; i < res.getRows().size(); i++) {
+			list.add(toListItem(res.getRows().get(i), offset + i + 1, passingScore, totalScore));
+		}
+		return PageRes.<ExamRecordListItemRes>builder()
+				       .page(page)
+				       .pageSize(size)
+				       .total(res.getTotalRowCount())
+				       .list(list)
+				       .build();
+	}
+	
+	/**
+	 * 组装成绩列表的一行。
+	 * <p>
+	 * 未交卷口径（用户拍板）：状态为 {@link ExamRecordStatus#ONGOING} <b>或</b> `endTime` 为空
+	 * ⇒ 用时 0、成绩 0。两个条件都要判 —— 超时检测 {@code checkAndHandleTimeout} 只写 `endTime`
+	 * 不改状态，所以库里可能存在「状态 ONGOING 但已有 endTime」的记录，那条按规则仍记 0。
+	 */
+	private ExamRecordListItemRes toListItem(ExamRecords r, int rank, int passingScore, int totalScore) {
+		LocalDateTime start = r.startTime();
+		LocalDateTime end = r.endTime();
+		boolean notFinished = isNotFinished(r);
+		
+		long usedSeconds = 0L;
+		if (!notFinished && start != null) {
+			// 时钟回拨等极端情况下 end 可能早于 start，兜底不为负
+			usedSeconds = Math.max(0L, Duration.between(start, end).getSeconds());
+		}
+		int score = displayScore(r);
+		
+		return new ExamRecordListItemRes(
+				String.valueOf(r.id()),
+				r.studentName(),
+				start,
+				end,
+				usedSeconds,
+				passingScore,
+				totalScore,
+				score,
+				rank,
+				r.status()
+		);
+	}
+	
+	/**
+	 * 控制台侧归属校验：试卷必须存在且属于当前登录用户，否则 422
+	 * （不存在 → `PAPER_NOT_FOUND`；非本人 → `NOT_YOUR_RESOURCE`）。
+	 * <p>
+	 * 返回卷面总分（一次查询顺手带回，别为它再查一遍）；成绩统计用不上返回值，
+	 * 只借用这里的校验，故调用处可忽略。
+	 */
+	private int requireOwnedPaper(long paperId) {
+		long me = StpUtil.getLoginIdAsLong();
+		PaperTable paper = PaperTable.$;
+		List<Tuple2<Long, Integer>> owners = examRecordsRepo.sql().createQuery(paper)
+				                                     .where(paper.id().eq(paperId))
+				                                     .select(paper.userId(), paper.totalScore())
+				                                     .execute();
+		if (owners.isEmpty()) {
+			throw new BusinessException(MessageConstant.PAPER_NOT_FOUND);
+		}
+		Tuple2<Long, Integer> owner = owners.getFirst();
+		if (owner.get_1() != me) {
+			throw new BusinessException(MessageConstant.NOT_YOUR_RESOURCE);
+		}
+		return owner.get_2() == null ? 0 : owner.get_2();
+	}
+	
+	/**
+	 * 成绩统计（控制台：表格上方的汇总数字）。
+	 * <p>
+	 * 口径见 {@link ExamRecordStatsRes}：**整卷**（与列表的姓名筛选无关）、**全部记录都算**，
+	 * 每条取 {@link #displayScore}（考试中 = 0、待批改 = 客观题小计）。
+	 * 因此 `参与人数 == 及格次数 + 不及格次数` 恒成立。
+	 * <p>
+	 * 实现上把该卷记录的三个标量列读回来在内存里聚合：量级小（一场考试的考生数），
+	 * 且能直接复用 {@link #displayScore} —— 与列表是**同一份口径代码**，不会两处漂移。
+	 */
+	public ExamRecordStatsRes getRecordStats(ExamRecordStatsQuery query) {
+		long paperId = query.paperId();
+		requireOwnedPaper(paperId);
+		
+		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(paperId);
+		int passingScore = settings == null ? 0 : settings.passingScore();
+		
+		ExamRecordsTable t = Tables.EXAM_RECORDS_TABLE;
+		List<ExamRecords> records = examRecordsRepo.sql().createQuery(t)
+				                            .where(t.paperId().eq(paperId))
+				                            .select(t.fetch(RECORD_STATS_ITEM))
+				                            .execute();
+		
+		int participantCount = records.size();
+		int passCount = 0;
+		int maxScore = 0;
+		int minScore = 0;
+		long sum = 0L;
+		for (int i = 0; i < participantCount; i++) {
+			int score = displayScore(records.get(i));
+			if (score >= passingScore) {
+				passCount++;
+			}
+			if (i == 0 || score > maxScore) {
+				maxScore = score;
+			}
+			if (i == 0 || score < minScore) {
+				minScore = score;
+			}
+			sum += score;
+		}
+		// 平均分返回原始值，保留几位小数由展示层决定
+		double avgScore = participantCount == 0 ? 0d : (double) sum / participantCount;
+		
+		return new ExamRecordStatsRes(
+				participantCount,
+				passCount,
+				participantCount - passCount,
+				maxScore,
+				avgScore,
+				minScore
+		);
+	}
+	
+	/**
 	 * 考试入口页：按 paperId 取试卷信息（**考生侧，免登录可访问，不做归属校验**）。
 	 * <p>
 	 * 口径：
@@ -310,7 +585,7 @@ public class ExamRecordService {
 	 * - 已发布但**已过截止时间** → 抛「考试已结束」；
 	 * - 未开始 → 照常返回信息，由前端提示「未开始」并不放行。
 	 */
-	public ExamPaperInfoRes getPaperInfoForExaminee(int paperId) {
+	public ExamPaperInfoRes getPaperInfoForExaminee(long paperId) {
 		Paper paper = sqlClient.findById(Paper.class, paperId);
 		if (paper == null || !paper.published()) {
 			throw new BusinessException("考试不存在");

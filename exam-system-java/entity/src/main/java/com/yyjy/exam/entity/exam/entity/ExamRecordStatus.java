@@ -4,7 +4,7 @@ import org.babyfish.jimmer.sql.EnumType;
 
 @EnumType(EnumType.Strategy.NAME)
 public enum ExamRecordStatus {
-	// 进行中
+	// 考试中
 	ONGOING,
 	// 待批改
 	GRADING,

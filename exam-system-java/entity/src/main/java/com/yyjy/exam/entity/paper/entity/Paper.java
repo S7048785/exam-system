@@ -12,7 +12,7 @@ public interface Paper {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	int id();
+	long id();
 	
 	@ManyToOne
 	Users user();
@@ -53,6 +53,8 @@ public interface Paper {
 	
 	@Nullable
 	Integer questionCount();
+	
+	int scoreCount();
 	
 	@OneToMany(mappedBy = "paper")
 	List<PaperQuestion> paperQuestions();

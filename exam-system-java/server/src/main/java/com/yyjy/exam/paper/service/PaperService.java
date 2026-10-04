@@ -54,7 +54,7 @@ public class PaperService {
 	 * 建卷不再预写默认行（发布前必须先配过设置），所以这里只剩「新建」与「更新」两种情况，
 	 * 没有「没带字段就写库默认值」的分支。
 	 */
-	private void saveExamSettings(int paperId, PaperExamSettingsInput settings) {
+	private void saveExamSettings(long paperId, PaperExamSettingsInput settings) {
 		PaperExamSettings existing = paperExamSettingsRepo.findByPaperId(paperId);
 		
 		PaperExamSettings draft = PaperExamSettingsDraft.$.produce(d -> {
@@ -121,7 +121,7 @@ public class PaperService {
 		return new ArrayList<>(byId.values());
 	}
 	
-	public void requireOwnedPaper(int id) {
+	public void requireOwnedPaper(long id) {
 		long me = StpUtil.getLoginIdAsLong();
 		PaperTable t = PaperTable.$;
 		List<Long> owners = paperRepository.sql().createQuery(t)
@@ -185,8 +185,6 @@ public class PaperService {
 	public PageRes<Paper> listPapersByNameAndStatus(PaperListQuery conditions, Fetcher<Paper> fetcher) {
 		// 以 **paper** 为查询根：建卷不再预写设置行，未配设置的卷也必须能出现在「我的试卷」里
 		// （否则用户看不见它，也就永远进不了设置页去创建）。设置表走**左连接**：
-		// 未配设置时 settings 侧全为 NULL —— 状态条件因此不成立（不会混进 进行中/已结束），
-		// 排序里 end 为 NULL 在 MySQL DESC 下排最后，正好把「待配置」的卷沉底。
 		PaperTable paper = PaperTable.$;
 		PaperExamSettingsTable settings = paper.examSettings(JoinType.LEFT);
 		
@@ -217,8 +215,6 @@ public class PaperService {
 			}
 		}
 		
-		// 2026-09-20 补：`name` / `categoryId` 是新加的（前端 PaperFilters 的「试卷名称」「试卷分类」
-		// 一直在筛，但查询里根本没这两个条件）；`published` 则是早就声明了却一直没被使用 —— 声明了就该生效
 		if (conditions.name() != null && !conditions.name().isBlank()) {
 			query.where(paper.name().like(conditions.name().trim()));
 		}
@@ -230,7 +226,6 @@ public class PaperService {
 				          .orderBy(paper.id().desc(), settings.end().desc())
 				          .select(paper.fetch(fetcher))
 				          .fetchPage(page - 1, size);
-		
 		return PageRes.<Paper>builder().page(page).pageSize(size).total(res.getTotalRowCount()).list(res.getRows()).build();
 	}
 	
@@ -254,7 +249,7 @@ public class PaperService {
 	 * 写入考试设置（**不含题目**）：存在则更新、不存在则新增（upsert）。
 	 */
 	@Transactional
-	public void updatePaperExamSettings(int id, PaperExamSettingsInput input) {
+	public void updatePaperExamSettings(long id, PaperExamSettingsInput input) {
 		if (input == null) {
 			throw new BusinessException("考试设置不能为空");
 		}
@@ -277,7 +272,7 @@ public class PaperService {
 	 * 写完后重算 `question_count` / `total_score`（原 updatePaper 漏了这步，会留脏值）。
 	 */
 	@Transactional
-	public void replacePaperQuestions(int paperId, PaperQuestionsUpdateReq input) {
+	public void replacePaperQuestions(long paperId, PaperQuestionsUpdateReq input) {
 		long me = StpUtil.getLoginIdAsLong();
 		
 		// 多用户改造：试卷与要写入的题目都必须是自己的
@@ -301,7 +296,7 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public void removePaper(int id) {
+	public void removePaper(long id) {
 		// 多用户改造：只能删自己的卷
 		// 试卷本身允许删除（即使已发布、即使已被考试引用）。
 		// 注意：删掉已被考过的卷会让历史考试记录的 paper 悬空。
@@ -329,14 +324,14 @@ public class PaperService {
 	 * @return 试卷 id（新增返回新 id，更新返回原 id）
 	 */
 	@Transactional
-	public int savePaper(PaperSaveInput input) {
+	public long savePaper(PaperSaveInput input) {
 		long userId = StpUtil.getLoginIdAsLong();
 		
 		// 多用户改造：分类必须是自己的
 		requireOwnedPaperCategory(userId, input.getCategoryId());
 		
 		// 可空 id：null = 新增，非空 = 更新（存在性判断只用它，不信任前端其它字段）
-		Integer id = input.getId();
+		Long id = input.getId();
 		if (id != null) {
 			if (!paperRepository.existsByUserIdAndId(userId, id)) {
 				throw new BusinessException(MessageConstant.PAPER_NOT_FOUND);
@@ -375,7 +370,7 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public void publishPaper(int id) {
+	public void publishPaper(long id) {
 		// 多用户改造：只能发布自己的卷
 		requireOwnedPaper(id);
 		
@@ -395,7 +390,7 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public void addPaperQuestions(int paperId, PaperQuestionAddReq input) {
+	public void addPaperQuestions(long paperId, PaperQuestionAddReq input) {
 		long me = StpUtil.getLoginIdAsLong();
 		List<PaperQuestionAddReq.Item> raw = input.questions() != null ? input.questions() : List.of();
 		// 同一批请求里同一道题可能出现多次：若不去重，第二条要么插出重复行、要么把前一条的
@@ -436,7 +431,7 @@ public class PaperService {
 	 * 历史记录本身不删、可继续查看。
 	 */
 	@Transactional
-	public void removePaperQuestion(int paperId, long questionId) {
+	public void removePaperQuestion(long paperId, long questionId) {
 		// 多用户改造：只能改自己的卷
 		requireOwnedPaper(paperId);
 		
@@ -445,7 +440,7 @@ public class PaperService {
 	}
 	
 	@Transactional
-	public void updatePaperQuestionScore(int paperId, long questionId, int score) {
+	public void updatePaperQuestionScore(long paperId, long questionId, int score) {
 		// 多用户改造：只能改自己的卷
 		requireOwnedPaper(paperId);
 		
