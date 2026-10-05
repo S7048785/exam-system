@@ -40,4 +40,4 @@ application-prod.yml
 application-dev.yml
 
 ### 后端测试代码一律不入库（本地自测用）###
-**/src/test/
+#**/src/test/
