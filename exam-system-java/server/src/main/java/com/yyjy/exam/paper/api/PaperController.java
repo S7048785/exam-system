@@ -87,13 +87,6 @@ public class PaperController {
 	
 	/**
 	 * 试卷考试报表（**控制台**）：每张卷 + 交卷数 / 未评卷数 / 已评卷数。
-	 * <p>
-	 * 与 {@code GET /paper/list} 的区别：返回值换成报表行（`PaperReportView`，含三个统计列，不再是 `Paper` 实体），
-	 * 筛选多了**考试开始 / 结束时间**——而且是两个独立区间。分页返回 `PageRes`（不套 `R`，与 `/paper/list` 一致）。
-	 * <p>
-	 * 查询参数 `PaperReportListQuery`：`name`(模糊) / `categoryId` / `startFrom` / `startTo` /
-	 * `endFrom` / `endTo` / `page` / `size`，筛选都可空；`page` / `size` 必填（缺参 / 越界 → 422）。
-	 * 时间走 ISO-8601（`2026-10-01T00:00:00`）。
 	 */
 	@GetMapping("/report/list")
 	public PageRes<PaperReportView> listPaperReports(@Validated PaperReportListQuery query) {

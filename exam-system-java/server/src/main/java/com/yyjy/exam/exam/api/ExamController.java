@@ -9,12 +9,16 @@ import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.io.req.ExamRecordListQuery;
 import com.yyjy.exam.entity.exam.io.req.ExamRecordStatsQuery;
+import com.yyjy.exam.entity.exam.io.req.GradeAnswerReq;
 import com.yyjy.exam.entity.exam.io.req.StartExamReq;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.entity.exam.io.res.ExamRecordListItemRes;
 import com.yyjy.exam.entity.exam.io.res.ExamRecordStatsRes;
-import com.yyjy.exam.exam.service.ExamRecordService;
+import com.yyjy.exam.exam.service.ExamGradingService;
+import com.yyjy.exam.exam.service.ExamRecordQueryService;
+import com.yyjy.exam.exam.service.ExamStartService;
+import com.yyjy.exam.exam.service.ExamTakingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
@@ -41,7 +45,10 @@ public class ExamController {
 					.paper(Fetchers.PAPER_FETCHER
 							       .totalScore()
 							       .examSettings(Fetchers.PAPER_EXAM_SETTINGS_FETCHER.passingScore()));
-	private final ExamRecordService examRecordService;
+	private final ExamStartService examStartService;
+	private final ExamTakingService examTakingService;
+	private final ExamGradingService examGradingService;
+	private final ExamRecordQueryService examRecordQueryService;
 	
 	/**
 	 * 考试入口页信息（**考生侧，免登录可访问**）：试卷名、考试时间、描述、总分、参与方式。
@@ -50,7 +57,7 @@ public class ExamController {
 	 */
 	@GetMapping("/paper/{id}")
 	public R<ExamPaperInfoRes> getExamPaperInfo(@PathVariable int id) {
-		return R.ok(examRecordService.getPaperInfoForExaminee(id));
+		return R.ok(examTakingService.getPaperInfoForExaminee(id));
 	}
 	
 	/**
@@ -61,7 +68,7 @@ public class ExamController {
 	 */
 	@PostMapping("/start")
 	public R<String> startExam(@RequestBody @Valid StartExamReq req) {
-		long examRecordId = examRecordService.startExam(req.paperId(), req.studentName());
+		long examRecordId = examStartService.startExam(req.paperId(), req.studentName());
 		// 雪花 id 有 19 位，超过 JS 的 Number.MAX_SAFE_INTEGER，按字符串返回才不会掉精度
 		return R.ok(String.valueOf(examRecordId));
 	}
@@ -71,7 +78,7 @@ public class ExamController {
 	 */
 	@GetMapping("/{id}/taking")
 	public R<ExamTakingView> getExamTaking(@PathVariable String id) {
-		return R.ok(examRecordService.getExamTaking(Long.parseLong(id)));
+		return R.ok(examTakingService.getExamTaking(Long.parseLong(id)));
 	}
 	
 	/**
@@ -79,7 +86,7 @@ public class ExamController {
 	 */
 	@GetMapping("/{id}/detail")
 	public R<ExamRecordDetail> getExamDetail(@PathVariable String id) {
-		return R.ok(examRecordService.getExamDetail(Long.parseLong(id)));
+		return R.ok(examTakingService.getExamDetail(Long.parseLong(id)));
 	}
 	
 	/**
@@ -90,7 +97,7 @@ public class ExamController {
 			@PathVariable String examRecordId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
-		examRecordService.saveAnswers(Long.parseLong(examRecordId), answers);
+		examTakingService.saveAnswers(Long.parseLong(examRecordId), answers);
 		return R.ok();
 	}
 	
@@ -103,7 +110,20 @@ public class ExamController {
 			@PathVariable String examRecordId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
-		examRecordService.submitAnswers(Long.parseLong(examRecordId), answers);
+		examTakingService.submitAnswers(Long.parseLong(examRecordId), answers);
+		return R.ok();
+	}
+	
+	/**
+	 * 人工判卷（**批量**）：给若干条答题记录打分（简答题用），
+	 * 顺带重算该场考试的 `score` 并按「还有没有没判的答案」推进 `status`。
+	 * <p>
+	 * 入参数组必须**同属一场考试**（总分/状态是记录级的）；得分上限 = 该题在这张卷上的配分，
+	 * 超了 422；考试进行中（ONGOING）的记录不给判。
+	 */
+	@PostMapping("/grade")
+	public R<Void> gradeAnswers(@RequestBody @Valid List<@Valid GradeAnswerReq> answers) {
+		examGradingService.gradeAnswers(answers);
 		return R.ok();
 	}
 	
@@ -113,44 +133,33 @@ public class ExamController {
 	@SaCheckLogin
 	@GetMapping("/history")
 	public R<List<ExamRecords>> getExamHistory() {
-		return R.ok(examRecordService.getExamHistory(EXAM_RECORD_ITEM));
+		return R.ok(examTakingService.getExamHistory(EXAM_RECORD_ITEM));
 	}
 	
 	/**
 	 * 成绩列表（**控制台**：试卷作者查看本卷全部考试记录，含排名 / 用时 / 及格分）。
-	 * <p>
-	 * 路径是字面量 `/exams/records`，与 `/{id}/taking`、`/{id}/detail`（两段）不冲突。
-	 * 分页返回 `PageRes`（不套 `R`，与 `GET /paper/list` 一致）。
 	 */
 	@SaCheckLogin
 	@GetMapping("/records")
 	public PageRes<ExamRecordListItemRes> listPaperRecords(@Validated ExamRecordListQuery query) {
-		return examRecordService.listPaperRecords(query);
+		return examRecordQueryService.listPaperRecords(query);
 	}
 	
 	/**
 	 * 成绩统计（**控制台**：表格上方的汇总数字）。
-	 * <p>
-	 * **整卷**口径，与列表的姓名筛选无关，也不分页 —— 故单独一个接口，
-	 * 前端只在打开弹窗时拉一次。路径 `/records/stats`（两段字面量）与
-	 * `/{id}/taking`、`/{id}/detail` 不冲突。
 	 */
 	@SaCheckLogin
 	@GetMapping("/records/stats")
 	public R<ExamRecordStatsRes> getExamRecordStats(@Validated ExamRecordStatsQuery query) {
-		return R.ok(examRecordService.getRecordStats(query));
+		return R.ok(examRecordQueryService.getRecordStats(query));
 	}
 	
 	/**
 	 * 考生的答题详情（**控制台**：「成绩」弹窗里点某一行看作答，**只读**）。
-	 * <p>
-	 * 与考生侧 `GET /{id}/detail` 的区别：归属校验看的是**试卷作者**（老师要看学生），
-	 * 两者都拦 ONGOING。雪花 id 走字符串入参（与 `/{id}/taking` 同一套处理）。
-	 * 路径三段，与 `/records`、`/records/stats` 不冲突。
 	 */
 	@SaCheckLogin
 	@GetMapping("/records/{recordId}/detail")
 	public R<ExamRecordDetail> getRecordDetail(@PathVariable String recordId) {
-		return R.ok(examRecordService.getRecordDetailForAuthor(Long.parseLong(recordId)));
+		return R.ok(examRecordQueryService.getRecordDetailForAuthor(Long.parseLong(recordId)));
 	}
 }

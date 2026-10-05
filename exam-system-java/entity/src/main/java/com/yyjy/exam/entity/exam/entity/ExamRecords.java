@@ -18,7 +18,7 @@ public interface ExamRecords {
 	long id();
 	
 	@Key
-	// 短码由服务层赋值（ExamRecordService#startExam 里 draft.setPublicId(NanoIdGenerator.next())）：
+	// 短码由服务层赋值（ExamStartService#startExam 里 draft.setPublicId(NanoIdGenerator.next())）：
 	// Jimmer 的 @GeneratedValue 只认 @Id 属性，挂普通属性上会被静默忽略 —— 那一列直接不进 INSERT。
 	String publicId();
 	

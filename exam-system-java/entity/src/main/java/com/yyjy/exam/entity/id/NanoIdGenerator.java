@@ -27,7 +27,7 @@ public class NanoIdGenerator implements UserIdGenerator<String> {
 	 * ⚠️ 这是**主入口**：Jimmer 的 {@code @GeneratedValue} 只对 {@code @Id} 属性生效，
 	 * 挂在普通属性上会被静默忽略（那一列根本不进 INSERT 语句），所以像
 	 * `exam_records.public_id` 这种"非主键的生成列"必须在插入前由应用层赋值。
-	 * 当前调用点：{@code ExamRecordService#startExam}。
+	 * 当前调用点：{@code ExamStartService#startExam}。
 	 */
 	public static String next() {
 		return RandomUtil.randomString(ALPHABET, LENGTH);

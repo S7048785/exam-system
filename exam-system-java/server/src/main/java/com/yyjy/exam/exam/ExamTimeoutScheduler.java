@@ -3,7 +3,7 @@ package com.yyjy.exam.exam;
 import com.yyjy.exam.entity.exam.entity.ExamRecordStatus;
 import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.entity.ExamRecordsTable;
-import com.yyjy.exam.exam.service.ExamRecordService;
+import com.yyjy.exam.exam.service.ExamTakingService;
 import com.yyjy.exam.paper.repository.PaperExamSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 public class ExamTimeoutScheduler {
 	
 	private final JSqlClient sqlClient;
-	private final ExamRecordService examRecordService;
+	private final ExamTakingService examTakingService;
 	private final PaperExamSettingsRepository paperExamSettingsRepo;
 	
 	@Scheduled(fixedRate = 60_000)
@@ -54,7 +54,7 @@ public class ExamTimeoutScheduler {
 			var deadline = record.startTime().plusMinutes(duration);
 			if (now.isAfter(deadline)) {
 				// 批阅超时试卷
-				examRecordService.handleTimeoutSubmit(record.id());
+				examTakingService.handleTimeoutSubmit(record.id());
 				ongoingCount++;
 			}
 		}
