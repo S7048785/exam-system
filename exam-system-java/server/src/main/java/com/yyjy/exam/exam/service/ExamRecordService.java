@@ -16,6 +16,7 @@ import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.entity.exam.io.res.ExamRecordListItemRes;
 import com.yyjy.exam.entity.exam.io.res.ExamRecordStatsRes;
+import com.yyjy.exam.entity.id.NanoIdGenerator;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperExamSettings;
 import com.yyjy.exam.entity.paper.entity.PaperTable;
@@ -182,8 +183,6 @@ public class ExamRecordService {
 		
 		// ---- 4. 创建考试记录 ----
 		// （now 在上面校验时间窗口时已取好，这里复用）
-		// id 不在这里给：ExamRecords.id 标了 @GeneratedValue(generatorType = SnowflakeIdGenerator.class)，
-		// Jimmer 插入前会用 Hutool 雪花生成并回填（库里这列已没有自增）
 		final Long finalUserId = userId;
 		final String finalName = name;
 		ExamRecords saved = examRecordsRepo.save(Immutables.createExamRecords(draft -> {
@@ -191,6 +190,7 @@ public class ExamRecordService {
 			if (finalUserId != null) {
 				draft.setUserId(finalUserId);
 			}
+			draft.setPublicId(NanoIdGenerator.next());
 			draft.setStudentName(finalName);
 			draft.setStartTime(now);
 			draft.setCreateTime(now);
@@ -271,16 +271,6 @@ public class ExamRecordService {
 	
 	/**
 	 * 考生的答题详情（**控制台侧**：试卷作者查看本卷任意一条记录的作答，**只读**）。
-	 * <p>
-	 * 与考生侧 {@link #getExamDetail} 的三点区别，都是刻意的：
-	 * <ul>
-	 *   <li><b>归属</b>：校验的是**试卷作者**（{@link #requireOwnedPaper}），不是记录本人 ——
-	 *       老师要看的是学生；考生侧那个接口走 {@code assertOwned} 只放行本人，因此不能复用。</li>
-	 *   <li><b>不调 {@code checkAndHandleTimeout}</b>：那是个**写**操作（补 `endTime`），
-	 *       不该因为老师点开看一眼就改考生的记录；超时交卷交给 {@code ExamTimeoutScheduler}。</li>
-	 *   <li><b>同样拦 ONGOING</b>（用户拍板）：考试中的作答不给看 —— 考生侧拦是防偷答案，
-	 *       这边是口径统一、避免监考争议。</li>
-	 * </ul>
 	 */
 	public ExamRecordDetail getRecordDetailForAuthor(long recordId) {
 		ExamRecords record = findRecordOrThrow(recordId);
@@ -290,7 +280,6 @@ public class ExamRecordService {
 		if (ExamRecordStatus.ONGOING.equals(record.status())) {
 			throw new BusinessException(MessageConstant.EXAM_DETAIL_NOT_AVAILABLE_ONGOING);
 		}
-		
 		ExamRecordDetail detail = sqlClient.findById(ExamRecordDetail.class, recordId);
 		if (detail == null) {
 			throw new BusinessException("考试记录不存在");
@@ -298,15 +287,15 @@ public class ExamRecordService {
 		
 		// 题目顺序：DTO 取数不带 ORDER BY，`paper_question` 也没有排序列 ⇒
 		// 按「题目加进试卷的先后」重排一遍，题号才稳定；已从试卷移除的题排到最后。
-		List<Long> orderedIds = paperQuestionRepo.findOrderedQuestionIdsByPaperId(paperId);
-		List<ExamRecordDetail.TargetOf_paper.TargetOf_questions> questions =
-				new ArrayList<>(detail.getPaper().getQuestions());
-		questions.sort(Comparator.comparingInt(
-				(ExamRecordDetail.TargetOf_paper.TargetOf_questions q) -> {
-					int index = orderedIds.indexOf(q.getId());
-					return index < 0 ? Integer.MAX_VALUE : index;
-				}));
-		detail.getPaper().setQuestions(questions);
+		//List<Long> orderedIds = paperQuestionRepo.findOrderedQuestionIdsByPaperId(paperId);
+		//List<ExamRecordDetail.TargetOf_paper.TargetOf_questions> questions =
+		//		new ArrayList<>(detail.getPaper().getQuestions());
+		//questions.sort(Comparator.comparingInt(
+		//		(ExamRecordDetail.TargetOf_paper.TargetOf_questions q) -> {
+		//			int index = orderedIds.indexOf(q.getId());
+		//			return index < 0 ? Integer.MAX_VALUE : index;
+		//		}));
+		//detail.getPaper().setQuestions(questions);
 		
 		return detail;
 	}

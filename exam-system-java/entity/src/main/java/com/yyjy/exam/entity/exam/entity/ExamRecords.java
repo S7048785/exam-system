@@ -1,10 +1,8 @@
 package com.yyjy.exam.entity.exam.entity;
 
-import com.yyjy.exam.entity.id.SnowflakeIdGenerator;
+import com.yyjy.exam.entity.id.NanoIdGenerator;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.user.entity.Users;
-import org.babyfish.jimmer.jackson.JsonConverter;
-import org.babyfish.jimmer.jackson.LongToStringConverter;
 import org.babyfish.jimmer.sql.*;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,9 +13,14 @@ import java.util.List;
 public interface ExamRecords {
 	
 	@Id
-	@GeneratedValue(strategy = GenerationType.USER, generatorType = SnowflakeIdGenerator.class)
-	@JsonConverter(LongToStringConverter.class)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	//@JsonConverter(LongToStringConverter.class)
 	long id();
+	
+	@Key
+	// 短码由服务层赋值（ExamRecordService#startExam 里 draft.setPublicId(NanoIdGenerator.next())）：
+	// Jimmer 的 @GeneratedValue 只认 @Id 属性，挂普通属性上会被静默忽略 —— 那一列直接不进 INSERT。
+	String publicId();
 	
 	@Nullable
 	@ManyToOne

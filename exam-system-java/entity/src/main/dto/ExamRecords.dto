@@ -52,7 +52,6 @@ ExamTakingView {
 
 ExamRecordDetail {
     id
-    userId
     studentName
     score
     startTime

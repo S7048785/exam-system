@@ -10,6 +10,7 @@ public interface Users {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+		//@JsonConverter(LongToStringConverter.class)
 	long id();
 	
 	@Key
