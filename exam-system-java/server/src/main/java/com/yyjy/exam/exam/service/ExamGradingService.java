@@ -18,11 +18,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
+ * 考试评分服务
  * 判分：客观题自动判 + 简答题人工判卷，以及「满分口径」的唯一实现。
- * <p>
- * 本类是**叶子服务**：只被判分链路调用，自己不依赖任何业务服务（只依赖 repository + {@link ExamRecordSupport}），
- * 这样依赖图里不可能出现环。事务边界在调用方（`ExamTakingService` 的入口方法上），
- * 本类的方法一律不带 `@Transactional`。
  */
 @RequiredArgsConstructor
 @Service
@@ -30,8 +27,6 @@ public class ExamGradingService {
 	
 	private static final Fetcher<AnswerRecord> ANSWER_RECORD_GRADING =
 			Fetchers.ANSWER_RECORD_FETCHER
-					// 人工判卷要按答案归档到哪场考试：`examRecordId` 是 @IdView，取值实际走
-					// `examRecord().id()`，图谱不带这一项直接读会抛 UnloadedException
 					.examRecordId()
 					.userAnswer()
 					.question(
@@ -46,74 +41,62 @@ public class ExamGradingService {
 	private final ExamRecordSupport support;
 	
 	/**
-	 * 人工判卷（**批量**）：给若干条答题记录打分，并重算该场考试总分 / 推进状态。
-	 * 不限题型 —— 客观题已由自动判分写分，老师想改也走这个入口。
+	 * 人工判卷（**批量**）：给这场考试的若干条答案打分，并重算 `score` / 推进 `status`
+	 * 得分上界 = 该题在**这张卷上**的配分（`paper_question.score` 优先、回落 `questions.score`）；
+	 * `correct` 与 `score` 各存各的（简答可以「判错但给部分分」）。
 	 */
 	@Transactional
-	public void gradeAnswers(List<GradeAnswerReq> answers) {
+	public void gradeAnswers(long examRecordId, List<GradeAnswerReq> answers) {
 		if (answers == null || answers.isEmpty()) {
 			throw new BusinessException("exam: 判卷内容不能为空");
 		}
 		
-		// ---- 1. 一次性取出涉及的答案（带题目图谱：满分口径要回落 question.score）----
-		List<Long> ids = new ArrayList<>(answers.size());
+		// ---- 1. 状态前置校验（只有待批改能判）+ 归属校验（只有试卷作者能判）----
+		ExamRecords record = support.findRecordOrThrow(examRecordId);
+		support.requireOwnedPaper(record.paperId());
+		if (ExamRecordStatus.ONGOING.equals(record.status())) {
+			throw new BusinessException("exam: 考试尚未交卷，不能判卷");
+		}
+		// ---- 2. 入参转 Map（answerRecordId → 本次判卷项）----
+		Map<Long, GradeAnswerReq> gradeByAnswerId = new HashMap<>(answers.size());
 		for (GradeAnswerReq item : answers) {
 			// 请求体是 List，元素上的 @Valid 靠容器级联生效；这里兜一次空值，
 			// 免得校验没级联上时变成 NPE 500（不是重复校验，是防框架细节）
 			if (item == null || item.answerRecordId() == null || item.score() == null) {
 				throw new BusinessException("exam: 判卷参数不完整");
 			}
-			ids.add(item.answerRecordId());
-		}
-		Map<Long, AnswerRecord> answerById = new HashMap<>();
-		for (AnswerRecord ar : answerRecordRepo.findByAnswerRecordIds(ids, ANSWER_RECORD_GRADING)) {
-			answerById.put(ar.id(), ar);
-		}
-		for (Long id : ids) {
-			if (!answerById.containsKey(id)) {
-				throw new BusinessException("exam: 答题记录不存在（id=" + id + "）");
-			}
+			gradeByAnswerId.put(item.answerRecordId(), item);
 		}
 		
-		// ---- 2. 必须同场考试 + 归属校验 + 状态校验 ----
-		Set<Long> examRecordIds = new HashSet<>();
-		for (AnswerRecord ar : answerById.values()) {
-			examRecordIds.add(ar.examRecordId());
-		}
-		if (examRecordIds.size() > 1) {
-			throw new BusinessException("exam: 一次只能批改同一场考试的答案");
-		}
-		long examRecordId = examRecordIds.iterator().next();
-		ExamRecords record = support.findRecordOrThrow(examRecordId);
-		support.requireOwnedPaper(record.paperId());
-		if (ExamRecordStatus.ONGOING.equals(record.status())) {
-			throw new BusinessException("exam: 考试进行中，不能判卷");
-		}
-		
-		// ---- 3. 逐条比对得分上界（下界 @Min(0) 已在请求体上拦过）----
+		// ---- 3. 遍历该场考试的答案，比对后写回 ----
+		List<AnswerRecord> answersInRecord = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING);
 		Map<Long, Integer> paperScores = paperQuestionRepo.findScoreMapByPaperId(record.paperId());
-		for (GradeAnswerReq item : answers) {
-			int maxScore = scoreOf(answerById.get(item.answerRecordId()), paperScores);
+		List<AnswerRecord> graded = new ArrayList<>();
+		for (AnswerRecord answer : answersInRecord) {
+			GradeAnswerReq item = gradeByAnswerId.get(answer.id());
+			if (item == null) {
+				continue; // 这次不判这题，保持原样
+			}
+			int maxScore = scoreOf(answer, paperScores);
 			if (item.score() > maxScore) {
 				throw new BusinessException("exam: 得分不能超过该题满分（最多 " + maxScore + " 分）");
 			}
-		}
-		
-		// ---- 4. 写回答案：score 与 correct 各存各的（简答题可以「判错但给部分分」）----
-		List<AnswerRecord> graded = new ArrayList<>(answers.size());
-		for (GradeAnswerReq item : answers) {
 			final int score = item.score();
 			final int correct = Boolean.TRUE.equals(item.correct()) ? 1 : 0;
 			graded.add(AnswerRecordDraft.$.produce(draft -> {
-				draft.setId(item.answerRecordId());
+				draft.setId(answer.id());
 				draft.setScore(score);
 				draft.setCorrect(correct);
 				draft.setUpdateTime(LocalDateTime.now());
 			}));
 		}
+		if (graded.isEmpty()) {
+			// 入参没有一个能对上这场的答案 ⇒ 什么都没变，不必空跑重算
+			return;
+		}
 		answerRecordRepo.saveEntities(graded, SaveMode.UPDATE_ONLY);
 		
-		// ---- 5. 重算总分 + 推进状态 ----
+		// ---- 4. 重算总分 + 推进状态 ----
 		final int totalScore = answerRecordRepo.sumScoreByExamRecordId(examRecordId);
 		final boolean stillUngraded = answerRecordRepo.countUngradedByExamRecordId(examRecordId) > 0;
 		examRecordsRepo.save(ExamRecordsDraft.$.produce(draft -> {
@@ -125,7 +108,7 @@ public class ExamGradingService {
 	}
 	
 	/**
-	 * 自动判分收尾（**交卷与超时强制交卷的共用入口**）：
+	 * 自动判分收尾（交卷与超时强制交卷的共用入口）：
 	 * ① 客观题（选择/判断）即时判分并写回；② 看还有没有简答题；③ 写 endTime + 切状态
 	 * （不含简答 → GRADED；含简答 → GRADING，等人工批改登分）。
 	 */
@@ -137,7 +120,7 @@ public class ExamGradingService {
 	}
 	
 	/**
-	 * 同步批改选择题和判断题（不处理简答题），结果**一次性批量写回**
+	 * 同步批改选择题和判断题（不处理简答题），结果一次性批量写回
 	 */
 	private void gradeNonTextQuestions(long examRecordId) {
 		List<AnswerRecord> answerRecords = answerRecordRepo.findByExamRecordId(examRecordId, ANSWER_RECORD_GRADING);

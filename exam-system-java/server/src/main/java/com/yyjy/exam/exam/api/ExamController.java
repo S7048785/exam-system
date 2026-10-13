@@ -7,11 +7,7 @@ import com.yyjy.exam.entity.Fetchers;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.ExamRecords;
-import com.yyjy.exam.entity.exam.io.req.ExamRecordListQuery;
-import com.yyjy.exam.entity.exam.io.req.ExamRecordStatsQuery;
-import com.yyjy.exam.entity.exam.io.req.GradeAnswerReq;
-import com.yyjy.exam.entity.exam.io.req.StartExamReq;
-import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
+import com.yyjy.exam.entity.exam.io.req.*;
 import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.entity.exam.io.res.ExamRecordListItemRes;
 import com.yyjy.exam.entity.exam.io.res.ExamRecordStatsRes;
@@ -52,7 +48,6 @@ public class ExamController {
 	
 	/**
 	 * 考试入口页信息（**考生侧，免登录可访问**）：试卷名、考试时间、描述、总分、参与方式。
-	 * <p>
 	 * 未发布 → 422「考试不存在」；已结束 → 422「考试已结束」；未开始照常返回，由前端提示。
 	 */
 	@GetMapping("/paper/{id}")
@@ -62,7 +57,6 @@ public class ExamController {
 	
 	/**
 	 * 开考：返回考试记录 id（有没交卷的记录则直接返回那条，即「续考」）。
-	 * <p>
 	 * `studentName` 只有**免登录考试**才需要传（1~50 个字符）；账号登录考试的姓名取账号里的
 	 * `realName`，请求体里**不要传**（传空串会被 `@Size(min = 1)` 拦成 422，要么省略字段要么传 null）。
 	 */
@@ -115,15 +109,21 @@ public class ExamController {
 	}
 	
 	/**
-	 * 人工判卷（**批量**）：给若干条答题记录打分（简答题用），
+	 * 人工判卷（**批量**）：给这场考试的若干条答案打分（简答题用），
 	 * 顺带重算该场考试的 `score` 并按「还有没有没判的答案」推进 `status`。
 	 * <p>
-	 * 入参数组必须**同属一场考试**（总分/状态是记录级的）；得分上限 = 该题在这张卷上的配分，
-	 * 超了 422；考试进行中（ONGOING）的记录不给判。
+	 * 状态前置校验：**只有待批改（`GRADING`）能判** —— 未交卷（`ONGOING`）与已判完（`GRADED`）
+	 * 都会被拒（422）；得分上限 = 该题在这张卷上的配分，超了也是 422。
+	 *
+	 * @param examRecordId 考试记录 id（`exam_records.id`，内部自增主键；对外短码是 `publicId`，别混）
 	 */
-	@PostMapping("/grade")
-	public R<Void> gradeAnswers(@RequestBody @Valid List<@Valid GradeAnswerReq> answers) {
-		examGradingService.gradeAnswers(answers);
+	@SaCheckLogin
+	@PostMapping("/grade/{examRecordId}")
+	public R<Void> gradeAnswers(
+			@PathVariable String examRecordId,
+			@RequestBody @Valid List<@Valid GradeAnswerReq> answers
+	) {
+		examGradingService.gradeAnswers(Long.parseLong(examRecordId), answers);
 		return R.ok();
 	}
 	

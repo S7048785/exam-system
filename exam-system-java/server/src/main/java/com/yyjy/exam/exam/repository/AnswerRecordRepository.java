@@ -6,7 +6,6 @@ import com.yyjy.exam.entity.question.entity.QuestionType;
 import org.babyfish.jimmer.spring.repository.JRepository;
 import org.babyfish.jimmer.sql.fetcher.Fetcher;
 
-import java.util.Collection;
 import java.util.List;
 
 public interface AnswerRecordRepository extends JRepository<AnswerRecord, Long> {
@@ -54,25 +53,6 @@ public interface AnswerRecordRepository extends JRepository<AnswerRecord, Long> 
 		return total == null ? 0 : total;
 	}
 	
-	/**
-	 * 按 id 批量取答案（**带 fetch 图谱**）。
-	 * <p>
-	 * 人工判卷要读 `question.type` / `question.score` 才能算满分口径，而 `JRepository` 自带的
-	 * `findById` 不带关联图谱，直接访问 `question().type()` 会抛 UnloadedException（同
-	 * {@link #findByExamRecordId(long, Fetcher)} 的坑）。
-	 *
-	 * @param ids 答题记录 id 集合；空集合返回空列表（不发 SQL）
-	 */
-	default List<AnswerRecord> findByAnswerRecordIds(Collection<Long> ids, Fetcher<AnswerRecord> fetcher) {
-		if (ids.isEmpty()) {
-			return List.of();
-		}
-		var t = Tables.ANSWER_RECORD_TABLE;
-		return sql().createQuery(t)
-				       .where(t.id().in(ids))
-				       .select(t.fetch(fetcher))
-				       .execute();
-	}
 	
 	/**
 	 * 某场考试**全部**答案的得分合计（未判的 `score` 为 NULL，SUM 忽略 ⇒ 等价于 0 分）。

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * 考生作答服务
  * 考生作答链路：取答题页 / 保存答案 / 交卷 / 超时强制交卷，以及考生侧的详情、历史、入口信息。
  * <p>
  * 交卷与超时交卷都只是「校验 + 调 {@link ExamGradingService#autoGradeAndFinish}」——
@@ -202,10 +203,6 @@ public class ExamTakingService {
 	
 	/**
 	 * 超时处理：批改客观题 + 更新状态（简答题留待人工批改）。
-	 * <p>
-	 * 必须带事务：这个方法里有两处写（批量写回答案分数 + 写 `exam_records` 的分数与状态），
-	 * 不包事务的话中途失败会留「答案已判、记录还是 ONGOING」的半成品。
-	 * <p>
 	 * 粒度是**一场考试一个事务**：调用方 {@code ExamTimeoutScheduler} 是 `@Scheduled` 方法里的
 	 * 普通 for 循环（本身不是事务方法），所以这里每调一次就新开一个事务，
 	 * 不会把整批超时卷子裹进同一个事务里 —— 单场失败只回滚它自己。
