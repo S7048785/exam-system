@@ -3,7 +3,7 @@ import type { ExamRecordStatus } from '#/__generated/model/enums'
 /**
  * 后端 `ExamRecordStatus` 三态 → 展示文案与配色。
  *
- * 成绩列表（GradeDialog）与答题详情（ExamRecordDetailDialog）共用，避免同一套文案写两遍。
+ * 成绩列表 / 成绩详情 / 评分三个弹窗共用，避免同一套文案写两遍。
  *
  * ⚠️ `GRADING` 是**等待人工批改**（卷面含简答题，交卷时只自动判了客观题），不是「AI 批改中」。
  */

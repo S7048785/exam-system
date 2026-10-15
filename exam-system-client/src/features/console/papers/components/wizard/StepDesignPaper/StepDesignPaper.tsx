@@ -87,7 +87,7 @@ export default function StepDesignPaper({ paperId }: StepDesignPaperProps) {
     <div className="h-full">
       <div className="flex h-full gap-4">
         {/* 左侧：总览 + 题号列表 */}
-        <div className="bg-popover w-60 flex shrink-0 flex-col rounded-lg">
+        <div className="bg-popover flex w-60 shrink-0 flex-col rounded-lg">
           <div className="flex items-center gap-2 border-b px-4 py-3">
             <div className="text-muted-foreground text-xs">总计</div>
             <div className="text-lg font-semibold">

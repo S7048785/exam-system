@@ -58,11 +58,7 @@ export default function RuleCreatePage() {
   const { data: categoryData } = useSuspenseQuery(categoryTreeQueryOptions)
 
   const categories = useMemo(
-    () => [
-      categoryData.data[1].children,
-      categoryData.data[2].children,
-      categoryData.data[3].children,
-    ],
+    () => categoryData.data.map((item) => item.children),
     [categoryData.data],
   )
 

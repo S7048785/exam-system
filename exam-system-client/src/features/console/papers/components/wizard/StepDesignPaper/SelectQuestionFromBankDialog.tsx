@@ -21,7 +21,10 @@ import { Loader2 } from 'lucide-react'
 import { api } from '#/ApiInstance.ts'
 import { QUESTION_TYPE_MAP } from '#/features/console/papers/constants.ts'
 import useDebounce from '#/hooks/useDebounce.ts'
-import type { QuestionDifficulty, QuestionType } from '#/__generated/model/enums'
+import type {
+  QuestionDifficulty,
+  QuestionType,
+} from '#/__generated/model/enums'
 import { DIFFICULTIES } from '#/types/question.ts'
 import { categoryTreeQueryOptions } from '#/features/console/questions/questionQueries.ts'
 import { flattenCategories } from '#/features/console/questions/utils.ts'
@@ -312,7 +315,9 @@ export default function SelectQuestionFromBankDialog({
                     checked={isAllPageSelected}
                     disabled={pageIds.length === 0}
                     ref={(el) => {
-                      if (el) el.indeterminate = somePageSelected && !isAllPageSelected
+                      if (el)
+                        el.indeterminate =
+                          somePageSelected && !isAllPageSelected
                     }}
                     onChange={toggleSelectPage}
                   />

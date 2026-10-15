@@ -298,7 +298,9 @@ export default function PaperExamSettingsForm({
                 }
                 placeholder="分钟"
               />
-              <span className="text-muted-foreground text-sm">分钟后才能交卷</span>
+              <span className="text-muted-foreground text-sm">
+                分钟后才能交卷
+              </span>
             </div>
           </div>
         </div>

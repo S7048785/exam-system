@@ -26,7 +26,7 @@ import {
 import { usePaperListStore } from '#/stores/paper-list.ts'
 import { useState } from 'react'
 import PaperSettingsDialog from './PaperSettingsDialog.tsx'
-import GradeDialog from './GradeDialog.tsx'
+import ScoreListDialog from '../components/ScoreListDialog'
 
 interface Props {
   item: PaperDto['PaperController/PAPER_ITEM']
@@ -131,9 +131,9 @@ export default function PaperRow({ item, onDelete }: Props) {
       </div>
 
       {/* 成绩弹窗（列表行「成绩」入口）：该试卷全部考试记录 */}
-      <GradeDialog
+      <ScoreListDialog
         paperId={item.id}
-        paperNmae={item.name}
+        paperName={item.name}
         open={gradeOpen}
         onOpenChange={setGradeOpen}
       />

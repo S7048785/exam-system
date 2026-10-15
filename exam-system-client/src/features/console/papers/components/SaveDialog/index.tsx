@@ -150,7 +150,7 @@ function WizardContent({
             <XIcon
               onClick={() => setDialogOpen(false)}
               size={24}
-              className={'hover:text-blue-400 cursor-pointer'}
+              className={'cursor-pointer hover:text-blue-400'}
             />
           </div>
         </DialogTitle>

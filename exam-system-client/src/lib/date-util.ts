@@ -49,3 +49,12 @@ export function formatDateTimeShort(datetimeStr: string) {
 // 测试
 // console.log(formatDateTime('2026-07-08T18:38:56'))
 // 输出: "2026-07-08 18:38"
+
+/**
+ * 用时秒数 →「X分Y秒」。
+ * 后端对**未交卷**（考试中 / 无交卷时间）的记录直接给 0，这里只需防御性兜底。
+ */
+export function formatUsedTime(seconds: number) {
+  const safe = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0
+  return `${Math.floor(safe / 60)}分${safe % 60}秒`
+}

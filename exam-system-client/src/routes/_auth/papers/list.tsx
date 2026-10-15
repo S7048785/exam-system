@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { api } from '#/ApiInstance.ts'
 import { papersQueryOptions } from '#/features/console/papers/paperQueries.ts'
-import SaveDialog from '#/features/console/papers/list/SaveDialog'
+import SaveDialog from '#/features/console/papers/components/SaveDialog'
 import { PaperFilters } from '#/features/console/papers/list/PaperFilters.tsx'
 import { PaperPagination } from '#/features/console/papers/list/PaperPagination.tsx'
 import PaperList from '#/features/console/papers/list/PaperList.tsx'
@@ -70,7 +70,7 @@ function PapersPage() {
   const q = Route.useRouteContext().queryClient
   const handleRefresh = () => {
     setPageCondition((state) => ({ ...state, page: 1 }))
-    q.invalidateQueries({queryKey: ['listPapers']})
+    q.invalidateQueries({ queryKey: ['listPapers'] })
   }
 
   // 筛选变化

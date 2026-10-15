@@ -11,7 +11,6 @@ import { Input } from '#/components/ui/input.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import PopoverSelect from '#/components/popover-select/PopoverSelect.tsx'
-import type { PopoverSelectOption } from '#/components/popover-select/PopoverSelect.tsx'
 import {
   Activity,
   CircleCheck,
@@ -31,94 +30,52 @@ import {
 } from '#/components/ui/table.tsx'
 import { api } from '#/ApiInstance.ts'
 import useDebounce from '#/hooks/useDebounce.ts'
-import { formatDateTimeShort } from '#/lib/date-util.ts'
+import { formatDateTimeShort, formatUsedTime } from '#/lib/date-util.ts'
 import { cn } from '#/lib/utils.ts'
-import { PaperPagination } from './PaperPagination.tsx'
-import ExamRecordDetailDialog from './ExamRecordDetailDialog.tsx'
+import { PaperPagination } from '#/features/console/papers/list/PaperPagination.tsx'
+import ScoreDetailDialog from '../ScoreDialog/ScoreDetailDialog'
+import ScoreGradingDialog from '../ScoreDialog/ScoreGradingDialog'
 import {
   EXAM_RECORD_STATUS_MAP,
   canViewRecordDetail,
-} from './examRecordConstants.ts'
+} from '#/features/console/papers/list/examRecordConstants.ts'
 import type { ExamRecordStatus } from '#/__generated/model/enums'
 import type { ExamRecordListItemRes } from '#/__generated/model/static'
 
-interface GradeDialogProps {
+import {
+  PASS_FILTER_OPTIONS,
+  STAT_ICON_TONE,
+  STATUS_FILTER_OPTIONS,
+} from './constants.ts'
+import type { PassFilter } from './constants.ts'
+
+interface ScoreListDialogProps {
   paperId: number
   open: boolean
   onOpenChange: (open: boolean) => void
-  paperNmae?: string
-}
-
-/** 状态筛选项 —— 标签复用共用的状态文案表，避免同一套中文写两遍 */
-const STATUS_FILTER_OPTIONS: ReadonlyArray<
-  PopoverSelectOption<ExamRecordStatus>
-> = [
-  { value: 'ONGOING', label: EXAM_RECORD_STATUS_MAP.ONGOING.label },
-  { value: 'GRADING', label: EXAM_RECORD_STATUS_MAP.GRADING.label },
-  { value: 'GRADED', label: EXAM_RECORD_STATUS_MAP.GRADED.label },
-]
-
-/**
- * 「是否及格」筛选的载体值。
- * `PopoverSelect` 的泛型约束是 `T extends string`，而查询参数 `passed` 是 `boolean`
- * —— 所以用 PASS/FAIL 当载体，发请求时再转布尔。
- */
-type PassFilter = 'PASS' | 'FAIL'
-
-const PASS_FILTER_OPTIONS: ReadonlyArray<PopoverSelectOption<PassFilter>> = [
-  { value: 'FAIL', label: '未及格' },
-  { value: 'PASS', label: '及格' },
-]
-
-/**
- * 统计卡图标的颜色（浅色 / 深色各一档），纯装饰 —— 按语义给色，
- * 让一排数字有辨识度：人数=蓝、及格=绿、不及格=红、最高分=琥珀、平均分=紫、最低分=青。
- * <p>
- * 图标**不带底色**，色值沿用项目既有惯例（浅色 `-600` / 深色 `-400`）。
- */
-const STAT_ICON_TONE = {
-  people: 'text-blue-600 dark:text-blue-400',
-  pass: 'text-emerald-600 dark:text-emerald-400',
-  fail: 'text-rose-600 dark:text-rose-400',
-  max: 'text-amber-600 dark:text-amber-400',
-  avg: 'text-violet-600 dark:text-violet-400',
-  min: 'text-cyan-600 dark:text-cyan-400',
-} as const
-
-/**
- * 用时秒数 →「X分Y秒」。
- * 后端对**未交卷**（考试中 / 无交卷时间）的记录直接给 0，这里只需防御性兜底。
- */
-function formatUsedTime(seconds: number) {
-  const safe = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0
-  return `${Math.floor(safe / 60)}分${safe % 60}秒`
+  paperName?: string
 }
 
 /**
  * 列表行「成绩」→ 该试卷全部考试记录的弹窗。
- *
- * 数据源 `GET /exams/records`（控制台侧，后端已做「试卷归属当前用户」校验）：
- * - 排序与名次都由后端定（成绩降序，名次 = 顺序名次），前端**不要重排**；
- * - `rank` 是**当前筛选结果集内**的名次 —— 姓名 / 状态 / 及格任一条件生效后名次都会重新从 1 开始，
- *   这是既定口径（不是全卷名次）；
- * - 分页 / 每页条数 / 三个筛选全部下推给后端（客户端筛会让 total 与名次算错）；
- * - 表格上方的统计来自 `GET /exams/records/stats`，是**整卷**口径（含考试中/待批改），
- *   不受三个筛选影响；平均分由前端保留 1 位小数。
  */
-export default function GradeDialog({
+export default function ScoreListDialog({
   paperId,
   open,
   onOpenChange,
-  paperNmae,
-}: GradeDialogProps) {
+  paperName,
+}: ScoreListDialogProps) {
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)
   const [nameInput, setNameInput] = useState('')
   const [statusFilter, setStatusFilter] = useState<ExamRecordStatus>()
   const [passFilter, setPassFilter] = useState<PassFilter>()
-  // 答题详情（嵌套弹窗）：存**整行数据**，头部直接用（比详情接口多带及格分/排名）
+  // 嵌套弹窗：查看成绩 / 考试评分（两个独立弹窗，共用 ScoreDialogShell）
   const [detailRecord, setDetailRecord] =
     useState<ExamRecordListItemRes | null>(null)
+  const [gradeRecord, setGradeRecord] = useState<ExamRecordListItemRes | null>(
+    null,
+  )
   // 打字不立刻打接口：静默 300ms 后才带上姓名条件
   const name = useDebounce(nameInput, 300)
 
@@ -230,7 +187,7 @@ export default function GradeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85vh] w-[96%] max-w-6xl flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{paperNmae}</DialogTitle>
+          <DialogTitle>{paperName}</DialogTitle>
         </DialogHeader>
         <DialogDescription className="sr-only">
           查看该试卷下全部考生的考试记录
@@ -244,7 +201,9 @@ export default function GradeDialog({
                 className="flex flex-col items-center gap-1.5 border p-3"
               >
                 <item.icon className={cn('size-5', item.tone)} />
-                <div className="text-muted-foreground text-xs">{item.label}</div>
+                <div className="text-muted-foreground text-xs">
+                  {item.label}
+                </div>
                 <div className="text-lg font-semibold">{item.value ?? '-'}</div>
               </div>
             ))}
@@ -252,24 +211,24 @@ export default function GradeDialog({
 
           <div className="flex shrink-0 flex-wrap items-center gap-3">
             <PopoverSelect
-                options={STATUS_FILTER_OPTIONS}
-                value={statusFilter}
-                onChange={(next) => {
-                  setStatusFilter(next)
-                  setPage(1)
-                }}
-                placeholder="全部状态"
-                className="w-42"
+              options={STATUS_FILTER_OPTIONS}
+              value={statusFilter}
+              onChange={(next) => {
+                setStatusFilter(next)
+                setPage(1)
+              }}
+              placeholder="全部状态"
+              className="w-42"
             />
             <PopoverSelect
-                options={PASS_FILTER_OPTIONS}
-                value={passFilter}
-                onChange={(next) => {
-                  setPassFilter(next)
-                  setPage(1)
-                }}
-                placeholder="全部成绩"
-                className="w-42"
+              options={PASS_FILTER_OPTIONS}
+              value={passFilter}
+              onChange={(next) => {
+                setPassFilter(next)
+                setPage(1)
+              }}
+              placeholder="全部成绩"
+              className="w-42"
             />
             <Input
               placeholder="按姓名搜索…"
@@ -311,88 +270,105 @@ export default function GradeDialog({
               </TableHeader>
               <TableBody>
                 {rows.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                          colSpan={8}
-                          className="text-muted-foreground h-24 text-center"
-                      >
-                        {emptyText}
-                      </TableCell>
-                    </TableRow>
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="text-muted-foreground h-24 text-center"
+                    >
+                      {emptyText}
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                    rows.map((row) => {
-                      const status = EXAM_RECORD_STATUS_MAP[row.status]
-                      const canView = canViewRecordDetail(row.status)
-                      // 未交卷（考试中）时 endTime 为 null，用 '-' 占位
-                      const start = row.startTime
-                          ? formatDateTimeShort(row.startTime)
-                          : '-'
-                      const end = row.endTime
-                          ? formatDateTimeShort(row.endTime)
-                          : '-'
-                      return (
-                          <TableRow key={row.id}>
-                            <TableCell>{row.studentName}</TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              {start}
-                              {' ~ '}
-                              {end}
-                            </TableCell>
-                            <TableCell>{formatUsedTime(row.usedSeconds)}</TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              {row.totalScore}/{row.passingScore}
-                            </TableCell>
-                            <TableCell>{row.score}</TableCell>
-                            <TableCell>{row.rank}</TableCell>
-                            <TableCell>
-                              <Badge variant={status?.variant ?? 'outline'}>
-                                {status?.label ?? row.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="outline"
-                                size="xs"
-                                // 考试中的记录后端也拦（与考生侧口径一致），按钮同步置灰
-                                disabled={!canView}
-                                title={
-                                  canView
-                                    ? '查看答题详情'
-                                    : '考试中，暂不能查看答题详情'
-                                }
-                                onClick={() => setDetailRecord(row)}
-                              >
-                                查看
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                      )
-                    })
+                  rows.map((row) => {
+                    const status = EXAM_RECORD_STATUS_MAP[row.status]
+                    const canView = canViewRecordDetail(row.status)
+                    // 未交卷（考试中）时 endTime 为 null，用 '-' 占位
+                    const start = row.startTime
+                      ? formatDateTimeShort(row.startTime)
+                      : '-'
+                    const end = row.endTime
+                      ? formatDateTimeShort(row.endTime)
+                      : '-'
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell>{row.studentName}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {start}
+                          {' ~ '}
+                          {end}
+                        </TableCell>
+                        <TableCell>{formatUsedTime(row.usedSeconds)}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {row.totalScore}/{row.passingScore}
+                        </TableCell>
+                        <TableCell>{row.score}</TableCell>
+                        <TableCell>{row.rank}</TableCell>
+                        <TableCell>
+                          <Badge variant={status?.variant ?? 'outline'}>
+                            {status?.label ?? row.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            // 考试中的记录后端也拦（与考生侧口径一致），按钮同步置灰
+                            disabled={!canView}
+                            title={
+                              canView
+                                ? '查看答题详情'
+                                : '考试中，暂不能查看答题详情'
+                            }
+                            onClick={() => setDetailRecord(row)}
+                          >
+                            查看
+                          </Button>
+                          <Button
+                            size="xs"
+                            className="ml-2"
+                            // 与「查看」同一道门槛：考试中的记录后端也拦（还没交卷不给判）
+                            disabled={!canView}
+                            title={canView ? '去评卷' : '考试中，暂不能评卷'}
+                            onClick={() => setGradeRecord(row)}
+                          >
+                            去评卷
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
 
           <PaperPagination
-              total={total}
-              page={page}
-              totalPages={totalPages}
-              size={size}
-              onPageChange={setPage}
-              onSizeChange={(next) => {
-                setSize(next)
-                setPage(1)
-              }}
+            total={total}
+            page={page}
+            totalPages={totalPages}
+            size={size}
+            onPageChange={setPage}
+            onSizeChange={(next) => {
+              setSize(next)
+              setPage(1)
+            }}
           />
         </div>
       </DialogContent>
 
-      {/* 嵌套弹窗：单个考生的逐题作答（只读）—— open 由 detailRecord 是否非空决定 */}
-      <ExamRecordDetailDialog
+      {/* 嵌套弹窗：查看成绩（只读）/ 考试评分（可改分）——两个独立弹窗共用一套壳 */}
+      <ScoreDetailDialog
         record={detailRecord}
         open={!!detailRecord}
         onOpenChange={(next) => {
           if (!next) setDetailRecord(null)
+        }}
+      />
+      <ScoreGradingDialog
+        record={gradeRecord}
+        open={!!gradeRecord}
+        onOpenChange={(next) => {
+          if (!next) setGradeRecord(null)
         }}
       />
     </Dialog>

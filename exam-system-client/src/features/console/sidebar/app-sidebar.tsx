@@ -23,6 +23,7 @@ const navMain = [
     icon: <ScrollText strokeWidth={2} />,
     submenu: [
       { title: '试卷列表', url: '/papers/list' },
+      { title: '人工判卷', url: '/papers/report' },
       { title: '规则创建', url: '/papers/rule' },
       { title: '试卷分类', url: '/papers/categories' },
     ],
