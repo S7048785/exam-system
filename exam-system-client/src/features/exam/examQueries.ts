@@ -1,6 +1,9 @@
 import { queryOptions } from '@tanstack/react-query'
 import { api } from '#/ApiInstance.ts'
 
+import type { ExamTakingView } from '#/__generated/model/static'
+
+
 /**
  * 考试入口页的试卷信息（考生侧，免登录可访问）。
  *
@@ -19,9 +22,6 @@ export const examPaperInfoQueryOptions = (paperId: number) =>
  *
  * 入口页用它判断「我」在这张试卷上考到哪一步了：后端 `startExam` 的续考就是复用同一条
  * 未交卷的 `ONGOING` 记录，所以有 ONGOING 就说明是考到一半，按钮该显示「继续考试」。
- *
- * 拿不到不是异常：未登录、或这场是**免登录考试**（它的记录 `user_id` 为空，
- * 而 history 是按 userId 查的）都返回不了，此时按「未考试」渲染即可。
  */
 export const examHistoryQueryOptions = queryOptions({
   queryKey: ['examHistory'],
@@ -29,3 +29,21 @@ export const examHistoryQueryOptions = queryOptions({
   select: (data) => data.data,
   retry: false,
 })
+/**
+ * 考试记录 id：雪花 id 有 19 位，超过 JS 的 `Number.MAX_SAFE_INTEGER`。
+ */
+export type ExamRecordId = string
+
+/**
+ * 答题页数据：`GET /exams/{recordId}/taking`（**不含正确答案**）。
+ *
+ * 返回里的 `answerRecords` 是这场考试**已经保存过的答案**，继续考试时用它把勾选状态恢复出来
+ * （见 `answerRecordsToMap`）。
+ */
+export const examTakingQueryOptions = (recordId: ExamRecordId) =>
+    queryOptions({
+      queryKey: ['examTaking', recordId],
+      queryFn: () => api.examController.getExamTaking({ id: recordId }),
+      select: (res): ExamTakingView => res.data,
+      retry: false,
+    })

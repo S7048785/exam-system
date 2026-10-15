@@ -8,10 +8,8 @@ interface StepPublishExamProps {
   description: string
 }
 
-export default function StepPublishExam({
-  paperId,
-}: StepPublishExamProps) {
-  const examUrl = `/exam/${paperId}`
+export default function StepPublishExam({ paperId }: StepPublishExamProps) {
+  const examUrl = `/exam/${paperId}/start`
 
   const handleCopy = async () => {
     try {

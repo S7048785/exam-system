@@ -5,6 +5,7 @@ import type {
   ExamQuestion,
 } from '#/features/exam/paper/types.ts'
 import type { SubmitAnswerReq } from '#/__generated/model/static'
+import { useEffect, useState } from 'react'
 
 /** 有内容才算「已作答」（纯空白不算） */
 export function isAnswered(value: string[] | undefined): boolean {
@@ -62,12 +63,7 @@ export function userAnswerOf(question: ExamQuestion, values: string[]): string {
 }
 
 /**
- * 组装保存 / 交卷的请求体。
- *
- * 🔴 后端 `saveAnswers` 是**全量覆盖**（先删掉这场考试的全部答案，再按请求体整份重建），
- * 所以请求体必须等于**整份答卷** —— 只传改动的那几题会把其余答案全清掉。
- *
- * 这里刻意**不带未作答的题**（顺带也避开了 `userAnswer` 的 `@NotBlank`）：后端删完重建之后，
+ * 组装保存 / 交卷的请求体。全量覆盖
  * 「请求体里没有」就等于「这题没答」，于是「把多选题的选项全部取消勾选再保存」也能真正生效。
  */
 export function toSubmitAnswers(
@@ -85,9 +81,6 @@ export function toSubmitAnswers(
 /**
  * 把后端回传的已存答案（`ExamTakingView.answerRecords`）转成界面用的 `AnswerMap` ——
  * 「继续考试」进页面时把上次的勾选状态恢复出来。
- *
- * ⚠️ 只按**题型**决定要不要拆逗号：多选的答案本来就是 `A,C` 这种形式，而简答题原文里完全
- * 可能有半角逗号，无脑 `split(',')` 会在下次保存时把答案截断。
  */
 export function answerRecordsToMap(
   questions: ReadonlyArray<ExamQuestion>,
@@ -120,12 +113,10 @@ export function formatCountdown(ms: number): string {
 
 /**
  * 按题型分组并排序（顺序见 `QUESTION_TYPE_ORDER`：单选 → 判断 → 多选 → 简答）。
- *
- * 题号按**分组后的顺序**在整卷内连续编号（不按题型重新从 1 开始），同题型内部保持题目
- * 原有的相对顺序。中间题目列表和左侧答题卡都吃这一份结果，保证「列表里的第 N 题」
- * 和「答题卡上的 N」永远是同一题。
  */
-export function groupQuestionsByType(questions: ReadonlyArray<ExamQuestion>) {
+export function groupQuestionsByType<T extends ExamQuestion>(
+  questions: ReadonlyArray<T>,
+) {
   const groups = QUESTION_TYPE_ORDER.map((type) => ({
     type,
     questions: questions.filter((question) => question.type === type),
@@ -142,6 +133,30 @@ export function groupQuestionsByType(questions: ReadonlyArray<ExamQuestion>) {
 }
 
 /** 把分组结果拍平成一条有序题目列表（题号已经算好） */
-export function orderQuestionsByType(questions: ReadonlyArray<ExamQuestion>) {
+export function orderQuestionsByType<T extends ExamQuestion>(
+  questions: ReadonlyArray<T>,
+) {
   return groupQuestionsByType(questions).flatMap((group) => group.items)
+}
+
+/** `ApiError.message` 就是后端的业务文案（422 是 text/plain，5xx 也有），拿不到才用 fallback */
+export const errorText = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback
+
+/**
+ * 每秒走一次的倒计时，返回距 `deadline` 还剩多少毫秒。
+ *
+ * 初始值是 `null`（未挂载）：服务端渲染时拿不到客户端时间，直接算会在 hydration 时报
+ * 「文本不一致」；所以调用方先渲染一个占位符（`--:--`），等挂载后再开始跳动。
+ */
+export function useCountdown(deadline: number): number | null {
+  const [now, setNow] = useState<number | null>(null)
+
+  useEffect(() => {
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  return now === null ? null : deadline - now
 }
