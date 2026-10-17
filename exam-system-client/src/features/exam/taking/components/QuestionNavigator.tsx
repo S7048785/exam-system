@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { cn } from '#/lib/utils.ts'
-import { QUESTION_TYPE_META } from '#/features/exam/paper/constants.ts'
+import { QUESTION_TYPE_META } from '#/features/exam/taking/constants.ts'
 import {
   groupQuestionsByType,
   isAnswered,
-} from '#/features/exam/paper/utils.ts'
-import type { AnswerMap, ExamQuestion } from '#/features/exam/paper/types.ts'
+} from '#/features/exam/taking/utils.ts'
+import type { AnswerMap, ExamQuestion } from '#/features/exam/taking/types.ts'
 
 /**
  * 题号格子的配色。

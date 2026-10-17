@@ -28,10 +28,13 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { api } from '#/ApiInstance.ts'
 import useDebounce from '#/hooks/useDebounce.ts'
 import { formatDateTimeShort, formatUsedTime } from '#/lib/date-util.ts'
 import { cn } from '#/lib/utils.ts'
+import {
+  paperExamRecordsQueryOptions,
+  paperExamStatsQueryOptions,
+} from '#/features/console/papers/paperQueries.ts'
 import { PaperPagination } from '#/features/console/papers/list/PaperPagination.tsx'
 import ScoreDetailDialog from '../ScoreDialog/ScoreDetailDialog'
 import ScoreGradingDialog from '../ScoreDialog/ScoreGradingDialog'
@@ -84,33 +87,20 @@ export default function ScoreListDialog({
     isFetching,
     error,
     refetch: refetchRecords,
-  } = useQuery({
-    queryKey: [
-      'paperExamRecords',
-      paperId,
-      page,
-      size,
-      name,
-      statusFilter,
-      passFilter,
-    ],
-    queryFn: () =>
-      api.examController.listPaperRecords({
+  } = useQuery(
+    paperExamRecordsQueryOptions(
+      {
+        paperId,
+        page,
+        size,
         // 空串不传（后端把空白当「不筛」，这里提前收敛成 undefined）
-        query: {
-          paperId,
-          page,
-          size,
-          name: name.trim() || undefined,
-          status: statusFilter,
-          passed: passFilter === undefined ? undefined : passFilter === 'PASS',
-        },
-      }),
-    enabled: open,
-    // 翻页/改名时保留上一页内容，避免表格闪一下空白
-    placeholderData: (prev) => prev,
-    staleTime: 10 * 1000,
-  })
+        name: name.trim() || undefined,
+        status: statusFilter,
+        passed: passFilter === undefined ? undefined : passFilter === 'PASS',
+      },
+      open,
+    ),
+  )
 
   const rows = data?.list ?? []
   const total = data?.total ?? rows.length
@@ -122,13 +112,7 @@ export default function ScoreListDialog({
     data: statsData,
     isFetching: isStatsFetching,
     refetch: refetchStats,
-  } = useQuery({
-    queryKey: ['paperExamStats', paperId],
-    queryFn: () =>
-      api.examController.getExamRecordStats({ query: { paperId } }),
-    enabled: open,
-    staleTime: 10 * 1000,
-  })
+  } = useQuery(paperExamStatsQueryOptions(paperId, open))
   const stats = statsData?.data
 
   /** 刷新：表格与统计是两个独立请求，一起重拉 */

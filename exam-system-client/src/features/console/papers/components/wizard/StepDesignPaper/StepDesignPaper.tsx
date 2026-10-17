@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '#/components/ui/button.tsx'
 import {
   DropdownMenu,
@@ -8,9 +8,12 @@ import {
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu.tsx'
 import { ChevronDown } from 'lucide-react'
-import { toast } from 'sonner'
-import { api } from '#/ApiInstance.ts'
 import { cn } from '#/lib/utils.ts'
+import { paperQuestionsQueryOptions } from '#/features/console/papers/paperQueries.ts'
+import {
+  useRemovePaperQuestionMutation,
+  useUpdatePaperQuestionScoreMutation,
+} from '#/features/console/papers/usePaperActions.ts'
 import CreateQuestionInPaperDialog from './CreateQuestionInPaperDialog.tsx'
 import SelectQuestionFromBankDialog from './SelectQuestionFromBankDialog.tsx'
 import MemoTable from './MemoTable.tsx'
@@ -27,43 +30,13 @@ export default function StepDesignPaper({ paperId }: StepDesignPaperProps) {
   const [activeIndex, setActiveIndex] = useState<number | undefined>()
   const rowRefs = useRef<(HTMLTableRowElement | null)[]>([])
 
-  const { data: questionsData, refetch: refetchQuestions } = useQuery({
-    queryKey: ['paper-questions', paperId],
-    queryFn: () => api.paperController.getPaperQuestions({ id: paperId }),
-    select: (d) => d.data,
-  })
+  const { data: questionsData } = useQuery(paperQuestionsQueryOptions(paperId))
   const questions = questionsData ?? []
   const totalCount = questions.length
   const totalScore = questions.reduce((s, q) => s + q.score, 0)
 
-  const removeQuestionMutation = useMutation({
-    mutationFn: (questionId: number) =>
-      api.paperController.removePaperQuestion({
-        id: paperId,
-        questionId,
-      }),
-    onSuccess: async () => {
-      await refetchQuestions()
-      toast.success('题目已移除')
-    },
-    onError: (err) => toast.error(err.message),
-  })
-
-  const updateScoreMutation = useMutation({
-    mutationFn: ({
-      questionId,
-      score,
-    }: {
-      questionId: number
-      score: number
-    }) =>
-      api.paperController.updatePaperQuestionScore({
-        id: paperId,
-        questionId,
-        score,
-      }),
-    onSuccess: () => refetchQuestions(),
-  })
+  const removeQuestionMutation = useRemovePaperQuestionMutation(paperId)
+  const updateScoreMutation = useUpdatePaperQuestionScoreMutation(paperId)
 
   const handleUpdateScore = (id: number, score: string) => {
     const newScore = Number(score)
@@ -195,7 +168,6 @@ export default function StepDesignPaper({ paperId }: StepDesignPaperProps) {
             if (!v) setCreateConfig(null)
           }}
           paperId={paperId}
-          onSuccess={refetchQuestions}
           questionType={createConfig.type}
         />
       )}
@@ -203,7 +175,6 @@ export default function StepDesignPaper({ paperId }: StepDesignPaperProps) {
         open={showBankDialog}
         onOpenChange={setShowBankDialog}
         paperId={paperId}
-        onSuccess={refetchQuestions}
         existingIds={questions.map((q) => q.id)}
       />
     </div>

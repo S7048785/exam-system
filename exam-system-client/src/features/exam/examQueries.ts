@@ -3,17 +3,20 @@ import { api } from '#/ApiInstance.ts'
 
 import type { ExamTakingView } from '#/__generated/model/static'
 
-
 /**
  * 考试入口页的试卷信息（考生侧，免登录可访问）。
  *
  * 供 `loader` 里 `queryClient.ensureQueryData(...)` 与组件内 `useQuery` 共用同一份
  * queryKey —— 请求只在 loader 发生一次，组件直接吃缓存。
+ *
+ * `select` 直接取 `data`：调用方拿到的就是**非空**的试卷信息，不必再写 `res.data`
+ * 并一路 `info?.`（同 `examTakingQueryOptions` 的写法）。
  */
 export const examPaperInfoQueryOptions = (paperId: number) =>
   queryOptions({
     queryKey: ['examPaperInfo', paperId],
     queryFn: () => api.examController.getExamPaperInfo({ id: paperId }),
+    select: (res) => res.data,
     retry: false,
   })
 
@@ -41,9 +44,9 @@ export type ExamRecordId = string
  * （见 `answerRecordsToMap`）。
  */
 export const examTakingQueryOptions = (recordId: ExamRecordId) =>
-    queryOptions({
-      queryKey: ['examTaking', recordId],
-      queryFn: () => api.examController.getExamTaking({ id: recordId }),
-      select: (res): ExamTakingView => res.data,
-      retry: false,
-    })
+  queryOptions({
+    queryKey: ['examTaking', recordId],
+    queryFn: () => api.examController.getExamTaking({ id: recordId }),
+    select: (res): ExamTakingView => res.data,
+    retry: false,
+  })

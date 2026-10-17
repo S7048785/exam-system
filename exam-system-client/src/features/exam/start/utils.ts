@@ -42,3 +42,44 @@ export function resolveExamUserState(
   )
   return now >= deadline ? 'FINISHED' : 'ONGOING'
 }
+
+/** 试卷的时间窗状态 —— **两个参与模式共用**，只看时间不看「我」的记录 */
+export type WindowPhase = 'NOT_STARTED' | 'OPEN' | 'ENDED'
+
+export function resolveWindowPhase(
+  info: ExamPaperInfoRes,
+  now: number,
+): WindowPhase {
+  if (now < new Date(info.start).getTime()) return 'NOT_STARTED'
+  if (now > new Date(info.end).getTime()) return 'ENDED'
+  return 'OPEN'
+}
+
+/**
+ * 账号登录考试的入场状态 = 时间窗 + 「我」的记录。
+ *
+ * ⚠️ **免登录考试不要用这个**：那条路径拿不到历史记录（`examHistory` 要求登录），
+ * 前端无法识别「我」考到哪一步，只用 {@link WindowPhase} 就够
+ * （免登录考试永远不显示「继续考试」）。
+ */
+export type EntryPhase =
+  | 'NOT_STARTED'
+  | 'NEED_LOGIN'
+  | 'READY'
+  | 'ONGOING'
+  | 'FINISHED'
+
+export function resolveEntryPhase(
+  info: ExamPaperInfoRes,
+  loggedIn: boolean,
+  records: ReadonlyArray<Dynamic_ExamRecords>,
+  now: number,
+): EntryPhase {
+  const window = resolveWindowPhase(info, now)
+  if (window === 'NOT_STARTED') return 'NOT_STARTED'
+  if (window === 'ENDED') return 'FINISHED'
+  if (!loggedIn) return 'NEED_LOGIN'
+  // 剩下三态与 ExamUserState 同名，未考过即「可以开考」
+  const state = resolveExamUserState(records, info, now)
+  return state === 'NOT_ATTEMPTED' ? 'READY' : state
+}

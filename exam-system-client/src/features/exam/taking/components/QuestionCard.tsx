@@ -1,8 +1,8 @@
 import { Textarea } from '#/components/ui/textarea.tsx'
 import { cn } from '#/lib/utils.ts'
-import { QUESTION_TYPE_META } from '#/features/exam/paper/constants.ts'
-import { optionLetter, optionsOf } from '#/features/exam/paper/utils.ts'
-import type { ExamQuestion } from '#/features/exam/paper/types.ts'
+import { QUESTION_TYPE_META } from '#/features/exam/taking/constants.ts'
+import { optionLetter, optionsOf } from '#/features/exam/taking/utils.ts'
+import type { ExamQuestion } from '#/features/exam/taking/types.ts'
 
 /**
  * 一道题：题头（序号 + 题型 + 分值）+ 题干 + 作答区。

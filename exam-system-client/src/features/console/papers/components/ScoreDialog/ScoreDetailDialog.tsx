@@ -1,3 +1,6 @@
+import { QuestionNavigator } from '#/features/exam/taking/components/QuestionNavigator.tsx'
+import { jumpToQuestion } from '#/features/exam/taking/utils.ts'
+import { DetailHeader } from './DetailHeader.tsx'
 import { DetailQuestionList } from './DetailQuestionList.tsx'
 import { ScoreDialogShell } from './ScoreDialogShell.tsx'
 import { useScoreDetail } from './useScoreDetail.ts'
@@ -15,7 +18,7 @@ interface ScoreDetailDialogProps {
  * **查看考试成绩**：只读看该考生本次考试的逐题作答与得分（总览）。
  *
  * 要改分/评分请用 {@link import('./ScoreGradingDialog.tsx').default ScoreGradingDialog}：
- * 两个弹窗共用 {@link ScoreDialogShell}，差别只在题目下方是只读条还是评卷条。
+ * 两个弹窗共用 {@link ScoreDialogShell} 的布局，差别只在题目下方是只读条还是评卷条。
  */
 export default function ScoreDetailDialog({
   record,
@@ -26,10 +29,21 @@ export default function ScoreDetailDialog({
 
   return (
     <ScoreDialogShell
-      record={record}
       open={open}
       onOpenChange={onOpenChange}
-      scope={scope}
+      srTitle={`答题详情 · ${record?.studentName ?? ''}`}
+      srDescription="查看该考生本次考试的逐题作答与得分"
+      header={
+        record ? <DetailHeader record={record} detail={scope.detail} /> : null
+      }
+      navigator={
+        <QuestionNavigator
+          questions={scope.questions}
+          answers={scope.answerMap}
+          onJump={jumpToQuestion}
+          results={scope.results}
+        />
+      }
     >
       <DetailQuestionList
         ordered={scope.ordered}

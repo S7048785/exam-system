@@ -8,31 +8,33 @@ import {
   Trophy,
 } from 'lucide-react'
 import { formatDateTimeShort, formatUsedTime } from '#/lib/date-util.ts'
-import { StatChip } from '#/features/exam/paper/components/StatChip.tsx'
+import { StatChip } from '#/features/exam/taking/components/StatChip.tsx'
 import { EXAM_RECORD_STATUS_MAP } from '#/features/console/papers/list/examRecordConstants.ts'
-import type { ExamRecordListItemRes } from '#/__generated/model/static'
-import type { ExamRecordStatus } from '#/__generated/model/enums'
+import type {
+  ExamRecordDetail,
+  ExamRecordListItemRes,
+} from '#/__generated/model/static'
 
 interface DetailHeaderProps {
   /** 列表行：及格分 / 排名 / 用时 / 总分只有它有，详情接口不带 */
   record: ExamRecordListItemRes
-  /** 试卷名（来自详情接口） */
-  paperName: string
-  /** 得分与状态优先用详情里的值：提交评卷后立刻反映，不必等父列表刷新 */
-  score: number
-  status: ExamRecordStatus
+  /** 详情（可能还没到）：试卷名 / 得分 / 状态优先取它 */
+  detail: ExamRecordDetail | undefined
   /** 右侧额外动作（评分弹窗传「提交评卷」按钮，查看弹窗不传） */
   action?: ReactNode
 }
 
-/** 弹窗顶栏：左「试卷名 + 考生」，右「状态 + 统计格（+ 可选动作）」 */
-export function DetailHeader({
-  record,
-  paperName,
-  score,
-  status,
-  action,
-}: DetailHeaderProps) {
+/**
+ * 弹窗顶栏：左「试卷名 + 考生」，右「状态 + 统计格（+ 可选动作）」。
+ *
+ * 试卷名 / 得分 / 状态**优先取详情里的值** —— 提交评卷后立刻反映，不必等父列表刷新；
+ * 详情还没到就回落列表行。
+ */
+export function DetailHeader({ record, detail, action }: DetailHeaderProps) {
+  const paperName = detail?.paper.name ?? ''
+  const score = detail?.score ?? record.score
+  const status = detail?.status ?? record.status
+
   return (
     <header className="bg-background/80 flex shrink-0 items-center justify-between gap-4 border-b px-6 py-3">
       <div className="flex min-w-0 items-center gap-3">

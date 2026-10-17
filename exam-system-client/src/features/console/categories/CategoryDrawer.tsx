@@ -14,6 +14,7 @@ import { Label } from '#/components/ui/label.tsx'
 import { toast } from 'sonner'
 import { useIsMobile } from '#/hooks/use-mobile.ts'
 import type { QuestionsCategoriesTree } from '#/__generated/model/static'
+import { findInTree } from '#/lib/tree-util.ts'
 
 interface CategoryDrawerProps {
   open: boolean
@@ -68,23 +69,10 @@ export default function CategoryDrawer({
   }, [open, mode, category, form])
 
   // 获取父分类名称
-  const getParentName = () => {
-    if (parentId === 0) return '顶级分类'
-    const findParent = (
-      cats: readonly QuestionsCategoriesTree[],
-      id: number,
-    ): string | null => {
-      for (const cat of cats) {
-        if (cat.id === id) return cat.name
-        if (cat.children) {
-          const found = findParent(cat.children, id)
-          if (found) return found
-        }
-      }
-      return null
-    }
-    return findParent(categories, parentId) ?? '未知'
-  }
+  const parentNameOf = (id: number) =>
+    id === 0
+      ? '顶级分类'
+      : (findInTree(categories, (cat) => cat.id === id)?.name ?? '未知')
 
   return (
     <Drawer
@@ -97,7 +85,7 @@ export default function CategoryDrawer({
           <DrawerTitle>{mode === 'add' ? '新增分类' : '编辑分类'}</DrawerTitle>
           <DrawerDescription>
             {mode === 'add'
-              ? `将为「${getParentName()}」添加子分类`
+              ? `将为「${parentNameOf(parentId)}」添加子分类`
               : `编辑分类「${category?.name}」`}
           </DrawerDescription>
         </DrawerHeader>
@@ -146,32 +134,7 @@ export default function CategoryDrawer({
             {mode === 'edit' && (
               <div className="space-y-2">
                 <Label>父分类</Label>
-                <Input
-                  value={
-                    category?.parentId === 0
-                      ? '顶级分类'
-                      : (() => {
-                          const findParent = (
-                            cats: readonly QuestionsCategoriesTree[],
-                            id: number,
-                          ): string | null => {
-                            for (const cat of cats) {
-                              if (cat.id === id) return cat.name
-                              if (cat.children) {
-                                const found = findParent(cat.children, id)
-                                if (found) return found
-                              }
-                            }
-                            return null
-                          }
-                          return (
-                            findParent(categories, category?.parentId ?? 0) ??
-                            '未知'
-                          )
-                        })()
-                  }
-                  disabled
-                />
+                <Input value={parentNameOf(category?.parentId ?? 0)} disabled />
                 <p className="text-muted-foreground text-xs">
                   编辑模式下不可修改父分类
                 </p>

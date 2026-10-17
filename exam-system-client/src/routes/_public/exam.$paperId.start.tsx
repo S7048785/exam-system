@@ -1,36 +1,23 @@
-import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import {
-  CalendarDays,
-  GraduationCap,
-  Star,
-  Timer,
-  TriangleAlert,
-} from 'lucide-react'
-import { Button } from '#/components/ui/button.tsx'
-import { Input } from '#/components/ui/input.tsx'
-import { Label } from '#/components/ui/label.tsx'
+import { CalendarDays, GraduationCap, Star, Timer } from 'lucide-react'
 import { formatDateTime } from '#/lib/date-util.ts'
-import { cn } from '#/lib/utils.ts'
 import {
   examHistoryQueryOptions,
   examPaperInfoQueryOptions,
 } from '#/features/exam/examQueries.ts'
-import {
-  getSavedStudentName,
-  saveStudentName,
-} from '#/features/exam/entry/studentNameStorage.ts'
 import { useStartExamMutation } from '#/features/console/papers/usePaperActions.ts'
+import { AccountEntry } from '#/features/exam/start/AccountEntry.tsx'
+import { AnonymousEntry } from '#/features/exam/start/AnonymousEntry.tsx'
+import { EntryNotice } from '#/features/exam/start/EntryNotice.tsx'
 import { ExamEntryError } from '#/features/exam/start/ExamEntryError.tsx'
 import { InfoTile } from '#/features/exam/start/InfoTile.tsx'
 import { PageShell } from '#/features/exam/start/PageShell.tsx'
+import { useNow } from '#/features/exam/start/useNow.ts'
 import {
-  resolveExamUserState,
-  studentNameSchema,
+  resolveEntryPhase,
+  resolveWindowPhase,
 } from '#/features/exam/start/utils.ts'
-import type { ExamUserState } from '#/features/exam/start/utils.ts'
-import { toast } from 'sonner'
 
 /**
  * 考试入口页 `/exam/{paperId}`（免登录可访问 —— 发布步骤给出的链接就是它）。
@@ -39,14 +26,19 @@ import { toast } from 'sonner'
  * - 试卷不存在 / 未发布 → 422「考试不存在」
  * - 已发布但过截止时间 → 422「考试已结束」
  * - 未开始 → 照常返回信息，本页提示「未开始」并不放行
+ *
+ * 本文件只做三件事：**取数 → 选分支 → 摆壳**。两条参与模式各自的
  */
 export const Route = createFileRoute('/_public/exam/$paperId/start')({
+  // 考生入口页不走 SSR：页面内容完全取决「现在几点」和「本地是否存过姓名」，
+  // 服务端渲染只会多一层时间基准不一致的风险
+  ssr: false,
   loader: async ({ context, params }) => {
     const id = Number(params.paperId)
     const info = await context.queryClient.ensureQueryData(
       examPaperInfoQueryOptions(id),
     )
-    if (context.user && info.data?.participateMode === 'LOGIN_REQUIRED') {
+    if (context.user && info.data.participateMode === 'LOGIN_REQUIRED') {
       await context.queryClient.prefetchQuery(examHistoryQueryOptions)
     }
     return info
@@ -59,100 +51,35 @@ function ExamEntryPage() {
   const { paperId: id } = Route.useParams()
   const user = Route.useRouteContext().user
   // loader 已 ensureQueryData，这里直接命中缓存
-  const { data } = useSuspenseQuery(examPaperInfoQueryOptions(Number(id)))
+  const { data: info } = useSuspenseQuery(examPaperInfoQueryOptions(Number(id)))
 
-  // 免登录考试一律让考生填姓名；账号登录考试一律不显示输入框
-  const [studentName, setStudentName] = useState('')
-  // 姓名校验的即时提示（由 zod 产生），打字即清
-  const [nameError, setNameError] = useState('')
+  const isAnonymous = info.participateMode === 'ANONYMOUS'
 
-  const info = data?.data
-  // 时间显示不带年份（formatDateTime 是 YYYY-MM-DD HH:mm，去掉前 5 个字符即可）
-  const fmtTime = (v: string) => formatDateTime(v).slice(5)
-  const now = Date.now()
-  const notStarted = info ? now < new Date(info.start).getTime() : false
-  const ended = info ? now > new Date(info.end).getTime() : false
-  // 免登录考试：一律显示姓名输入框（是否已登录都一样）
-  const needNameInput = !!info && info.participateMode === 'ANONYMOUS'
-  const needLogin = !!info && info.participateMode === 'LOGIN_REQUIRED' && !user
-
-  // 只有「账号登录考试 + 已登录」才拿得到「我」的记录（见 loader 里的说明）
-  const canCheckHistory = !!user && info?.participateMode === 'LOGIN_REQUIRED'
+  // 免登录模式拿不到「我」的记录（`examHistory` 要求登录）⇒ 不查，也就判不了续考
   const { data: history } = useQuery({
     ...examHistoryQueryOptions,
-    enabled: canCheckHistory,
+    enabled: !isAnonymous && !!user,
   })
-  // 同一张试卷下「我」的记录；查不到时按未考试处理
-  const myRecords = (history ?? []).filter((r) => r.paperId === info?.paperId)
-  const examState: ExamUserState = info
-    ? resolveExamUserState(myRecords, info, now)
-    : 'NOT_ATTEMPTED'
+  const myRecords = (history ?? []).filter((r) => r.paperId === info.paperId)
+
+  // 会自己走的「现在」：跨过试卷 start / end、或续考的作答时限就重算
+  const now = useNow([
+    new Date(info.start).getTime(),
+    new Date(info.end).getTime(),
+    ...myRecords
+      .filter((r) => r.status === 'ONGOING')
+      .map(
+        (r) => new Date(r.startTime ?? 0).getTime() + info.duration * 60_000,
+      ),
+  ])
 
   const startExam = useStartExamMutation()
+  const submit = (studentName: string) =>
+    startExam.mutate({ paperId: info.paperId, studentName })
 
-  // 免登录考试：自动填入上次「开始考试」时记住的姓名（考生自己已经打过字就不覆盖）
-  useEffect(() => {
-    if (needNameInput) {
-      setStudentName((prev) => prev || getSavedStudentName())
-    }
-  }, [needNameInput])
-
-  const handleStart = () => {
-    if (!info) return
-    if (notStarted) {
-      toast.error(`考试还未开始，开考时间：${formatDateTime(info.start)}`)
-      return
-    }
-    if (ended) {
-      toast.error('考试已结束')
-      return
-    }
-    if (needLogin) {
-      toast.info('该考试需要登录后参加，请先登录')
-      return
-    }
-    // 免登录考试：姓名必填（1~50 个字符），用 zod 校验；过了才记下来，下次自动填入
-    let name = ''
-    if (needNameInput) {
-      const parsed = studentNameSchema.safeParse(studentName)
-      if (!parsed.success) {
-        const message = parsed.error.issues[0]?.message ?? '姓名不合法'
-        setNameError(message)
-        toast.error(message)
-        return
-      }
-      // 存 trim 后的值
-      saveStudentName(parsed.data)
-      name = parsed.data
-    } else {
-      // 账号登录考试：后端一律取账号里的 realName，请求体里的姓名会被忽略。
-      // 但生成的类型把 studentName 标成了必填，而空串会被 @Size(min = 1) 拦成 422，
-      name = user?.realName ?? ''
-    }
-    startExam.mutate({ paperId: info.paperId, studentName: name })
-  }
-
-  if (!info) {
-    return (
-      <PageShell>
-        <div className="text-muted-foreground text-sm">加载中…</div>
-      </PageShell>
-    )
-  }
-
-  // 主按钮：先看试卷窗口（未开始 / 已结束），再看「我」的状态（未考试 / 考试中 / 考试结束）
-  let buttonLabel = '开始考试'
-  let buttonClass = ''
-  if (notStarted) {
-    buttonLabel = '考试未开始'
-  } else if (ended || examState === 'FINISHED') {
-    buttonLabel = '考试已结束'
-  } else if (examState === 'ONGOING') {
-    buttonLabel = '继续考试'
-    // 考试中 → 警告色（amber），盖掉 Button 默认的 primary 底色
-    buttonClass =
-      'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500'
-  }
+  const window = resolveWindowPhase(info, now)
+  // 时间显示不带年份（formatDateTime 是 YYYY-MM-DD HH:mm，去掉前 5 个字符即可）
+  const fmtTime = (v: string) => formatDateTime(v).slice(5)
 
   return (
     <PageShell>
@@ -193,65 +120,26 @@ function ExamEntryPage() {
             />
           </div>
 
-          {notStarted && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-sm text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-              <span>
-                考试尚未开始，请于 {formatDateTime(info.start)} 后再进入。
-              </span>
-            </div>
+          {window === 'NOT_STARTED' && (
+            <EntryNotice>
+              考试尚未开始，请于 {formatDateTime(info.start)} 后再进入。
+            </EntryNotice>
           )}
 
-          {/* 免登录考试 → 一律让考生填姓名（已登录也要填，成绩只记这里填的姓名；
-              上次填过的姓名会从 localStorage 自动填入） */}
-          {needNameInput && (
-            <div className="space-y-2">
-              <Label htmlFor="studentName">
-                姓名<span className="text-destructive ml-0.5">*</span>
-              </Label>
-              <Input
-                id="studentName"
-                value={studentName}
-                onChange={(e) => {
-                  setStudentName(e.target.value)
-                  // 一开始打字就把上一轮的错误提示清掉
-                  if (nameError) setNameError('')
-                }}
-                placeholder="请输入你的姓名"
-                aria-invalid={!!nameError}
-                aria-describedby={nameError ? 'studentName-error' : undefined}
-              />
-              {nameError && (
-                <p id="studentName-error" className="text-destructive text-sm">
-                  {nameError}
-                </p>
-              )}
-            </div>
+          {isAnonymous ? (
+            <AnonymousEntry
+              window={window}
+              submitting={startExam.isPending}
+              onStart={submit}
+            />
+          ) : (
+            <AccountEntry
+              phase={resolveEntryPhase(info, !!user, myRecords, now)}
+              submitting={startExam.isPending}
+              realName={user?.realName}
+              onStart={submit}
+            />
           )}
-
-          {/* 账号登录考试 + 未登录 → 告知前往登录（不显示姓名框） */}
-          {needLogin && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-sm text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-              <div className="space-y-2">
-                <div>该考试要求登录后才能参加，请先登录。</div>
-              </div>
-            </div>
-          )}
-
-          <Button
-            className={cn('h-11 w-full text-base', buttonClass)}
-            onClick={handleStart}
-            disabled={
-              notStarted ||
-              ended ||
-              needLogin ||
-              examState === 'FINISHED' ||
-              startExam.isPending
-            }
-          >
-            {startExam.isPending ? '正在开考…' : buttonLabel}
-          </Button>
 
           <p className="text-muted-foreground text-center text-xs">
             点击「开始考试」即视为同意遵守考试纪律，请独立完成作答。

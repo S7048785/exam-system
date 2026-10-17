@@ -4,7 +4,7 @@ import type {
   GradeAnswerReq,
 } from '#/__generated/model/static'
 import type { QuestionType } from '#/__generated/model/enums'
-import type { AnswerMap } from '#/features/exam/paper/types.ts'
+import type { AnswerMap } from '#/features/exam/taking/types.ts'
 
 export type DetailQuestion = ExamRecordDetail_TargetOf_paper_TargetOf_questions
 export type DetailAnswerRecord = ExamRecordDetail_TargetOf_answerRecords
@@ -114,4 +114,32 @@ export function buildChangedAnswers(
     })
   }
   return changed
+}
+
+/**
+ * 把「未提交的判对 / 判错」并进答题卡的着色依据。
+ *
+ * `results` 是**库里**的结论（`questionId → 对/错`），而 `edits` 的 key 是 `answerRecordId`
+ * 且只存动过的题。老师一点「判对 / 判错」，答题卡就该立刻变色 —— 在传 `scope` 的地方把
+ * 编辑态盖上去即可，不用让 `QuestionNavigator` 去区分「已提交 / 未提交」。
+ *
+ * - `correct` 为 undefined（只改了分数没判对错）→ 不动原值；
+ * - 找不到对应题目（孤儿答案）→ 跳过。
+ */
+export function mergeMarkingResults(
+  results: Readonly<Record<number, 'correct' | 'wrong'>>,
+  answerRecords: ReadonlyArray<DetailAnswerRecord>,
+  edits: EditMap,
+): Record<number, 'correct' | 'wrong'> {
+  const questionIdByAnswer = new Map(
+    answerRecords.map((answer) => [answer.id, answer.questionId]),
+  )
+  const merged = { ...results }
+  for (const [answerId, edit] of Object.entries(edits)) {
+    if (edit.correct === undefined) continue
+    const questionId = questionIdByAnswer.get(Number(answerId))
+    if (questionId === undefined) continue
+    merged[questionId] = edit.correct ? 'correct' : 'wrong'
+  }
+  return merged
 }

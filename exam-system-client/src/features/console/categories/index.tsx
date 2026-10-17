@@ -1,14 +1,14 @@
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { api } from '#/ApiInstance.ts'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import CategoryTable from './CategoryTable.tsx'
 import CategoryDrawer from './CategoryDrawer.tsx'
 import { useState } from 'react'
 import { categoryTreeOptions } from '#/features/console/categories/categoryQueries.ts'
-import type {
-  QuestionsCategoriesTree,
-  QuestionsCategorySaveInput,
-  QuestionsCategoryUpdateInput,
-} from '#/__generated/model/static'
+import {
+  useAddCategoryMutation,
+  useDeleteCategoryMutation,
+  useUpdateCategoryMutation,
+} from './useCategoryActions.ts'
+import type { QuestionsCategoriesTree } from '#/__generated/model/static'
 
 export default function CategoriesPage() {
   // 展开的分类 ID 集合
@@ -25,32 +25,11 @@ export default function CategoriesPage() {
 
   const { data: treeData, refetch } = useSuspenseQuery(categoryTreeOptions)
 
-  // 新增分类
-  const addMutation = useMutation({
-    mutationFn: (input: QuestionsCategorySaveInput) =>
-      api.questionCategoryController.addCategory({ body: input }),
-    onSuccess: () => {
-      refetch()
-    },
-  })
-
-  // 更新分类
-  const updateMutation = useMutation({
-    mutationFn: ({ input }: { input: QuestionsCategoryUpdateInput }) =>
-      api.questionCategoryController.updateCategory({ body: input }),
-    onSuccess: () => {
-      refetch()
-    },
-  })
-
-  // 删除分类
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      api.questionCategoryController.removeCategory({ id }),
-    onSuccess: () => {
-      refetch()
-    },
-  })
+  // 写操作的 toast / 刷树都在 useCategoryActions 里，这里只补「成功才关抽屉」
+  const closeDrawer = () => setDrawerOpen(false)
+  const addMutation = useAddCategoryMutation(closeDrawer)
+  const updateMutation = useUpdateCategoryMutation(closeDrawer)
+  const deleteMutation = useDeleteCategoryMutation()
 
   // 切换展开/折叠
   const toggleExpand = (id: number) => {
@@ -87,15 +66,12 @@ export default function CategoriesPage() {
       })
     } else if (selectedCategory) {
       updateMutation.mutate({
-        input: {
-          id: selectedCategory.id,
-          name: values.name,
-          parentId: selectedCategory.parentId,
-          sort: values.sort,
-        },
+        id: selectedCategory.id,
+        name: values.name,
+        parentId: selectedCategory.parentId,
+        sort: values.sort,
       })
     }
-    setDrawerOpen(false)
   }
 
   // 删除分类

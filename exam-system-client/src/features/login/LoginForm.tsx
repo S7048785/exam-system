@@ -40,7 +40,6 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
   const loginMutation = useLoginAction()
   const [rememberMe, setRememberMe] = useState(!!saved)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm({
     defaultValues: {
@@ -51,41 +50,35 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       onChange: userSchema,
     },
     onSubmit: async ({ value }) => {
-      setIsSubmitting(true)
-      loginMutation.mutate(
-        {
+      // 「登录中…」交给 loginMutation.isPending —— 手写 state 时漏在成功路径上重置，
+      // 用户被 /login 的 beforeLoad 弹回来就会卡死在 disabled 状态
+      try {
+        const data = await loginMutation.mutateAsync({
           email: value.email,
           password: value.password,
-        },
-        {
-          onError: (error: any) => {
-            setIsSubmitting(false)
-            toast.error(error.message || '网络错误')
-            // 这会重新设置 saved?.email
-            // form.resetField('password')
-            form.setFieldValue('password', '')
-            return
-          },
-          onSuccess: async (data) => {
-            toast.success('登录成功')
+        })
+        toast.success('登录成功')
 
-            if (rememberMe) {
-              localStorage.setItem(
-                REMEMBERED_CREDENTIALS_KEY,
-                JSON.stringify({
-                  email: value.email,
-                  password: value.password,
-                }),
-              )
-            } else {
-              localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY)
-            }
-            if (data.data) {
-              await onLoginSuccess(data.data)
-            }
-          },
-        },
-      )
+        if (rememberMe) {
+          localStorage.setItem(
+            REMEMBERED_CREDENTIALS_KEY,
+            JSON.stringify({
+              email: value.email,
+              password: value.password,
+            }),
+          )
+        } else {
+          localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY)
+        }
+        if (data.data) {
+          await onLoginSuccess(data.data)
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error && error.message ? error.message : '网络错误',
+        )
+        form.setFieldValue('password', '')
+      }
     },
   })
 
@@ -160,9 +153,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           className="w-full py-6"
           type="submit"
           size="lg"
-          disabled={isSubmitting}
+          disabled={loginMutation.isPending}
         >
-          {isSubmitting ? '登录中...' : '登录'}
+          {loginMutation.isPending ? '登录中...' : '登录'}
         </Button>
       </div>
     </form>

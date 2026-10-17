@@ -1,24 +1,25 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { ExamTopBar } from '#/features/exam/paper/components/ExamTopBar.tsx'
-import { QuestionCard } from '#/features/exam/paper/components/QuestionCard.tsx'
-import { QuestionNavigator } from '#/features/exam/paper/components/QuestionNavigator.tsx'
-import { useCountdown } from '#/features/exam/paper/utils.ts'
+import { ExamTopBar } from '#/features/exam/taking/components/ExamTopBar.tsx'
+import { QuestionCard } from '#/features/exam/taking/components/QuestionCard.tsx'
+import { QuestionNavigator } from '#/features/exam/taking/components/QuestionNavigator.tsx'
 import {
   answerRecordsToMap,
   countAnswered,
   errorText,
   formatCountdown,
+  jumpToQuestion,
   orderQuestionsByType,
   toSubmitAnswers,
-} from '#/features/exam/paper/utils.ts'
-import type { AnswerMap } from '#/features/exam/paper/types.ts'
+  useCountdown,
+} from '#/features/exam/taking/utils.ts'
+import type { AnswerMap } from '#/features/exam/taking/types.ts'
 import type { ExamTakingView } from '#/__generated/model/static'
 import {
   useSaveAnswersMutation,
   useSubmitExamMutation,
-} from '#/features/exam/useActions.ts'
+} from '#/features/exam/useExamActions.ts'
 
 /** 剩余时间不足这个数就标红提醒 */
 const URGENT_THRESHOLD_MS = 5 * 60_000
@@ -57,7 +58,7 @@ export function ExamTaking({
     new Date(exam.startTime).getTime() + paper.examSettings.duration * 60_000
   const remaining = useCountdown(deadline)
 
-  // 接口绑定在 `features/exam/useActions.ts`，副作用写在这里
+  // 接口绑定在 `features/exam/useExamActions.ts`，副作用写在这里
   const saveMutation = useSaveAnswersMutation(recordId, {
     onSuccess: () => {
       setSaved(true)
@@ -87,12 +88,6 @@ export function ExamTaking({
     setAnswers((prev) => ({ ...prev, [questionId]: next }))
     // 一改动就回到「未保存」
     setSaved(false)
-  }
-
-  const jumpToQuestion = (questionId: number) => {
-    document
-      .getElementById(`question-${questionId}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   /**

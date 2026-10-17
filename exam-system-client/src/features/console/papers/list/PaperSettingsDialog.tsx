@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -22,14 +22,14 @@ import CategoryTreePicker from '#/components/category-tree/CategoryTreePicker.ts
 import { api } from '#/ApiInstance.ts'
 import { paperQueries } from '#/features/console/papers/paperQueries.ts'
 import {
+  useSaveExamSettingsMutation,
+  useSavePaperMutation,
+} from '#/features/console/papers/usePaperActions.ts'
+import {
   defaultTimeWindow,
   toApiDateTime,
   toLocalInput,
 } from '#/features/console/papers/time-window.ts'
-import type {
-  PaperExamSettingsInput,
-  PaperSaveInput,
-} from '#/__generated/model/static'
 import type { ParticipateMode } from '#/__generated/model/enums'
 import { toast } from 'sonner'
 import z from 'zod'
@@ -112,8 +112,6 @@ export default function PaperSettingsDialog({
   onOpenChange,
   onSaved,
 }: PaperSettingsDialogProps) {
-  const queryClient = useQueryClient()
-
   // 试卷基本信息
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -172,16 +170,15 @@ export default function PaperSettingsDialog({
     }
   }, [open, detailData])
 
-  const savePaperMutation = useMutation({
-    mutationFn: (body: PaperSaveInput) =>
-      api.paperController.savePaperV2({ body }),
-  })
-  const saveSettingsMutation = useMutation({
-    mutationFn: (body: PaperExamSettingsInput) =>
-      api.paperController.updatePaperExamSettings({ id: paperId, body }),
+  // 保存 + toast + 刷缓存都在 usePaperActions 里，这里只管校验与关弹窗
+  const savePaper = useSavePaperMutation()
+  const saveSettings = useSaveExamSettingsMutation(paperId, () => {
+    onOpenChange(false)
+    // 两个保存请求都已 200 —— 通知父组件（发布流程据此继续）
+    onSaved?.()
   })
 
-  const saving = savePaperMutation.isPending || saveSettingsMutation.isPending
+  const saving = savePaper.isPending || saveSettings.isPending
 
   const handleSave = async () => {
     const checked = paperSettingsSchema.safeParse({
@@ -204,7 +201,7 @@ export default function PaperSettingsDialog({
 
     try {
       // 1) 试卷基本信息（带 id = 更新）
-      await savePaperMutation.mutateAsync({
+      await savePaper.mutateAsync({
         id: paperId,
         name,
         description,
@@ -212,7 +209,7 @@ export default function PaperSettingsDialog({
         participateMode,
       })
       // 2) 考试设置（扁平 13 字段）
-      await saveSettingsMutation.mutateAsync({
+      await saveSettings.mutateAsync({
         duration,
         start: toApiDateTime(start),
         end: toApiDateTime(end),
@@ -226,14 +223,8 @@ export default function PaperSettingsDialog({
         shuffleQuestions: switches.shuffleQuestions ?? false,
         shuffleChoices: switches.shuffleChoices ?? false,
       })
-      await queryClient.invalidateQueries({ queryKey: ['paperDetail', paperId] })
-      await queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-      toast.success('试卷设置已保存')
-      onOpenChange(false)
-      // 两个保存请求都已 200 —— 通知父组件（发布流程据此继续）
-      onSaved?.()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '保存失败')
+    } catch {
+      // 失败文案由 hook 的 onError 出（哪个接口失败就报哪个）
     }
   }
 
@@ -353,10 +344,14 @@ export default function PaperSettingsDialog({
                     className="w-24"
                     disabled={!minAnswerEnabled}
                     value={minAnswerEnabled ? minAnswerMinutes : ''}
-                    onChange={(e) => setMinAnswerMinutes(Number(e.target.value))}
+                    onChange={(e) =>
+                      setMinAnswerMinutes(Number(e.target.value))
+                    }
                     placeholder="分钟"
                   />
-                  <span className="text-muted-foreground text-sm">分钟后才能交卷</span>
+                  <span className="text-muted-foreground text-sm">
+                    分钟后才能交卷
+                  </span>
                 </div>
               </div>
             </div>

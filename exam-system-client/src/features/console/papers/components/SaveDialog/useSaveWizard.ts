@@ -1,11 +1,13 @@
 import { useCallback } from 'react'
 import { useImmer } from 'use-immer'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import z from 'zod'
 import { api } from '#/ApiInstance.ts'
-import type { PaperSaveInput } from '#/__generated/model/static'
 import type { ParticipateMode } from '#/__generated/model/enums'
+import {
+  usePublishPaperMutation,
+  useSavePaperMutation,
+} from '#/features/console/papers/usePaperActions.ts'
 
 /**
  * 新增 / 编辑试卷向导的状态与动作。
@@ -87,8 +89,6 @@ export const useSaveWizard = ({
   paperId,
   draft,
 }: UseSaveWizardArgs) => {
-  const queryClient = useQueryClient()
-
   const [state, updateState] = useImmer<WizardState>(() => ({
     step: initialStep,
     draft: draft ?? EMPTY_DRAFT,
@@ -107,13 +107,8 @@ export const useSaveWizard = ({
     [updateState],
   )
 
-  const saveInfo = useMutation({
-    mutationFn: (body: PaperSaveInput) =>
-      api.paperController.savePaperV2({ body }),
-  })
-  const publishPaper = useMutation({
-    mutationFn: (id: number) => api.paperController.publishPaper({ id }),
-  })
+  const saveInfo = useSavePaperMutation()
+  const publishPaper = usePublishPaperMutation()
 
   /** 校验 + 保存基本信息。成功返回试卷 id；校验失败/请求失败返回 undefined（已 toast） */
   const persistInfo = useCallback(async (): Promise<number | undefined> => {
@@ -136,18 +131,12 @@ export const useSaveWizard = ({
         participateMode: state.draft.participateMode,
       })
       if (currentId == null) patch({ paperId: res.data })
-      void queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-      if (currentId != null) {
-        void queryClient.invalidateQueries({
-          queryKey: ['paperDetail', currentId],
-        })
-      }
       return res.data
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '试卷信息保存失败')
+    } catch {
+      // 文案与缓存刷新都在 hook 里
       return undefined
     }
-  }, [state.draft, state.paperId, saveInfo, queryClient, patch])
+  }, [state.draft, state.paperId, saveInfo, patch])
 
   /** 第 0 步 →「设计试卷」：先落库，成功才前进 */
   const goDesign = useCallback(async () => {
@@ -189,15 +178,12 @@ export const useSaveWizard = ({
     patch({ phase: 'publishing' })
     try {
       await publishPaper.mutateAsync(id)
-      void queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-      void queryClient.invalidateQueries({ queryKey: ['paperDetail', id] })
-      toast.success('试卷发布成功')
       patch({ published: true, phase: 'idle', step: 2 })
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '试卷发布失败')
+    } catch {
+      // 失败文案由 hook 的 onError 出
       patch({ phase: 'idle' })
     }
-  }, [state.paperId, publishPaper, queryClient, patch])
+  }, [state.paperId, publishPaper, patch])
 
   /**
    * 步骤条点击。

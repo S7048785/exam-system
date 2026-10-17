@@ -1,8 +1,8 @@
-import { QuestionCard } from '#/features/exam/paper/components/QuestionCard.tsx'
+import { QuestionCard } from '#/features/exam/taking/components/QuestionCard.tsx'
 import { GradeBar } from './GradeBar.tsx'
 import { noop, originalCorrectOf } from './utils.ts'
 import type { DetailAnswerRecord, DetailQuestion, EditMap } from './utils.ts'
-import type { AnswerMap } from '#/features/exam/paper/types.ts'
+import type { AnswerMap } from '#/features/exam/taking/types.ts'
 
 interface GradeQuestionListProps {
   /** 已按题型排好序的题目（题号也在这里） */
@@ -69,7 +69,11 @@ export function GradeQuestionList({
               score={score}
               answered={answered}
               onCorrectChange={(next) =>
-                answer && onEdit(answer.id, { correct: next, score })
+                answer &&
+                onEdit(answer.id, {
+                  correct: next,
+                  score: next ? question.score : 0,
+                })
               }
               onScoreChange={(next) =>
                 answer &&

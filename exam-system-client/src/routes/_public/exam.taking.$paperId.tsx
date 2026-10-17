@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import z from 'zod'
-import { ExamNotice } from '#/features/exam/paper/ExamNotice.tsx'
-import { ExamPaper } from '#/features/exam/paper/ExamPaper.tsx'
+import { ExamNotice } from '#/features/exam/taking/ExamNotice.tsx'
+import { ExamPaper } from '#/features/exam/taking/ExamPaper.tsx'
 import { examTakingQueryOptions } from '#/features/exam/examQueries.ts'
 
 /**
- * 答题页 `/exam/paper/{paperId}?recordId={考试记录 id}`（免登录可访问）。
+ * 答题页 `/exam/taking/{paperId}?recordId={考试记录 id}`（免登录可访问）。
  *
  * 流程：入口页点「开始考试 / 继续考试」→ `POST /exams/start` 拿到考试记录 id（雪花，**字符串**）
  * → 带在 `?recordId=` 跳到本页 → `GET /exams/{recordId}/taking` 取题目。
@@ -13,7 +13,7 @@ import { examTakingQueryOptions } from '#/features/exam/examQueries.ts'
  * 动作按钮是**先存后交**：未保存 → `POST /exams/{recordId}/answers`；已保存 → `POST /exams/submit/{recordId}`。
  * 后端交卷时**不落库答案**，是按已保存的答案批改的，所以这个顺序不能省。
  */
-export const Route = createFileRoute('/_public/exam/paper/$paperId')({
+export const Route = createFileRoute('/_public/exam/taking/$paperId')({
   validateSearch: z.object({ recordId: z.string().optional() }),
   loaderDeps: ({ search }) => ({ recordId: search.recordId }),
   loader: async ({ context, deps }) => {

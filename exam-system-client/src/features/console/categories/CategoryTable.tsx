@@ -1,4 +1,5 @@
 import type { QuestionsCategoriesTree } from '#/__generated/model/static'
+import { flattenTree } from '#/lib/tree-util.ts'
 import {
   Table,
   TableBody,
@@ -23,7 +24,6 @@ import {
   RotateCw,
   Trash2,
 } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface CategoryTableProps {
   data: readonly QuestionsCategoriesTree[]
@@ -35,27 +35,6 @@ interface CategoryTableProps {
   onRefresh: () => void
 }
 
-// 将树形结构扁平化（只包含展开的节点）
-function flattenTree(
-  categories: readonly QuestionsCategoriesTree[],
-  expandedIds: Set<number>,
-  level: number = 0,
-): Array<QuestionsCategoriesTree & { level: number }> {
-  const result: Array<QuestionsCategoriesTree & { level: number }> = []
-  for (const category of categories) {
-    result.push({ ...category, level })
-    // 如果该分类已展开且有子分类，则递归展开
-    if (
-      expandedIds.has(category.id) &&
-      category.children &&
-      category.children.length > 0
-    ) {
-      result.push(...flattenTree(category.children, expandedIds, level + 1))
-    }
-  }
-  return result
-}
-
 export default function CategoryTable({
   data,
   expandedIds,
@@ -65,18 +44,10 @@ export default function CategoryTable({
   onDelete,
   onRefresh,
 }: CategoryTableProps) {
-  const flatData = flattenTree(data, expandedIds)
+  const flatData = flattenTree(data, (category) => expandedIds.has(category.id))
 
   // 统计总分类数
-  const countAll = (cats: readonly QuestionsCategoriesTree[]): number => {
-    let count = cats.length
-    for (const cat of cats) {
-      if (cat.children) {
-        count += countAll(cat.children)
-      }
-    }
-    return count
-  }
+  const totalCount = flattenTree(data).length
 
   return (
     <div className="space-y-2">
@@ -87,7 +58,7 @@ export default function CategoryTable({
           刷新
         </Button>
         <span className="text-muted-foreground text-sm">
-          共 {countAll(data)} 个分类
+          共 {totalCount} 个分类
         </span>
       </div>
 
@@ -208,10 +179,7 @@ export default function CategoryTable({
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => {
-                                  onDelete(category.id)
-                                  toast.success('分类删除成功')
-                                }}
+                                onClick={() => onDelete(category.id)}
                               >
                                 确定
                               </Button>

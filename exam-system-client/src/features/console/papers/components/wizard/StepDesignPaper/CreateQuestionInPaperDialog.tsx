@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -20,11 +20,11 @@ import {
 import { toast } from 'sonner'
 import type { QuestionSaveReq } from '#/__generated/model/static'
 import type { QuestionDifficulty } from '#/__generated/model/enums'
-import { api } from '#/ApiInstance.ts'
 import ChoiceForm from '#/features/console/questions/components/drawer/ChoiceForm.tsx'
 import JudgeForm from '#/features/console/questions/components/drawer/JudgeForm.tsx'
 import TextForm from '#/features/console/questions/components/drawer/TextForm.tsx'
 import { categoryTreeQueryOptions } from '#/features/console/questions/questionQueries.ts'
+import { useCreatePaperQuestionMutation } from '#/features/console/papers/usePaperActions.ts'
 import { flattenCategories } from '#/features/console/questions/utils.ts'
 
 type QuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'JUDGE' | 'TEXT'
@@ -33,7 +33,6 @@ interface CreateQuestionInPaperDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   paperId: number
-  onSuccess: () => void
   questionType: QuestionType
 }
 
@@ -48,7 +47,6 @@ export default function CreateQuestionInPaperDialog({
   open,
   onOpenChange,
   paperId,
-  onSuccess,
   questionType,
 }: CreateQuestionInPaperDialogProps) {
   const [title, setTitle] = useState('')
@@ -75,61 +73,6 @@ export default function CreateQuestionInPaperDialog({
 
   const [textAnswer, setTextAnswer] = useState('')
 
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const body: QuestionSaveReq = {
-        title,
-        type: questionType,
-        categoryId: categoryId!,
-        difficulty,
-        score,
-        analysis: '',
-        extra: {},
-      }
-
-      if (
-        questionType === 'SINGLE_CHOICE' ||
-        questionType === 'MULTIPLE_CHOICE'
-      ) {
-        // ⚠️ 判别值 type 必须放在 extra 内部（QuestionExtra 的 @JsonTypeInfo(As.EXTERNAL_PROPERTY)）
-        // ⚠️ correct 必须是真布尔：后端是 @NotNull Boolean，写成 `c.correct || undefined`
-        //    会让「未勾选」的选项整个字段消失 → 422
-        body.extra = {
-          type: questionType,
-          choices: choiceValue.choices.map((c, i) => ({
-            content: c.content.trim(),
-            correct: c.correct,
-            sort: i,
-          })),
-        }
-        if (choiceValue.analysis) body.analysis = choiceValue.analysis
-      } else if (questionType === 'JUDGE') {
-        body.extra = { type: 'JUDGE', answer: judgeValue.judgeAnswer }
-        if (judgeValue.analysis) body.analysis = judgeValue.analysis
-      } else {
-        body.extra = { type: 'TEXT', answer: textAnswer }
-      }
-
-      const res = await api.questionController.addQuestion({ body })
-      const questionId = res.data?.id
-      if (!questionId) throw new Error('创建题目失败')
-
-      await api.paperController.addPaperQuestions({
-        id: paperId,
-        body: { questions: [{ questionId, score }] },
-      })
-    },
-    onSuccess: () => {
-      toast.success('试题添加成功')
-      onSuccess()
-      onOpenChange(false)
-      resetForm()
-    },
-    // 把后端的业务提示（题目已存在 / 分类不存在 …）显出来，而不是笼统的“添加失败”
-    onError: (error) =>
-      toast.error(error instanceof Error ? error.message : '试题添加失败'),
-  })
-
   const resetForm = () => {
     setTitle('')
     setDifficulty('EASY')
@@ -144,6 +87,49 @@ export default function CreateQuestionInPaperDialog({
     })
     setJudgeValue({ analysis: '', judgeAnswer: 'true' })
     setTextAnswer('')
+  }
+
+  // 建题 + 挂到试卷都在 hook 里（含 toast 与题目列表失效），这里只管关弹窗、清表单
+  const createMutation = useCreatePaperQuestionMutation(paperId, () => {
+    onOpenChange(false)
+    resetForm()
+  })
+
+  /** 表单 → 后端请求体（字段校验在 handleSubmit 里已经过了） */
+  const buildBody = (): QuestionSaveReq => {
+    const body: QuestionSaveReq = {
+      title,
+      type: questionType,
+      categoryId: categoryId!,
+      difficulty,
+      score,
+      analysis: '',
+      extra: {},
+    }
+
+    if (
+      questionType === 'SINGLE_CHOICE' ||
+      questionType === 'MULTIPLE_CHOICE'
+    ) {
+      // ⚠️ 判别值 type 必须放在 extra 内部（QuestionExtra 的 @JsonTypeInfo(As.EXTERNAL_PROPERTY)）
+      // ⚠️ correct 必须是真布尔：后端是 @NotNull Boolean，写成 `c.correct || undefined`
+      //    会让「未勾选」的选项整个字段消失 → 422
+      body.extra = {
+        type: questionType,
+        choices: choiceValue.choices.map((c, i) => ({
+          content: c.content.trim(),
+          correct: c.correct,
+          sort: i,
+        })),
+      }
+      if (choiceValue.analysis) body.analysis = choiceValue.analysis
+    } else if (questionType === 'JUDGE') {
+      body.extra = { type: 'JUDGE', answer: judgeValue.judgeAnswer }
+      if (judgeValue.analysis) body.analysis = judgeValue.analysis
+    } else {
+      body.extra = { type: 'TEXT', answer: textAnswer }
+    }
+    return body
   }
 
   const handleSubmit = () => {
@@ -174,7 +160,7 @@ export default function CreateQuestionInPaperDialog({
       toast.error('请输入标准答案')
       return
     }
-    createMutation.mutate()
+    createMutation.mutate(buildBody())
   }
 
   return (

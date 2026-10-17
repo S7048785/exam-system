@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from '@tanstack/react-form'
 import type { PaperCategoriesTree } from '#/__generated/model/static'
+import { findInTree } from '#/lib/tree-util.ts'
 import {
   Drawer,
   DrawerContent,
@@ -79,23 +80,10 @@ export default function PaperCategoryDrawer({
     }
   }, [open, mode, category, form])
 
-  const getParentName = () => {
-    if (parentId === 0) return '顶级分类'
-    const findParent = (
-      cats: readonly PaperCategoriesTree[],
-      id: number,
-    ): string | null => {
-      for (const cat of cats) {
-        if (cat.id === id) return cat.name
-        if (cat.children) {
-          const found = findParent(cat.children, id)
-          if (found) return found
-        }
-      }
-      return null
-    }
-    return findParent(categories, parentId) ?? '未知'
-  }
+  const parentNameOf = (id: number) =>
+    id === 0
+      ? '顶级分类'
+      : (findInTree(categories, (cat) => cat.id === id)?.name ?? '未知')
 
   return (
     <Drawer
@@ -110,7 +98,7 @@ export default function PaperCategoryDrawer({
           </DrawerTitle>
           <DrawerDescription>
             {mode === 'add'
-              ? `将为「${getParentName()}」添加子分类`
+              ? `将为「${parentNameOf(parentId)}」添加子分类`
               : `编辑分类「${category?.name}」`}
           </DrawerDescription>
         </DrawerHeader>
@@ -173,32 +161,7 @@ export default function PaperCategoryDrawer({
             {mode === 'edit' && (
               <div className="space-y-2">
                 <Label>父分类</Label>
-                <Input
-                  value={
-                    category?.parentId === 0
-                      ? '顶级分类'
-                      : (() => {
-                          const findParent = (
-                            cats: readonly PaperCategoriesTree[],
-                            id: number,
-                          ): string | null => {
-                            for (const cat of cats) {
-                              if (cat.id === id) return cat.name
-                              if (cat.children) {
-                                const found = findParent(cat.children, id)
-                                if (found) return found
-                              }
-                            }
-                            return null
-                          }
-                          return (
-                            findParent(categories, category?.parentId ?? 0) ??
-                            '未知'
-                          )
-                        })()
-                  }
-                  disabled
-                />
+                <Input value={parentNameOf(category?.parentId ?? 0)} disabled />
                 <p className="text-muted-foreground text-xs">
                   编辑模式下不可修改父分类
                 </p>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useImmer } from 'use-immer'
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,9 @@ import {
 } from '#/components/ui/select.tsx'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
-import { api } from '#/ApiInstance.ts'
 import { QUESTION_TYPE_MAP } from '#/features/console/papers/constants.ts'
+import { bankQuestionsQueryOptions } from '#/features/console/papers/paperQueries.ts'
+import { useAddPaperQuestionsMutation } from '#/features/console/papers/usePaperActions.ts'
 import useDebounce from '#/hooks/useDebounce.ts'
 import type {
   QuestionDifficulty,
@@ -33,7 +34,6 @@ interface SelectQuestionFromBankDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   paperId: number
-  onSuccess: () => void
   existingIds: number[]
 }
 
@@ -46,7 +46,6 @@ export default function SelectQuestionFromBankDialog({
   open,
   onOpenChange,
   paperId,
-  onSuccess,
   existingIds,
 }: SelectQuestionFromBankDialogProps) {
   const [selections, updateSelections] = useImmer<
@@ -77,55 +76,38 @@ export default function SelectQuestionFromBankDialog({
 
   // 对搜索关键词进行防抖，延迟500ms
   const debouncedSearchTerm = useDebounce(filter, 500)
-  const { data, isFetching } = useQuery({
-    queryKey: ['bank-questions', debouncedSearchTerm],
-    queryFn: () =>
-      api.questionController.listQuestions({
-        req: {
-          type:
-            debouncedSearchTerm.type === 'ALL'
-              ? undefined
-              : debouncedSearchTerm.type,
-          difficulty:
-            debouncedSearchTerm.difficulty === 'ALL'
-              ? undefined
-              : debouncedSearchTerm.difficulty,
-          categoryId:
-            debouncedSearchTerm.categoryId === 'ALL'
-              ? undefined
-              : debouncedSearchTerm.categoryId,
-          page: debouncedSearchTerm.page,
-          size: debouncedSearchTerm.size,
-          keyword: debouncedSearchTerm.keyword,
-        },
-      }),
-    staleTime: 0,
-
-    enabled: open,
-    select: (d) => d.data,
-  })
+  const { data, isFetching } = useQuery(
+    bankQuestionsQueryOptions(
+      {
+        type:
+          debouncedSearchTerm.type === 'ALL'
+            ? undefined
+            : debouncedSearchTerm.type,
+        difficulty:
+          debouncedSearchTerm.difficulty === 'ALL'
+            ? undefined
+            : debouncedSearchTerm.difficulty,
+        categoryId:
+          debouncedSearchTerm.categoryId === 'ALL'
+            ? undefined
+            : debouncedSearchTerm.categoryId,
+        page: debouncedSearchTerm.page,
+        size: debouncedSearchTerm.size,
+        keyword: debouncedSearchTerm.keyword,
+      },
+      open,
+    ),
+  )
 
   const pageData = data
   const records = pageData?.records.filter((q) => !existingIds.includes(q.id))
   const totalPages = pageData?.pages ?? 1
 
-  const associateMutation = useMutation({
-    mutationFn: (items: SelectionItem[]) =>
-      api.paperController.addPaperQuestions({
-        id: paperId,
-        body: { questions: items },
-      }),
-    onSuccess: () => {
-      toast.success(`已添加 ${Object.keys(selections).length} 道题目`)
-      onSuccess()
-      onOpenChange(false)
-      updateSelections({})
-      setFilter({
-        ...filter,
-        page: 1,
-      })
-    },
-    onError: () => toast.error('添加失败'),
+  // toast 与题目列表失效都在 hook 里；这里只做「关窗 + 清空勾选 + 回第 1 页」
+  const associateMutation = useAddPaperQuestionsMutation(paperId, () => {
+    onOpenChange(false)
+    updateSelections({})
+    setFilter((prev) => ({ ...prev, page: 1 }))
   })
 
   const toggleSelection = (questionId: number) => {
@@ -172,7 +154,7 @@ export default function SelectQuestionFromBankDialog({
       toast.error('请至少选择一道题目')
       return
     }
-    associateMutation.mutate(items)
+    associateMutation.mutate({ questions: items })
   }
 
   const selectedCount = Object.keys(selections).length

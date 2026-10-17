@@ -1,9 +1,9 @@
-import { QUESTION_TYPE_ORDER } from '#/features/exam/paper/constants.ts'
+import { QUESTION_TYPE_ORDER } from '#/features/exam/taking/constants.ts'
 import type {
   AnswerMap,
   ExamOption,
   ExamQuestion,
-} from '#/features/exam/paper/types.ts'
+} from '#/features/exam/taking/types.ts'
 import type { SubmitAnswerReq } from '#/__generated/model/static'
 import { useEffect, useState } from 'react'
 
@@ -142,6 +142,17 @@ export function orderQuestionsByType<T extends ExamQuestion>(
 /** `ApiError.message` 就是后端的业务文案（422 是 text/plain，5xx 也有），拿不到才用 fallback */
 export const errorText = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback
+
+/**
+ * 跳题：题卡自带 `id="question-{id}"`，滚到最近的滚动祖先。
+ *
+ * 答题页与控制台的两个评分弹窗共用同一套（三处原先各写了一份）。
+ */
+export function jumpToQuestion(questionId: number): void {
+  document
+    .getElementById(`question-${questionId}`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 /**
  * 每秒走一次的倒计时，返回距 `deadline` 还剩多少毫秒。

@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { api } from '#/ApiInstance.ts'
-import { orderQuestionsByType } from '#/features/exam/paper/utils.ts'
+import { orderQuestionsByType } from '#/features/exam/taking/utils.ts'
+import { examRecordDetailQueryOptions } from '#/features/console/papers/paperQueries.ts'
 import { answersOf } from './utils.ts'
 import type { DetailAnswerRecord, DetailQuestion } from './utils.ts'
-import type { AnswerMap } from '#/features/exam/paper/types.ts'
+import type { AnswerMap } from '#/features/exam/taking/types.ts'
 import type { ExamRecordDetail } from '#/__generated/model/static'
 
 /** `useScoreDetail` 的返回值：两个弹窗把它整体透传给 {@link ScoreDialogShell}，避免拆成一堆 props */
@@ -34,11 +34,9 @@ export function useScoreDetail(
   enabled: boolean,
 ): ScoreDetailScope {
   const { data, isFetching, error } = useQuery({
-    queryKey: ['examRecordDetail', recordId],
-    queryFn: () => api.examController.getRecordDetail({ recordId: recordId! }),
+    ...examRecordDetailQueryOptions(recordId!),
     // 没有行数据就不发请求；「考试中」的行不会走到这里（按钮已禁用 + 后端也拦）
     enabled: enabled && !!recordId,
-    staleTime: 30 * 1000,
   })
   const detail = data?.data
 

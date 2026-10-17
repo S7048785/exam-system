@@ -9,9 +9,11 @@ import {
 import { Button } from '#/components/ui/button.tsx'
 import { XIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
-import { api } from '#/ApiInstance.ts'
 import { usePaperListStore } from '#/stores/paper-list.ts'
-import { paperQueries } from '#/features/console/papers/paperQueries.ts'
+import {
+  paperCategoryTreeQueryOptions,
+  paperQueries,
+} from '#/features/console/papers/paperQueries.ts'
 import Loading from '#/components/Loading.tsx'
 import StepIndicator from '#/features/console/papers/components/wizard/StepIndicator.tsx'
 import StepBasicInfo from '#/features/console/papers/components/wizard/StepBasicInfo.tsx'
@@ -108,10 +110,7 @@ function WizardContent({
   const setDialogOpen = usePaperListStore((s) => s.setDialogOpen)
 
   // 第 0 步的分类树
-  const { data: treeData } = useQuery({
-    queryKey: ['paper-category-tree'],
-    queryFn: () => api.paperCategoryController.tree(),
-  })
+  const { data: treeData } = useQuery(paperCategoryTreeQueryOptions)
   const categoryTree = treeData?.data ?? []
 
   return (

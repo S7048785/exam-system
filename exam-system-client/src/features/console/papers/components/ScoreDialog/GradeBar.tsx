@@ -49,7 +49,7 @@ export function GradeBar({
       <div className="flex items-center gap-1.5">
         <Button
           size="xs"
-          variant={correct === true ? 'default' : 'outline'}
+          variant={correct === true ? 'success' : 'outline'}
           className="gap-1"
           onClick={() => onCorrectChange(true)}
         >

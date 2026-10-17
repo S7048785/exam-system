@@ -1,8 +1,8 @@
-import { QuestionCard } from '#/features/exam/paper/components/QuestionCard.tsx'
+import { QuestionCard } from '#/features/exam/taking/components/QuestionCard.tsx'
 import { ReviewBar } from './ReviewBar.tsx'
 import { noop } from './utils.ts'
 import type { DetailAnswerRecord, DetailQuestion } from './utils.ts'
-import type { AnswerMap } from '#/features/exam/paper/types.ts'
+import type { AnswerMap } from '#/features/exam/taking/types.ts'
 
 interface DetailQuestionListProps {
   /** 已按题型排好序的题目（题号也在这里） */

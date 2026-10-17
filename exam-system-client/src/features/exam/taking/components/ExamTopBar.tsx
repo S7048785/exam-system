@@ -7,7 +7,7 @@ import {
   Save,
   Send,
 } from 'lucide-react'
-import { StatChip } from '#/features/exam/paper/components/StatChip.tsx'
+import { StatChip } from '#/features/exam/taking/components/StatChip.tsx'
 
 /**
  * 答题页顶栏：左边试卷名 + 考生姓名，右边倒计时 / 题目数量 / 已作答数量 + **一个**动作按钮。

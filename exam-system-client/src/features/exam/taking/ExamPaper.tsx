@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { ExamNotice } from '#/features/exam/paper/ExamNotice.tsx'
-import { ExamTaking } from '#/features/exam/paper/ExamTaking.tsx'
-import { errorText } from '#/features/exam/paper/utils.ts'
+import { ExamNotice } from '#/features/exam/taking/ExamNotice.tsx'
+import { ExamTaking } from '#/features/exam/taking/ExamTaking.tsx'
+import { errorText } from '#/features/exam/taking/utils.ts'
 import { examTakingQueryOptions } from '#/features/exam/examQueries.ts'
 
 /** 取数层：只负责把 `ExamTakingView` 拿到手，交给下面的答题组件渲染 */

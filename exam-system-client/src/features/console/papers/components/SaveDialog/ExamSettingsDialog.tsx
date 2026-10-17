@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -6,9 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
-import { toast } from 'sonner'
-import { api } from '#/ApiInstance.ts'
 import { paperQueries } from '#/features/console/papers/paperQueries.ts'
+import { useSaveExamSettingsMutation } from '#/features/console/papers/usePaperActions.ts'
 import PaperExamSettingsForm, {
   toApiInput,
   toFormValues,
@@ -38,32 +37,18 @@ export default function ExamSettingsDialog({
   onOpenChange,
   onSaved,
 }: Props) {
-  const queryClient = useQueryClient()
   const { data: detailData, isPending } = useQuery(
     paperQueries.detail(paperId, open),
   )
 
-  const save = useMutation({
-    mutationFn: (values: PaperExamSettingsValues) =>
-      api.paperController.updatePaperExamSettings({
-        id: paperId,
-        body: toApiInput(values),
-      }),
+  // 保存 + toast + 刷新缓存都在 hook 里，这里只管关弹窗
+  const save = useSaveExamSettingsMutation(paperId, () => {
+    onOpenChange(false)
+    onSaved?.()
   })
 
-  const handleSubmit = async (values: PaperExamSettingsValues) => {
-    try {
-      await save.mutateAsync(values)
-      await queryClient.invalidateQueries({
-        queryKey: ['paperDetail', paperId],
-      })
-      await queryClient.invalidateQueries({ queryKey: ['listPapers'] })
-      toast.success('考试设置已保存')
-      onOpenChange(false)
-      onSaved?.()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '考试设置保存失败')
-    }
+  const handleSubmit = (values: PaperExamSettingsValues) => {
+    save.mutate(toApiInput(values))
   }
 
   return (
@@ -87,7 +72,7 @@ export default function ExamSettingsDialog({
               defaultValues={toFormValues(detailData?.data.examSettings)}
               submitting={save.isPending}
               onCancel={() => onOpenChange(false)}
-              onSubmit={(v) => void handleSubmit(v)}
+              onSubmit={handleSubmit}
             />
           )}
         </div>
