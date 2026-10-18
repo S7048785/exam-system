@@ -274,7 +274,7 @@ export default function ScoreListDialog({
                       ? formatDateTimeShort(row.endTime)
                       : '-'
                     return (
-                      <TableRow key={row.id}>
+                      <TableRow key={row.publicId}>
                         <TableCell>{row.studentName}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           {start}

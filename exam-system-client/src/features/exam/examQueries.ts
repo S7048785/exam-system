@@ -33,12 +33,15 @@ export const examHistoryQueryOptions = queryOptions({
   retry: false,
 })
 /**
- * 考试记录 id：雪花 id 有 19 位，超过 JS 的 `Number.MAX_SAFE_INTEGER`。
+ * 考试记录的对外标识：`publicId`（6 位短码）。
+ *
+ * 自增 `exam_records.id` 只在后端内部用，接口不返回也不要传 —— 所有考试记录相关接口
+ * （taking / answers / submit / detail / result）都按这个短码定位。
  */
 export type ExamRecordId = string
 
 /**
- * 答题页数据：`GET /exams/{recordId}/taking`（**不含正确答案**）。
+ * 答题页数据：`GET /exams/{publicId}/taking`（**不含正确答案**）。
  *
  * 返回里的 `answerRecords` 是这场考试**已经保存过的答案**，继续考试时用它把勾选状态恢复出来
  * （见 `answerRecordsToMap`）。
@@ -46,7 +49,21 @@ export type ExamRecordId = string
 export const examTakingQueryOptions = (recordId: ExamRecordId) =>
   queryOptions({
     queryKey: ['examTaking', recordId],
-    queryFn: () => api.examController.getExamTaking({ id: recordId }),
+    queryFn: () => api.examController.getExamTaking({ publicId: recordId }),
     select: (res): ExamTakingView => res.data,
+    retry: false,
+  })
+
+/**
+ * 考试结果：`GET /exams/result/{publicId}`（免登录）。
+ *
+ * 只有 `GRADED` 才有结果，`ONGOING` / `GRADING` 后端回 422「试卷未提交」，
+ * 由路由的 `errorComponent` 统一渲染（同入口页）。
+ */
+export const examResultQueryOptions = (publicId: string) =>
+  queryOptions({
+    queryKey: ['examResult', publicId],
+    queryFn: () => api.examController.getExamResult({ publicId }),
+    select: (res) => res.data,
     retry: false,
   })

@@ -25,7 +25,7 @@ export default function ScoreDetailDialog({
   open,
   onOpenChange,
 }: ScoreDetailDialogProps) {
-  const scope = useScoreDetail(record?.id, open)
+  const scope = useScoreDetail(record?.publicId, open)
 
   return (
     <ScoreDialogShell

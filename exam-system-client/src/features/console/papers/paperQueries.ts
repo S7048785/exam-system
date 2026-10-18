@@ -89,10 +89,10 @@ export const paperExamStatsQueryOptions = (paperId: number, enabled: boolean) =>
     staleTime: 10 * 1000,
   })
 
-/** 单条考试记录的答题详情（成绩详情 / 考试评分两个弹窗共用） */
+/** 单条考试记录的答题详情（成绩详情 / 考试评分两个弹窗共用；按 `publicId` 定位） */
 export const examRecordDetailQueryOptions = (recordId: string) =>
   queryOptions({
     queryKey: ['examRecordDetail', recordId],
-    queryFn: () => api.examController.getRecordDetail({ recordId }),
+    queryFn: () => api.examController.getRecordDetail({ publicId: recordId }),
     staleTime: 30 * 1000,
   })

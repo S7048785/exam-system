@@ -41,7 +41,7 @@ export default function ScoreGradingDialog({
   open,
   onOpenChange,
 }: ScoreGradingDialogProps) {
-  const recordId = record?.id
+  const recordId = record?.publicId
   const scope = useScoreDetail(recordId, open)
   /** 本次编辑（answerRecordId → 改动）；**只存动过的**，没动过的题提交时不下发 */
   const [edits, setEdits] = useImmer<EditMap>({})

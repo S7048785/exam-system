@@ -16,7 +16,7 @@ export const useSaveAnswersMutation = (
 ) =>
   useMutation({
     mutationFn: (body: SubmitAnswerReq[]) =>
-      api.examController.saveAnswers({ examRecordId: recordId, body }),
+      api.examController.saveAnswers({ publicId: recordId, body }),
     onSuccess: callbacks?.onSuccess,
     onError: callbacks?.onError,
   })
@@ -28,7 +28,7 @@ export const useSubmitExamMutation = (
 ) =>
   useMutation({
     mutationFn: (body: SubmitAnswerReq[]) =>
-      api.examController.submitAnswers({ examRecordId: recordId, body }),
+      api.examController.submitAnswers({ publicId: recordId, body }),
     onSuccess: callbacks?.onSuccess,
     onError: callbacks?.onError,
   })

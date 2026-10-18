@@ -211,7 +211,7 @@ export const useGradeAnswersMutation = (
   return useMutation({
     mutationFn: (items: GradeAnswerReq[]) =>
       api.examController.gradeAnswers({
-        examRecordId: String(recordId),
+        publicId: recordId!,
         body: items,
       }),
     onSuccess: async () => {

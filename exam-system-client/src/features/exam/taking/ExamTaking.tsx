@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ExamTopBar } from '#/features/exam/taking/components/ExamTopBar.tsx'
 import { QuestionCard } from '#/features/exam/taking/components/QuestionCard.tsx'
@@ -16,6 +17,7 @@ import {
 } from '#/features/exam/taking/utils.ts'
 import type { AnswerMap } from '#/features/exam/taking/types.ts'
 import type { ExamTakingView } from '#/__generated/model/static'
+import { examResultQueryOptions } from '#/features/exam/examQueries.ts'
 import {
   useSaveAnswersMutation,
   useSubmitExamMutation,
@@ -40,6 +42,7 @@ export function ExamTaking({
   paperId: string
 }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const paper = exam.paper
   const questions = paper.questions
@@ -70,8 +73,19 @@ export function ExamTaking({
   const submitMutation = useSubmitExamMutation(recordId, {
     onSuccess: async () => {
       toast.success('试卷已提交')
-      // 交完卷回入口页，那边会按最新的考试记录重新判断状态
-      await navigate({ to: '/exam/$paperId/start', params: { paperId } })
+      // 成绩页需要 GRADED 才给看。**没有已作答的简答题时，交卷当场就是 GRADED**
+      // （后端 autoGradeAndFinish 按「答案行里有没有 TEXT 题」判断，不是按卷面有没有简答），
+      // 所以先探一下结果接口：拿得到就进成绩页，还会顺带把结果缓存预热；
+      // 含待人工批改的简答 ⇒ 422「试卷未提交」，回入口页等老师批改。
+      try {
+        await queryClient.fetchQuery(examResultQueryOptions(recordId))
+        await navigate({
+          to: '/exam/result/$publicId',
+          params: { publicId: recordId },
+        })
+      } catch {
+        await navigate({ to: '/exam/$paperId/start', params: { paperId } })
+      }
     },
     onError: (err) => toast.error(errorText(err, '提交失败，请稍后重试')),
   })
