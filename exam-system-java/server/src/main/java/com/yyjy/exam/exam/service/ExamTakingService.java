@@ -69,6 +69,9 @@ public class ExamTakingService {
 	 * 多用户改造：① 校验归属；② **考试还在进行中（ONGOING）时不返回详情**
 	 * —— 返回类型 `ExamRecordDetail` 含 `questionChoices.correct` 与 `questionAnswers.answer`（整套答案），
 	 * 不挡的话考生开考后立刻调本接口就能拿答案。
+	 * <p>
+	 * ③ 开关「交卷后允许查看标准答案」关闭时不返回 —— 结果页按钮已按同一开关隐藏，
+	 * 这里兜的是直接调接口（控制台侧 `GET /exams/records/{publicId}/detail` 不受此限）。
 	 */
 	public ExamRecordDetail getExamDetail(String publicId) {
 		ExamRecords record = support.findRecordOrThrow(publicId);
@@ -78,8 +81,19 @@ public class ExamTakingService {
 		if (record.status() == ExamRecordStatus.ONGOING) {
 			throw new BusinessException(MessageConstant.EXAM_DETAIL_NOT_AVAILABLE_ONGOING);
 		}
+		if (!allowsAnswerReview(record.paperId())) {
+			throw new BusinessException(MessageConstant.EXAM_ANSWER_REVIEW_DISABLED);
+		}
 		
 		return sqlClient.findById(ExamRecordDetail.class, record.id());
+	}
+	
+	/**
+	 * 「交卷后允许查看标准答案」是否打开：设置行缺失按关闭处理（建卷不再预写设置行）。
+	 */
+	private boolean allowsAnswerReview(long paperId) {
+		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(paperId);
+		return settings != null && Boolean.TRUE.equals(settings.showAnswerAfterSubmit());
 	}
 	
 	/**
@@ -122,7 +136,8 @@ public class ExamTakingService {
 				usedSeconds,
 				end,
 				paper.totalScore(),
-				passingScore
+				passingScore,
+				settings != null && Boolean.TRUE.equals(settings.showAnswerAfterSubmit())
 		);
 	}
 	

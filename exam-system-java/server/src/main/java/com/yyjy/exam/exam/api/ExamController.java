@@ -8,7 +8,10 @@ import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
 import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.io.req.*;
-import com.yyjy.exam.entity.exam.io.res.*;
+import com.yyjy.exam.entity.exam.io.res.ExamHistoryItemRes;
+import com.yyjy.exam.entity.exam.io.res.ExamRecordListItemRes;
+import com.yyjy.exam.entity.exam.io.res.ExamRecordStatsRes;
+import com.yyjy.exam.entity.exam.io.res.ExamResultRes;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperExamSettingsFetcher;
 import com.yyjy.exam.entity.paper.entity.PaperFetcher;
@@ -173,10 +176,6 @@ public class ExamController {
 	
 	/**
 	 * 入口页：试卷 + 1:1 的考试设置。
-	 * <p>
-	 * 🔴 `examSettings` 必须显式传 {@link ReferenceFetchType#JOIN_ALWAYS}：Jimmer 对 to-one 关联
-	 * **默认是「批量附加查询」**，只写 `.examSettings(fetcher)` 会变成两条 SQL（主查询 + 一条
-	 * `where PAPER_ID in (...)` 的 LOAD）。要「联合查询」就得钉住 JOIN_ALWAYS。
 	 */
 	public static final Fetcher<Paper> EXAM_ENTRY_INFO =
 			PaperFetcher.$
@@ -221,5 +220,6 @@ public class ExamController {
 							       .totalScore()
 							       .examSettings(Fetchers.PAPER_EXAM_SETTINGS_FETCHER
 									                     .passingScore()
-									                     .duration()));
+									                     .duration()
+									                     .showAnswerAfterSubmit()));
 }

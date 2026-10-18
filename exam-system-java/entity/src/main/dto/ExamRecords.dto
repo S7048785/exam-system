@@ -81,6 +81,7 @@ ExamRecordDetail {
                 title
                 type
                 difficulty
+                analysis
                 questionChoices as choices {
                     content
                     correct

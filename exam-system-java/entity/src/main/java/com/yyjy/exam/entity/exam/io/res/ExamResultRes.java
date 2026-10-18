@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
  * @param endTime      交卷时间
  * @param totalScore   试卷总分
  * @param passingScore 及格分
+ * @param showAnswerAfterSubmit 是否允许查看标准答案/解析（结果页据此决定「查看答案解析」按钮的显隐）
  */
 public record ExamResultRes(
 		long paperId,
@@ -20,6 +21,7 @@ public record ExamResultRes(
 		long usedSeconds,
 		LocalDateTime endTime,
 		int totalScore,
-		int passingScore
+		int passingScore,
+		boolean showAnswerAfterSubmit
 ) {
 }

@@ -22,6 +22,7 @@ public final class MessageConstant {
 	public static final String EXAM_ATTEMPT_LIMIT_REACHED = "exam: 已达到该试卷允许的考试次数上限";
 	public static final String EXAM_ATTEMPT_TIMEOUT = "exam: 本次考试已超时";
 	public static final String EXAM_DETAIL_NOT_AVAILABLE_ONGOING = "exam: 考试尚未结束，暂不能查看试卷详情";
+	public static final String EXAM_ANSWER_REVIEW_DISABLED = "exam: 本场考试不允许查看标准答案";
 	public static final String EXAM_NOT_STARTED = "exam: 考试尚未开始";
 	public static final String EXAM_RECORD_NOT_FOUND = "exam: 考试记录不存在";
 	public static final String QUESTION_CATEGORY_NOT_EXIST = "question: 题目分类不存在";
