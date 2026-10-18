@@ -53,3 +53,17 @@ export const examResultQueryOptions = (publicId: string) =>
     select: (res) => res.data,
     retry: false,
   })
+
+/**
+ * 考生侧答题详情：`GET /exams/{publicId}/detail`（含标准答案、对错与题目解析）。
+ *
+ * 结果页的「查看答案解析」弹窗用。后端三道闸：记录归属（匿名记录放行、登录记录要求本人）、
+ * 未交卷（`ONGOING`）不返回、`showAnswerAfterSubmit` 关闭时 422。
+ */
+export const examDetailQueryOptions = (publicId: string) =>
+  queryOptions({
+    queryKey: ['examDetail', publicId],
+    queryFn: () => api.examController.getExamDetail({ publicId }),
+    select: (res) => res.data,
+    retry: false,
+  })

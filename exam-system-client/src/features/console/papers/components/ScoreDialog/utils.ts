@@ -1,4 +1,6 @@
+import { orderQuestionsByType } from '#/features/exam/taking/utils.ts'
 import type {
+  ExamRecordDetail,
   ExamRecordDetail_TargetOf_answerRecords,
   ExamRecordDetail_TargetOf_paper_TargetOf_questions,
   GradeAnswerReq,
@@ -11,6 +13,64 @@ export type DetailAnswerRecord = ExamRecordDetail_TargetOf_answerRecords
 
 /** 未提交的编辑（`answerRecordId` → 改动）；**只存动过的题**，提交时也只下发这些 */
 export type EditMap = Record<number, { correct?: boolean; score: number }>
+
+/** {@link deriveDetail} 的产物：弹窗要的题目顺序、答案表与答题卡着色依据 */
+export interface DetailDerivation {
+  detail: ExamRecordDetail | undefined
+  questions: ReadonlyArray<DetailQuestion>
+  answerRecords: ReadonlyArray<DetailAnswerRecord>
+  /** 按题型排好序的题目（含题号） */
+  ordered: ReadonlyArray<{ no: number; question: DetailQuestion }>
+  /** `questionId → 题卡要的选项值` */
+  answerMap: AnswerMap
+  /** `questionId → 库里的答案行` */
+  answerByQuestion: ReadonlyMap<number, DetailAnswerRecord>
+  /** 左侧答题卡的着色依据（`questionId → 对/错`） */
+  results: Record<number, 'correct' | 'wrong'>
+}
+
+/**
+ * 把 `ExamRecordDetail` 派生成弹窗要用的形状。
+ *
+ * **控制台「答题详情」与考生「查看答案解析」共用这一份口径**，差别只在取数接口
+ * （控制台 `records/{publicId}/detail`、考生侧 `{publicId}/detail`）。
+ */
+export function deriveDetail(
+  detail: ExamRecordDetail | undefined,
+): DetailDerivation {
+  const questions = detail?.paper.questions ?? []
+  const answerRecords = detail?.answerRecords ?? []
+  const answerMap = answersOf(questions, answerRecords)
+  const answerByQuestion = new Map(
+    answerRecords.map((answer) => [answer.questionId, answer]),
+  )
+
+  // 答题卡着色：只收客观题 —— 简答题后端不自动判分（老数据里 `correct` 是 0），参与着色会整片标红；
+  // 题目已删的孤儿答案跳过；`correct` 为 null（未批改）的不下结论，格子保持中性。
+  const questionById = new Map(
+    questions.map((question) => [question.id, question]),
+  )
+  const results: Record<number, 'correct' | 'wrong'> = {}
+  for (const answer of answerRecords) {
+    const question = questionById.get(answer.questionId)
+    if (!question || question.type === 'TEXT') continue
+    if (answer.correct === 1) {
+      results[answer.questionId] = 'correct'
+    } else if (answer.correct === 0) {
+      results[answer.questionId] = 'wrong'
+    }
+  }
+
+  return {
+    detail,
+    questions,
+    answerRecords,
+    ordered: orderQuestionsByType(questions),
+    answerMap,
+    answerByQuestion,
+    results,
+  }
+}
 
 /** 题卡是只读的，交互回调给个空实现（外面又套了 `inert`，点不动） */
 export const noop = () => {}

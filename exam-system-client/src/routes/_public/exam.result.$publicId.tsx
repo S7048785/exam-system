@@ -4,6 +4,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { CalendarClock, Timer, Target, TriangleAlert } from 'lucide-react'
 import { formatDateTime, formatUsedTime } from '#/lib/date-util.ts'
 import { examResultQueryOptions } from '#/features/exam/examQueries.ts'
+import { ExamAnswerDialog } from '#/features/exam/result/ExamAnswerDialog.tsx'
 import { ExamHistoryDialog } from '#/features/exam/history/ExamHistoryDialog.tsx'
 import { PageShell } from '#/features/exam/start/PageShell.tsx'
 import { InfoTile } from '#/features/exam/start/InfoTile.tsx'
@@ -17,6 +18,9 @@ import { InfoTile } from '#/features/exam/start/InfoTile.tsx'
  * 两种 422 都走 `errorComponent`，直接把后端文案展示给考生。
  *
  * 不走 SSR：页面内容完全取决于这条记录的批改状态，服务端渲染没有收益。
+ *
+ * 「查看答案解析」弹窗另走 `GET /exams/{publicId}/detail`（逐题标准答案 / 得分 / 解析），
+ * 只在 `result.showAnswerAfterSubmit` 打开时才给入口；它要求记录归属本人（匿名记录放行）。
  */
 export const Route = createFileRoute('/_public/exam/result/$publicId')({
   ssr: false,
@@ -81,17 +85,23 @@ function ExamResultPage() {
             />
           </div>
 
-          {user && (
-            <div className="flex justify-center">
-              <ExamHistoryDialog
-                currentPublicId={publicId}
-                paperId={result.paperId}
-              />
+          {(result.showAnswerAfterSubmit || user) && (
+            <div className="flex flex-wrap justify-center gap-3">
+              {/* 开关「交卷后允许查看标准答案」关闭时后端详情接口也会 422，这里直接不给入口 */}
+              {result.showAnswerAfterSubmit && (
+                <ExamAnswerDialog publicId={publicId} result={result} />
+              )}
+              {user && (
+                <ExamHistoryDialog
+                  currentPublicId={publicId}
+                  paperId={result.paperId}
+                />
+              )}
             </div>
           )}
 
           <p className="text-muted-foreground text-center text-xs">
-            成绩以最终批改结果为准，如需查看作答详情请联系监考老师。
+            成绩以最终批改结果为准。
           </p>
         </div>
       </div>

@@ -13,6 +13,8 @@ interface DetailQuestionListProps {
   answerByQuestion: ReadonlyMap<number, DetailAnswerRecord>
   /** 题目为空时显示的文案（加载中 / 报错 / 暂无） */
   emptyText: string
+  /** 每题下方是否显示题目解析（考生侧「查看答案解析」传 true，控制台不传） */
+  showAnalysis?: boolean
 }
 
 /**
@@ -26,6 +28,7 @@ export function DetailQuestionList({
   answerMap,
   answerByQuestion,
   emptyText,
+  showAnalysis = false,
 }: DetailQuestionListProps) {
   if (ordered.length === 0) {
     return (
@@ -56,6 +59,7 @@ export function DetailQuestionList({
               score={answer?.score}
               correct={answer?.correct}
               answered={answered}
+              analysis={showAnalysis ? question.analysis : undefined}
             />
           </div>
         )
