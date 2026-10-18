@@ -17,6 +17,8 @@
 数据库规范：@docs/database.md
 Java 构建规范：@docs/java-build.md
 Jimmer ORM 规范：@docs/java-jimmer.md
+Jimmer Fetcher 规范：@docs/java-jimmer-fetchers.md
+Jimmer DTO 规范：@docs/java-jimmer-dto.md
 API 规范：@docs/java-api.md
 已知坑点：@docs/java-pitfalls.md
 
