@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
  *
  * @param publicId    考试记录对外标识（6 位短码）
  * @param paperId     试卷 id（前端按它筛出「我在这张卷上的记录」）
+ * @param paperName   试卷名称（历史成绩列表直接展示，不用再逐条查试卷）
  * @param studentName 考生姓名
  * @param score       成绩（未交卷为 null）
  * @param startTime   开始时间
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 public record ExamHistoryItemRes(
 		String publicId,
 		long paperId,
+		String paperName,
 		String studentName,
 		Integer score,
 		LocalDateTime startTime,

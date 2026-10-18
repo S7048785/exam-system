@@ -3,16 +3,24 @@ package com.yyjy.exam.exam.api;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.convention.result.R;
+import com.yyjy.exam.entity.Fetchers;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
+import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.io.req.*;
 import com.yyjy.exam.entity.exam.io.res.*;
+import com.yyjy.exam.entity.paper.entity.Paper;
+import com.yyjy.exam.entity.paper.entity.PaperExamSettingsFetcher;
+import com.yyjy.exam.entity.paper.entity.PaperFetcher;
 import com.yyjy.exam.exam.service.ExamGradingService;
 import com.yyjy.exam.exam.service.ExamRecordQueryService;
 import com.yyjy.exam.exam.service.ExamStartService;
 import com.yyjy.exam.exam.service.ExamTakingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.babyfish.jimmer.client.FetchBy;
+import org.babyfish.jimmer.sql.fetcher.Fetcher;
+import org.babyfish.jimmer.sql.fetcher.ReferenceFetchType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,12 +41,13 @@ public class ExamController {
 	private final ExamRecordQueryService examRecordQueryService;
 	
 	/**
-	 * 考试入口页信息（**考生侧，免登录可访问**）：试卷名、考试时间、描述、总分、参与方式。
-	 * 未发布 → 422「考试不存在」；已结束 → 422「考试已结束」；未开始照常返回，由前端提示。
+	 * 考试入口页信息（**考生侧，免登录可访问**）：直接返回试卷实体 + `EXAM_ENTRY_INFO` 取数图谱
+	 * （试卷标量 + 1:1 的考试设置），前端按 `paper.examSettings` 读时长 / 起止 / 次数上限 / 各项开关。
+	 * 未发布或没有设置行 → 422「考试不存在」；已过截止 → 422「考试已结束」；未开始照常返回，由前端提示。
 	 */
 	@GetMapping("/paper/{id}")
-	public R<ExamPaperInfoRes> getExamPaperInfo(@PathVariable int id) {
-		return R.ok(examTakingService.getPaperInfoForExaminee(id));
+	public R<@FetchBy("EXAM_ENTRY_INFO") Paper> getExamPaperInfo(@PathVariable int id) {
+		return R.ok(examTakingService.getPaperInfoForExaminee(id, EXAM_ENTRY_INFO));
 	}
 	
 	/**
@@ -100,7 +109,7 @@ public class ExamController {
 	 */
 	@GetMapping("/result/{publicId}")
 	public R<ExamResultRes> getExamResult(@PathVariable String publicId) {
-		return R.ok(examTakingService.getExamResult(publicId));
+		return R.ok(examTakingService.getExamResult(publicId, RESULT_ITEM));
 	}
 	
 	/**
@@ -123,12 +132,16 @@ public class ExamController {
 	}
 	
 	/**
-	 * 获取当前用户的考试记录列表（只返回 `publicId`，不吐自增 id）
+	 * 获取当前用户的考试记录列表（只返回 `publicId`，不吐自增 id）。
+	 *
+	 * @param paperId 可选：只取这张试卷的记录（结果页的「历史成绩」按当前试卷过滤）；
+	 *                不传 = 这个人全部记录（考试入口页靠它判断续考）
 	 */
 	@SaCheckLogin
 	@GetMapping("/history")
-	public R<List<ExamHistoryItemRes>> getExamHistory() {
-		return R.ok(examTakingService.getExamHistory());
+	public R<List<ExamHistoryItemRes>> getExamHistory(
+			@RequestParam(required = false) Long paperId) {
+		return R.ok(examTakingService.getExamHistory(paperId, HISTORY_ITEM));
 	}
 	
 	/**
@@ -157,4 +170,56 @@ public class ExamController {
 	public R<ExamRecordDetail> getRecordDetail(@PathVariable String publicId) {
 		return R.ok(examRecordQueryService.getRecordDetailForAuthor(publicId));
 	}
+	
+	/**
+	 * 入口页：试卷 + 1:1 的考试设置。
+	 * <p>
+	 * 🔴 `examSettings` 必须显式传 {@link ReferenceFetchType#JOIN_ALWAYS}：Jimmer 对 to-one 关联
+	 * **默认是「批量附加查询」**，只写 `.examSettings(fetcher)` 会变成两条 SQL（主查询 + 一条
+	 * `where PAPER_ID in (...)` 的 LOAD）。要「联合查询」就得钉住 JOIN_ALWAYS。
+	 */
+	public static final Fetcher<Paper> EXAM_ENTRY_INFO =
+			PaperFetcher.$
+					.name()
+					.description()
+					.published()
+					.totalScore()
+					.participateMode()
+					.examSettings(ReferenceFetchType.JOIN_ALWAYS,
+							PaperExamSettingsFetcher.$
+									.start()
+									.end()
+									.duration()
+									.maxAttempts()
+									.showAnswerAfterSubmit());
+	
+	/**
+	 * 考生自己的考试记录：`status` 必取（入口页靠它判断「有没有考到一半」），`paper.name` 给历史列表显示试卷名。
+	 */
+	public static final Fetcher<ExamRecords> HISTORY_ITEM =
+			Fetchers.EXAM_RECORDS_FETCHER
+					.publicId()
+					.paperId()
+					.studentName()
+					.score()
+					.startTime()
+					.endTime()
+					.status()
+					.paper(Fetchers.PAPER_FETCHER.name());
+	
+	/**
+	 * 结果页：记录本身 + 试卷名 / 总分 / 及格分 / 时长（用时封顶要用 duration）。
+	 */
+	public static final Fetcher<ExamRecords> RESULT_ITEM =
+			Fetchers.EXAM_RECORDS_FETCHER
+					.score()
+					.startTime()
+					.endTime()
+					.status()
+					.paper(Fetchers.PAPER_FETCHER
+							       .name()
+							       .totalScore()
+							       .examSettings(Fetchers.PAPER_EXAM_SETTINGS_FETCHER
+									                     .passingScore()
+									                     .duration()));
 }

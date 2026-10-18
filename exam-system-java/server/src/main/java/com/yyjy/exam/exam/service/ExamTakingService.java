@@ -3,7 +3,6 @@ package com.yyjy.exam.exam.service;
 import cn.dev33.satoken.stp.StpUtil;
 import com.yyjy.exam.common.constant.MessageConstant;
 import com.yyjy.exam.common.exception.BusinessException;
-import com.yyjy.exam.entity.Fetchers;
 import com.yyjy.exam.entity.Immutables;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
@@ -13,7 +12,6 @@ import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.entity.ExamRecordsDraft;
 import com.yyjy.exam.entity.exam.io.req.SubmitAnswerReq;
 import com.yyjy.exam.entity.exam.io.res.ExamHistoryItemRes;
-import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
 import com.yyjy.exam.entity.exam.io.res.ExamResultRes;
 import com.yyjy.exam.entity.paper.entity.Paper;
 import com.yyjy.exam.entity.paper.entity.PaperExamSettings;
@@ -42,35 +40,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 public class ExamTakingService {
-	
-	/**
-	 * 考生自己的记录列表：`status` 必取（入口页靠它判断「有没有考到一半」从而显示「继续考试」）。
-	 */
-	private static final Fetcher<ExamRecords> HISTORY_ITEM =
-			Fetchers.EXAM_RECORDS_FETCHER
-					.publicId()
-					.paperId()
-					.studentName()
-					.score()
-					.startTime()
-					.endTime()
-					.status();
-	
-	/**
-	 * 结果页取数：记录本身 + 试卷名 / 总分 / 及格分 / 时长（用时封顶要用 duration）。
-	 */
-	private static final Fetcher<ExamRecords> RESULT_ITEM =
-			Fetchers.EXAM_RECORDS_FETCHER
-					.score()
-					.startTime()
-					.endTime()
-					.status()
-					.paper(Fetchers.PAPER_FETCHER
-							       .name()
-							       .totalScore()
-							       .examSettings(Fetchers.PAPER_EXAM_SETTINGS_FETCHER
-									                     .passingScore()
-									                     .duration()));
 	
 	private final ExamRecordsRepository examRecordsRepo;
 	private final AnswerRecordRepository answerRecordRepo;
@@ -122,8 +91,8 @@ public class ExamTakingService {
 	 * 会出现「用时比考试时长还长」，展示上不认这个数；
 	 * - 及格分取设置行（缺失按 0，与成绩列表同口径），总分取 `paper.total_score`。
 	 */
-	public ExamResultRes getExamResult(String publicId) {
-		ExamRecords record = examRecordsRepo.findByPublicId(publicId, RESULT_ITEM)
+	public ExamResultRes getExamResult(String publicId, Fetcher<ExamRecords> fetcher) {
+		ExamRecords record = examRecordsRepo.findByPublicId(publicId, fetcher)
 				                     .orElseThrow(() -> new BusinessException("考试记录不存在"));
 		if (!ExamRecordStatus.GRADED.equals(record.status())) {
 			throw new BusinessException("试卷未提交");
@@ -147,6 +116,7 @@ public class ExamTakingService {
 		}
 		
 		return new ExamResultRes(
+				paper.id(),
 				paper.name(),
 				record.score() == null ? 0 : record.score(),
 				usedSeconds,
@@ -157,18 +127,21 @@ public class ExamTakingService {
 	}
 	
 	/**
-	 * 获取当前登录用户的考试记录列表（按创建时间倒序）。
+	 * 当前登录用户的考试记录列表（按创建时间倒序）。
 	 * <p>
 	 * 返回 DTO 而不是实体：自增 id 只作数据库主键，对外一律 `publicId`。
+	 *
+	 * @param paperId 只取这张试卷的记录（结果页的「历史成绩」用）；传 {@code null} 表示全部
 	 */
-	public List<ExamHistoryItemRes> getExamHistory() {
+	public List<ExamHistoryItemRes> getExamHistory(Long paperId, Fetcher<ExamRecords> fetcher) {
 		long userId = StpUtil.getLoginIdAsLong();
-		List<ExamRecords> records = examRecordsRepo.findByUserId(userId, HISTORY_ITEM);
+		List<ExamRecords> records = examRecordsRepo.findByUserId(userId, paperId, fetcher);
 		List<ExamHistoryItemRes> list = new ArrayList<>(records.size());
 		for (ExamRecords r : records) {
 			list.add(new ExamHistoryItemRes(
 					r.publicId(),
 					r.paperId(),
+					r.paper().name(),
 					r.studentName(),
 					r.score(),
 					r.startTime(),
@@ -180,34 +153,30 @@ public class ExamTakingService {
 	}
 	
 	/**
-	 * 考试入口页：按 paperId 取试卷信息（**考生侧，免登录可访问，不做归属校验**）。
+	 * 考试入口页：按 paperId 取试卷（**考生侧，免登录可访问，不做归属校验**）。
 	 * <p>
 	 * 口径：
-	 * - 试卷不存在、或**未发布** → 统一抛「考试不存在」（不区分两者，避免泄露未发布试卷的存在）；
+	 * - 试卷不存在、或**未发布**、或没有考试设置行 → 统一抛「考试不存在」
+	 *   （不区分几种情况，避免泄露未发布试卷的存在）；
 	 * - 已发布但**已过截止时间** → 抛「考试已结束」；
-	 * - 未开始 → 照常返回信息，由前端提示「未开始」并不放行。
+	 * - 未开始 → 照常返回，由前端提示「未开始」并不放行。
+	 *
+	 * @param fetcher 取数图谱（`ExamController.EXAM_ENTRY_INFO`）：试卷标量 + 1:1 的考试设置
 	 */
-	public ExamPaperInfoRes getPaperInfoForExaminee(long paperId) {
-		Paper paper = sqlClient.findById(Paper.class, paperId);
+	public Paper getPaperInfoForExaminee(long paperId, Fetcher<Paper> fetcher) {
+		// 取数图谱由调用方给：一条 left join 带出试卷 + 考试设置
+		Paper paper = sqlClient.findById(fetcher, paperId);
 		if (paper == null || !paper.published()) {
 			throw new BusinessException("考试不存在");
 		}
-		PaperExamSettings settings = paperExamSettingsRepo.findByPaperId(paperId);
+		PaperExamSettings settings = paper.examSettings();
 		if (settings == null) {
 			throw new BusinessException("考试不存在");
 		}
 		if (settings.end().isBefore(LocalDateTime.now())) {
 			throw new BusinessException("考试已结束");
 		}
-		return new ExamPaperInfoRes(
-				paper.id(),
-				paper.name(),
-				paper.description(),
-				settings.start(),
-				settings.end(),
-				paper.totalScore(),
-				settings.duration(),
-				paper.participateMode());
+		return paper;
 	}
 	
 	/**

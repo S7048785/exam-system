@@ -112,12 +112,21 @@ public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
 	
 	List<ExamRecords> findByStatus(ExamRecordStatus status);
 	
-	default List<ExamRecords> findByUserId(long userId, Fetcher<ExamRecords> fetcher) {
+	/**
+	 * 某人的考试记录（按 id 倒序 = 最新在前）。
+	 *
+	 * @param paperId 只取这张试卷的记录；传 {@code null} 表示不限试卷
+	 */
+	default List<ExamRecords> findByUserId(long userId, Long paperId, Fetcher<ExamRecords> fetcher) {
 		var t = Tables.EXAM_RECORDS_TABLE;
-		return sql().createQuery(t)
-				       .where(t.userId().eq(userId))
-				       .orderBy(t.id().desc())
-				       .select(t.fetch(fetcher)).execute();
+		var query = sql().createQuery(t)
+				            .where(t.userId().eq(userId));
+		if (paperId != null) {
+			query = query.where(t.paperId().eq(paperId));
+		}
+		return query.orderBy(t.id().desc())
+				       .select(t.fetch(fetcher))
+				       .execute();
 	}
 	
 	/**
