@@ -43,10 +43,10 @@ public class ExamRecordSupport {
 	}
 	
 	/**
-	 * 通用查找，不存在时抛异常
+	 * 按对外短码查找，不存在时抛异常（对外接口一律用 `publicId`，自增 id 不出现在路径里）。
 	 */
-	public ExamRecords findRecordOrThrow(long id) {
-		return examRecordsRepo.findById(id)
+	public ExamRecords findRecordOrThrow(String publicId) {
+		return examRecordsRepo.findByPublicId(publicId)
 				       .orElseThrow(() -> new BusinessException("考试记录不存在"));
 	}
 	

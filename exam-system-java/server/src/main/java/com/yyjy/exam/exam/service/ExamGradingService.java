@@ -44,15 +44,18 @@ public class ExamGradingService {
 	 * 人工判卷（**批量**）：给这场考试的若干条答案打分，并重算 `score` / 推进 `status`
 	 * 得分上界 = 该题在**这张卷上**的配分（`paper_question.score` 优先、回落 `questions.score`）；
 	 * `correct` 与 `score` 各存各的（简答可以「判错但给部分分」）。
+	 *
+	 * @param publicId 考试记录对外短码（自增 id 只是数据库主键，不进接口）
 	 */
 	@Transactional
-	public void gradeAnswers(long examRecordId, List<GradeAnswerReq> answers) {
+	public void gradeAnswers(String publicId, List<GradeAnswerReq> answers) {
 		if (answers == null || answers.isEmpty()) {
 			throw new BusinessException("exam: 判卷内容不能为空");
 		}
 		
 		// ---- 1. 状态前置校验（只有待批改能判）+ 归属校验（只有试卷作者能判）----
-		ExamRecords record = support.findRecordOrThrow(examRecordId);
+		ExamRecords record = support.findRecordOrThrow(publicId);
+		final long examRecordId = record.id();
 		support.requireOwnedPaper(record.paperId());
 		if (ExamRecordStatus.ONGOING.equals(record.status())) {
 			throw new BusinessException("exam: 考试尚未交卷，不能判卷");

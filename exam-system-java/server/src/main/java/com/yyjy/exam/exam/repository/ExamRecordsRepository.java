@@ -14,8 +14,35 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public interface ExamRecordsRepository extends JRepository<ExamRecords, Long> {
+	
+	/**
+	 * 按对外短码查一条记录（`public_id` 唯一）。
+	 * <p>
+	 * 对外接口**一律走这里**：自增 id 只是数据库主键，不出现在任何请求/响应里。
+	 */
+	default Optional<ExamRecords> findByPublicId(String publicId) {
+		return findByPublicId(publicId, null);
+	}
+	
+	/**
+	 * 同上，但指定取数图谱（需要 `paper.examSettings` 这类关联时用）。
+	 *
+	 * @param fetcher 取数图谱；传 `null` 表示只取实体默认标量字段
+	 */
+	default Optional<ExamRecords> findByPublicId(String publicId, Fetcher<ExamRecords> fetcher) {
+		if (publicId == null || publicId.isBlank()) {
+			return Optional.empty();
+		}
+		var t = Tables.EXAM_RECORDS_TABLE;
+		var query = sql().createQuery(t).where(t.publicId().eq(publicId));
+		List<ExamRecords> rows = (fetcher == null ? query.select(t) : query.select(t.fetch(fetcher)))
+				                         .limit(1)
+				                         .execute();
+		return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
+	}
 	
 	/**
 	 * 该「考生名」在这份试卷上已经开考的次数。

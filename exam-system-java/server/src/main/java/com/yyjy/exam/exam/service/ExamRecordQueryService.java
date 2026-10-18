@@ -36,6 +36,7 @@ public class ExamRecordQueryService {
 	
 	private static final Fetcher<ExamRecords> RECORD_LIST_ITEM =
 			Fetchers.EXAM_RECORDS_FETCHER
+					.publicId()
 					.studentName()
 					.score()
 					.startTime()
@@ -176,15 +177,15 @@ public class ExamRecordQueryService {
 	/**
 	 * 考生的答题详情（**控制台侧**：试卷作者查看本卷任意一条记录的作答，**只读**）。
 	 */
-	public ExamRecordDetail getRecordDetailForAuthor(long recordId) {
-		ExamRecords record = support.findRecordOrThrow(recordId);
+	public ExamRecordDetail getRecordDetailForAuthor(String publicId) {
+		ExamRecords record = support.findRecordOrThrow(publicId);
 		long paperId = record.paperId();
 		support.requireOwnedPaper(paperId);
 		
 		if (ExamRecordStatus.ONGOING.equals(record.status())) {
 			throw new BusinessException(MessageConstant.EXAM_DETAIL_NOT_AVAILABLE_ONGOING);
 		}
-		ExamRecordDetail detail = sqlClient.findById(ExamRecordDetail.class, recordId);
+		ExamRecordDetail detail = sqlClient.findById(ExamRecordDetail.class, record.id());
 		if (detail == null) {
 			throw new BusinessException("考试记录不存在");
 		}
@@ -220,7 +221,7 @@ public class ExamRecordQueryService {
 		int score = displayScore(r);
 		
 		return new ExamRecordListItemRes(
-				String.valueOf(r.id()),
+				r.publicId(),
 				r.studentName(),
 				start,
 				end,

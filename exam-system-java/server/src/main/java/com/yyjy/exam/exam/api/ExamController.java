@@ -3,21 +3,16 @@ package com.yyjy.exam.exam.api;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.yyjy.exam.common.convention.result.PageRes;
 import com.yyjy.exam.common.convention.result.R;
-import com.yyjy.exam.entity.Fetchers;
 import com.yyjy.exam.entity.exam.dto.ExamRecordDetail;
 import com.yyjy.exam.entity.exam.dto.ExamTakingView;
-import com.yyjy.exam.entity.exam.entity.ExamRecords;
 import com.yyjy.exam.entity.exam.io.req.*;
-import com.yyjy.exam.entity.exam.io.res.ExamPaperInfoRes;
-import com.yyjy.exam.entity.exam.io.res.ExamRecordListItemRes;
-import com.yyjy.exam.entity.exam.io.res.ExamRecordStatsRes;
+import com.yyjy.exam.entity.exam.io.res.*;
 import com.yyjy.exam.exam.service.ExamGradingService;
 import com.yyjy.exam.exam.service.ExamRecordQueryService;
 import com.yyjy.exam.exam.service.ExamStartService;
 import com.yyjy.exam.exam.service.ExamTakingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.babyfish.jimmer.sql.fetcher.Fetcher;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,15 +27,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ExamController {
 	
-	private final static Fetcher<ExamRecords> EXAM_RECORD_ITEM =
-			Fetchers.EXAM_RECORDS_FETCHER
-					.studentName()
-					.score()
-					.startTime()
-					.endTime()
-					.paper(Fetchers.PAPER_FETCHER
-							       .totalScore()
-							       .examSettings(Fetchers.PAPER_EXAM_SETTINGS_FETCHER.passingScore()));
 	private final ExamStartService examStartService;
 	private final ExamTakingService examTakingService;
 	private final ExamGradingService examGradingService;
@@ -56,42 +42,40 @@ public class ExamController {
 	}
 	
 	/**
-	 * 开考：返回考试记录 id（有没交卷的记录则直接返回那条，即「续考」）。
+	 * 开考：返回考试记录 `publicId`（有没交卷的记录则直接返回那条，即「续考」）。
 	 * `studentName` 只有**免登录考试**才需要传（1~50 个字符）；账号登录考试的姓名取账号里的
 	 * `realName`，请求体里**不要传**（传空串会被 `@Size(min = 1)` 拦成 422，要么省略字段要么传 null）。
 	 */
 	@PostMapping("/start")
 	public R<String> startExam(@RequestBody @Valid StartExamReq req) {
-		long examRecordId = examStartService.startExam(req.paperId(), req.studentName());
-		// 雪花 id 有 19 位，超过 JS 的 Number.MAX_SAFE_INTEGER，按字符串返回才不会掉精度
-		return R.ok(String.valueOf(examRecordId));
+		return R.ok(examStartService.startExam(req.paperId(), req.studentName()));
 	}
 	
 	/**
 	 * 获取答题页数据（无正确答案，供考试中展示题目）
 	 */
-	@GetMapping("/{id}/taking")
-	public R<ExamTakingView> getExamTaking(@PathVariable String id) {
-		return R.ok(examTakingService.getExamTaking(Long.parseLong(id)));
+	@GetMapping("/{publicId}/taking")
+	public R<ExamTakingView> getExamTaking(@PathVariable String publicId) {
+		return R.ok(examTakingService.getExamTaking(publicId));
 	}
 	
 	/**
 	 * 获取考试详情（含答题记录、评分结果、阅卷批注）
 	 */
-	@GetMapping("/{id}/detail")
-	public R<ExamRecordDetail> getExamDetail(@PathVariable String id) {
-		return R.ok(examTakingService.getExamDetail(Long.parseLong(id)));
+	@GetMapping("/{publicId}/detail")
+	public R<ExamRecordDetail> getExamDetail(@PathVariable String publicId) {
+		return R.ok(examTakingService.getExamDetail(publicId));
 	}
 	
 	/**
 	 * 考试中手动保存答案（upsert，不改状态不触发评分）
 	 */
-	@PostMapping("/{examRecordId}/answers")
+	@PostMapping("/{publicId}/answers")
 	public R<Void> saveAnswers(
-			@PathVariable String examRecordId,
+			@PathVariable String publicId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
-		examTakingService.saveAnswers(Long.parseLong(examRecordId), answers);
+		examTakingService.saveAnswers(publicId, answers);
 		return R.ok();
 	}
 	
@@ -99,13 +83,24 @@ public class ExamController {
 	 * 提交答案：
 	 * 同步批改选择/判断题，简答题留待人工批改
 	 */
-	@PostMapping("/submit/{examRecordId}")
+	@PostMapping("/submit/{publicId}")
 	public R<Void> submitAnswers(
-			@PathVariable String examRecordId,
+			@PathVariable String publicId,
 			@RequestBody List<SubmitAnswerReq> answers
 	) {
-		examTakingService.submitAnswers(Long.parseLong(examRecordId), answers);
+		examTakingService.submitAnswers(publicId, answers);
 		return R.ok();
+	}
+	
+	/**
+	 * 考试结果（**考生侧，免登录**）：凭 `publicId` 看成绩 / 用时 / 交卷时间 / 总分 / 及格分。
+	 * <p>
+	 * 只有 `GRADED` 才返回结果；`ONGOING`（还没交卷）与 `GRADING`（待人工批改）一律 422
+	 * 「试卷未提交」；`publicId` 查不到 → 422「考试记录不存在」。
+	 */
+	@GetMapping("/result/{publicId}")
+	public R<ExamResultRes> getExamResult(@PathVariable String publicId) {
+		return R.ok(examTakingService.getExamResult(publicId));
 	}
 	
 	/**
@@ -115,25 +110,25 @@ public class ExamController {
 	 * 状态前置校验：**只有待批改（`GRADING`）能判** —— 未交卷（`ONGOING`）与已判完（`GRADED`）
 	 * 都会被拒（422）；得分上限 = 该题在这张卷上的配分，超了也是 422。
 	 *
-	 * @param examRecordId 考试记录 id（`exam_records.id`，内部自增主键；对外短码是 `publicId`，别混）
+	 * @param publicId 考试记录对外短码（`exam_records.public_id`）
 	 */
 	@SaCheckLogin
-	@PostMapping("/grade/{examRecordId}")
+	@PostMapping("/grade/{publicId}")
 	public R<Void> gradeAnswers(
-			@PathVariable String examRecordId,
+			@PathVariable String publicId,
 			@RequestBody @Valid List<@Valid GradeAnswerReq> answers
 	) {
-		examGradingService.gradeAnswers(Long.parseLong(examRecordId), answers);
+		examGradingService.gradeAnswers(publicId, answers);
 		return R.ok();
 	}
 	
 	/**
-	 * 获取当前用户的考试记录列表
+	 * 获取当前用户的考试记录列表（只返回 `publicId`，不吐自增 id）
 	 */
 	@SaCheckLogin
 	@GetMapping("/history")
-	public R<List<ExamRecords>> getExamHistory() {
-		return R.ok(examTakingService.getExamHistory(EXAM_RECORD_ITEM));
+	public R<List<ExamHistoryItemRes>> getExamHistory() {
+		return R.ok(examTakingService.getExamHistory());
 	}
 	
 	/**
@@ -158,8 +153,8 @@ public class ExamController {
 	 * 考生的答题详情（**控制台**：「成绩」弹窗里点某一行看作答，**只读**）。
 	 */
 	@SaCheckLogin
-	@GetMapping("/records/{recordId}/detail")
-	public R<ExamRecordDetail> getRecordDetail(@PathVariable String recordId) {
-		return R.ok(examRecordQueryService.getRecordDetailForAuthor(Long.parseLong(recordId)));
+	@GetMapping("/records/{publicId}/detail")
+	public R<ExamRecordDetail> getRecordDetail(@PathVariable String publicId) {
+		return R.ok(examRecordQueryService.getRecordDetailForAuthor(publicId));
 	}
 }

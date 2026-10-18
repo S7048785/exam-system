@@ -37,7 +37,7 @@ public class ExamStartService {
 	private final UsersRepository usersRepo;
 
 	@Transactional
-	public long startExam(long paperId, String studentName) {
+	public String startExam(long paperId, String studentName) {
 		// ---- 1. 校验试卷本身 ----
 		Long userId = null;
 		String name = studentName;
@@ -131,7 +131,7 @@ public class ExamStartService {
 				.where(Tables.PAPER_TABLE.id().eq(paperId))
 				.set(paperTable.scoreCount(), paperTable.scoreCount().plus(1))
 				.execute();
-		return saved.id();
+		return saved.publicId();
 	}
 
 	/**
@@ -140,12 +140,12 @@ public class ExamStartService {
 	 * **先看这场自己有没有超时** —— `end` 没到不代表作答时长还没用完：
 	 * 超了就抛异常，不能让考生接着答（ExamTimeoutScheduler 随后会把它强制交卷）。
 	 */
-	private long resume(ExamRecords ongoing, PaperExamSettings settings, LocalDateTime now) {
+	private String resume(ExamRecords ongoing, PaperExamSettings settings, LocalDateTime now) {
 		if (ongoing.startTime() != null
 				    && now.isAfter(ongoing.startTime().plusMinutes(settings.duration()))) {
 			throw new BusinessException(MessageConstant.EXAM_ATTEMPT_TIMEOUT);
 		}
-		return ongoing.id();
+		return ongoing.publicId();
 	}
 
 	/**
