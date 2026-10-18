@@ -3,12 +3,14 @@ import { cn } from '#/lib/utils.ts'
 import { EntryNotice } from './EntryNotice.tsx'
 import type { EntryPhase } from './utils.ts'
 
-/** 账号登录考试的按钮文案 —— 时间窗 + 「我」的记录两个维度 */
+/** 账号登录考试的按钮文案 —— 时间窗 + 「我」的记录 + 次数上限三个维度 */
 const LABEL: Record<EntryPhase, string> = {
   NOT_STARTED: '考试未开始',
   NEED_LOGIN: '需要登录',
   READY: '开始考试',
+  RETRY: '再考一次',
   ONGOING: '继续考试',
+  LIMIT_REACHED: '已达考试上限',
   FINISHED: '考试已结束',
 }
 
@@ -35,7 +37,7 @@ export function AccountEntry({
   realName,
   onStart,
 }: AccountEntryProps) {
-  const canStart = phase === 'READY' || phase === 'ONGOING'
+  const canStart = phase === 'READY' || phase === 'RETRY' || phase === 'ONGOING'
 
   return (
     <>

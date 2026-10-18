@@ -1,6 +1,9 @@
 import z from 'zod'
-import type { Dynamic_ExamRecords } from '#/__generated/model/dynamic'
-import type { ExamPaperInfoRes } from '#/__generated/model/static'
+import type { PaperDto } from '#/__generated/model/dto'
+import type { ExamHistoryItemRes } from '#/__generated/model/static'
+
+/** 入口页的试卷：`ExamController.EXAM_ENTRY_INFO` 的取数形状（设置拼在同一条查询里） */
+type EntryPaper = PaperDto['ExamController/EXAM_ENTRY_INFO']
 
 /**
  * 考生姓名校验（免登录考试专用）。
@@ -14,44 +17,47 @@ export const studentNameSchema = z
   .max(50, '姓名不能超过 50 个字符')
 
 /** 「我」在这张试卷上的状态 */
-export type ExamUserState = 'NOT_ATTEMPTED' | 'ONGOING' | 'FINISHED'
+export type ExamUserState =
+  | 'NOT_ATTEMPTED'
+  | 'ONGOING'
+  | 'RETRYABLE'
+  | 'LIMIT_REACHED'
 
 /**
  * 「我」在这张试卷上的状态：
- * - 一条记录都没有 → 未考试
- * - 有 `ONGOING` 记录且还在作答时限内 → 考试中（按钮切「继续考试」）
- * - 其余（已交卷，或 `ONGOING` 但已超时）→ 考试结束
- *
- * 时限取 `min(记录开始时间 + 试卷时长, 试卷截止时间)`：前者是**单场作答时长**，
- * 后者是**整场窗口** —— 窗口到点后谁都不能再考，手里那条 ONGOING 也不放行。
  */
 export function resolveExamUserState(
-  records: ReadonlyArray<Dynamic_ExamRecords>,
-  info: ExamPaperInfoRes,
+  records: ReadonlyArray<ExamHistoryItemRes>,
+  info: EntryPaper,
   now: number,
 ): ExamUserState {
+  const duration = info.examSettings?.duration ?? 0
+  const maxAttempts = info.examSettings?.maxAttempts ?? 1
+  const end = info.examSettings?.end
+
   const ongoing = records.find((r) => r.status === 'ONGOING')
-  if (!ongoing) {
-    return records.length > 0 ? 'FINISHED' : 'NOT_ATTEMPTED'
+  if (ongoing) {
+    // 记录缺开始时间就按还在考处理（后端 startTime 是 NOT NULL，这里只是兜底）
+    if (!ongoing.startTime) return 'ONGOING'
+    const deadline = Math.min(
+      new Date(ongoing.startTime).getTime() + duration * 60_000,
+      end ? new Date(end).getTime() : Number.POSITIVE_INFINITY,
+    )
+    if (now < deadline) return 'ONGOING'
   }
-  // 记录缺开始时间就按还在考处理（后端 startTime 是 NOT NULL，这里只是兜底）
-  if (!ongoing.startTime) return 'ONGOING'
-  const deadline = Math.min(
-    new Date(ongoing.startTime).getTime() + info.duration * 60_000,
-    new Date(info.end).getTime(),
-  )
-  return now >= deadline ? 'FINISHED' : 'ONGOING'
+  if (records.length === 0) return 'NOT_ATTEMPTED'
+  // 超时未交卷的那条也算用过一次（后端按记录数计次数）
+  return records.length >= maxAttempts ? 'LIMIT_REACHED' : 'RETRYABLE'
 }
 
 /** 试卷的时间窗状态 —— **两个参与模式共用**，只看时间不看「我」的记录 */
 export type WindowPhase = 'NOT_STARTED' | 'OPEN' | 'ENDED'
 
-export function resolveWindowPhase(
-  info: ExamPaperInfoRes,
-  now: number,
-): WindowPhase {
-  if (now < new Date(info.start).getTime()) return 'NOT_STARTED'
-  if (now > new Date(info.end).getTime()) return 'ENDED'
+export function resolveWindowPhase(info: EntryPaper, now: number): WindowPhase {
+  const start = info.examSettings?.start
+  const end = info.examSettings?.end
+  if (start && now < new Date(start).getTime()) return 'NOT_STARTED'
+  if (end && now > new Date(end).getTime()) return 'ENDED'
   return 'OPEN'
 }
 
@@ -66,20 +72,30 @@ export type EntryPhase =
   | 'NOT_STARTED'
   | 'NEED_LOGIN'
   | 'READY'
+  | 'RETRY'
   | 'ONGOING'
+  | 'LIMIT_REACHED'
   | 'FINISHED'
 
 export function resolveEntryPhase(
-  info: ExamPaperInfoRes,
+  info: EntryPaper,
   loggedIn: boolean,
-  records: ReadonlyArray<Dynamic_ExamRecords>,
+  records: ReadonlyArray<ExamHistoryItemRes>,
   now: number,
 ): EntryPhase {
   const window = resolveWindowPhase(info, now)
   if (window === 'NOT_STARTED') return 'NOT_STARTED'
+  // 整场窗口结束优先于次数：场次截止了，剩几次都不能进
   if (window === 'ENDED') return 'FINISHED'
   if (!loggedIn) return 'NEED_LOGIN'
-  // 剩下三态与 ExamUserState 同名，未考过即「可以开考」
-  const state = resolveExamUserState(records, info, now)
-  return state === 'NOT_ATTEMPTED' ? 'READY' : state
+  switch (resolveExamUserState(records, info, now)) {
+    case 'NOT_ATTEMPTED':
+      return 'READY'
+    case 'ONGOING':
+      return 'ONGOING'
+    case 'RETRYABLE':
+      return 'RETRY'
+    case 'LIMIT_REACHED':
+      return 'LIMIT_REACHED'
+  }
 }

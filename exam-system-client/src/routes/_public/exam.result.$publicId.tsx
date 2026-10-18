@@ -1,9 +1,10 @@
 import type { ErrorComponentProps } from '@tanstack/react-router'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { CalendarClock, Timer, Target, TriangleAlert } from 'lucide-react'
 import { formatDateTime, formatUsedTime } from '#/lib/date-util.ts'
 import { examResultQueryOptions } from '#/features/exam/examQueries.ts'
+import { ExamHistoryDialog } from '#/features/exam/history/ExamHistoryDialog.tsx'
 import { PageShell } from '#/features/exam/start/PageShell.tsx'
 import { InfoTile } from '#/features/exam/start/InfoTile.tsx'
 
@@ -31,6 +32,8 @@ function ExamResultPage() {
   const { publicId } = Route.useParams()
   // loader 已 ensureQueryData，这里直接命中缓存
   const { data: result } = useSuspenseQuery(examResultQueryOptions(publicId))
+  // 历史成绩要求登录（匿名考试的记录也不属于任何人），未登录就不给这个入口
+  const { user } = useRouteContext({ from: '__root__' })
 
   return (
     <PageShell>
@@ -77,6 +80,15 @@ function ExamResultPage() {
               value={`${result.passingScore} 分`}
             />
           </div>
+
+          {user && (
+            <div className="flex justify-center">
+              <ExamHistoryDialog
+                currentPublicId={publicId}
+                paperId={result.paperId}
+              />
+            </div>
+          )}
 
           <p className="text-muted-foreground text-center text-xs">
             成绩以最终批改结果为准，如需查看作答详情请联系监考老师。

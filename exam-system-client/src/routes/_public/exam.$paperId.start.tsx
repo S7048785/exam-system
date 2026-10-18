@@ -7,6 +7,7 @@ import {
   examPaperInfoQueryOptions,
 } from '#/features/exam/examQueries.ts'
 import { useStartExamMutation } from '#/features/console/papers/usePaperActions.ts'
+import { ExamHistoryDialog } from '#/features/exam/history/ExamHistoryDialog.tsx'
 import { AccountEntry } from '#/features/exam/start/AccountEntry.tsx'
 import { AnonymousEntry } from '#/features/exam/start/AnonymousEntry.tsx'
 import { EntryNotice } from '#/features/exam/start/EntryNotice.tsx'
@@ -38,8 +39,10 @@ export const Route = createFileRoute('/_public/exam/$paperId/start')({
     const info = await context.queryClient.ensureQueryData(
       examPaperInfoQueryOptions(id),
     )
-    if (context.user && info.data.participateMode === 'LOGIN_REQUIRED') {
-      await context.queryClient.prefetchQuery(examHistoryQueryOptions)
+    // 注意：`examPaperInfoQueryOptions` 带 `select: res => res.data`，
+    // ensureQueryData 拿到的就是试卷本身，**没有** `.data` 这一层
+    if (context.user && info.participateMode === 'LOGIN_REQUIRED') {
+      await context.queryClient.prefetchQuery(examHistoryQueryOptions(id))
     }
     return info
   },
@@ -54,32 +57,36 @@ function ExamEntryPage() {
   const { data: info } = useSuspenseQuery(examPaperInfoQueryOptions(Number(id)))
 
   const isAnonymous = info.participateMode === 'ANONYMOUS'
+  // 考试时间 / 时长 / 次数都在 1:1 的设置里（后端保证入口页拿到的卷一定有设置行）
+  const settings = info.examSettings
+  const start = settings?.start
+  const end = settings?.end
+  const duration = settings?.duration ?? 0
 
   // 免登录模式拿不到「我」的记录（`examHistory` 要求登录）⇒ 不查，也就判不了续考
   const { data: history } = useQuery({
-    ...examHistoryQueryOptions,
+    ...examHistoryQueryOptions(info.id),
     enabled: !isAnonymous && !!user,
   })
-  const myRecords = (history ?? []).filter((r) => r.paperId === info.paperId)
+  // 后端已按「当前用户 + 当前试卷」过滤，这里不再筛
+  const myRecords = history ?? []
 
   // 会自己走的「现在」：跨过试卷 start / end、或续考的作答时限就重算
   const now = useNow([
-    new Date(info.start).getTime(),
-    new Date(info.end).getTime(),
+    start ? new Date(start).getTime() : 0,
+    end ? new Date(end).getTime() : 0,
     ...myRecords
       .filter((r) => r.status === 'ONGOING')
-      .map(
-        (r) => new Date(r.startTime ?? 0).getTime() + info.duration * 60_000,
-      ),
+      .map((r) => new Date(r.startTime).getTime() + duration * 60_000),
   ])
 
   const startExam = useStartExamMutation()
   const submit = (studentName: string) =>
-    startExam.mutate({ paperId: info.paperId, studentName })
+    startExam.mutate({ paperId: info.id, studentName })
 
   const window = resolveWindowPhase(info, now)
   // 时间显示不带年份（formatDateTime 是 YYYY-MM-DD HH:mm，去掉前 5 个字符即可）
-  const fmtTime = (v: string) => formatDateTime(v).slice(5)
+  const fmtTime = (v?: string) => (v ? formatDateTime(v).slice(5) : '--')
 
   return (
     <PageShell>
@@ -105,13 +112,13 @@ function ExamEntryPage() {
               <InfoTile
                 icon={<CalendarDays className="size-4" />}
                 label="考试时间"
-                value={`${fmtTime(info.start)} - ${fmtTime(info.end)}`}
+                value={`${fmtTime(start)} - ${fmtTime(end)}`}
               />
             </div>
             <InfoTile
               icon={<Timer className="size-4" />}
               label="考试时长"
-              value={`${info.duration} 分钟`}
+              value={`${duration} 分钟`}
             />
             <InfoTile
               icon={<Star className="size-4" />}
@@ -122,7 +129,8 @@ function ExamEntryPage() {
 
           {window === 'NOT_STARTED' && (
             <EntryNotice>
-              考试尚未开始，请于 {formatDateTime(info.start)} 后再进入。
+              考试尚未开始，请于 {start ? formatDateTime(start) : '开考时间'}
+              后再进入。
             </EntryNotice>
           )}
 
@@ -139,6 +147,11 @@ function ExamEntryPage() {
               realName={user?.realName}
               onStart={submit}
             />
+          )}
+
+          {/* 历史成绩只有登录考生有（匿名考试记录无 user_id），免登录模式下不给入口 */}
+          {!isAnonymous && user && (
+            <ExamHistoryDialog paperId={info.id} size="lg" className="w-full" />
           )}
 
           <p className="text-muted-foreground text-center text-xs">
